@@ -1,15 +1,371 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wood-Nesting Pollinator Monitor — Mockup</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #1E2A1E;
+    --bg: #F3F1E7;
+    --card: #FFFFFF;
+    --border: #DAD5C4;
+    --bark: #8C6239;
+    --honey: #C99A2E;
+    --sage: #6B7566;
+    --forest: #2F4A34;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  header {
+    background: var(--forest);
+    color: #F3F1E7;
+    padding: 28px 32px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 26px;
+    margin: 0;
+  }
+
+  header p {
+    margin: 0;
+    color: #C7D2C4;
+    font-size: 14px;
+  }
+
+  .mockup-banner {
+    background: var(--honey);
+    color: #2A2110;
+    font-size: 13px;
+    padding: 8px 32px;
+    font-weight: 500;
+  }
+
+  main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+  }
+
+  .filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .filters select {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 20px;
+    min-width: 140px;
+  }
+
+  .stat .value {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--forest);
+  }
+
+  .stat .label {
+    font-size: 13px;
+    color: var(--sage);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+
+  .card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+
+  #map {
+    height: 360px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+    margin-bottom: 8px;
+  }
+
+  .charts-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  footer {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 40px;
+    color: var(--sage);
+    font-size: 13px;
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Hello World!</h1>
-        <p>Welcome to my simple website, ready for Netlify.</p>
+
+<header>
+  <div>
+    <h1>Wood-Nesting Pollinator Monitor</h1>
+    <p>Circle Ecology · Longmont, CO field sites</p>
+  </div>
+</header>
+<div class="mockup-banner">
+  Mockup — showing a sample of the dataset to demonstrate map, charts, and filtering. Not the final design.
+</div>
+
+<main>
+  <div class="filters">
+    <select id="propertyFilter">
+      <option value="">All properties</option>
+    </select>
+    <select id="occupantFilter">
+      <option value="">All occupant types</option>
+    </select>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="value" id="statTotal">–</div>
+      <div class="label">Observations shown</div>
     </div>
+    <div class="stat">
+      <div class="value" id="statOccupied">–</div>
+      <div class="label">With an occupant</div>
+    </div>
+    <div class="stat">
+      <div class="value" id="statSites">–</div>
+      <div class="label">Sites</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Site locations</h2>
+      <div id="map"></div>
+    </div>
+
+    <div class="charts-column">
+      <div class="card">
+        <h2>Occupant type</h2>
+        <div class="chart-wrap"><canvas id="occupantChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Observation status</h2>
+        <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Prototype built from a sample export. Site markers and chart data will reflect the full dataset once integrated with the live upload pipeline.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<script>
+let allObservations = [];
+let allSites = [];
+let map, occupantChart, statusChart;
+let siteMarkers = {};
+
+const COLORS = ['#2F4A34', '#C99A2E', '#8C6239', '#6B7566', '#A6B08A', '#D9BE7A'];
+
+async function loadData() {
+  const [obsRes, sitesRes] = await Promise.all([
+    fetch('data/observations.json'),
+    fetch('data/sites.json')
+  ]);
+  allObservations = await obsRes.json();
+  allSites = await sitesRes.json();
+
+  populateFilters();
+  initMap();
+  render();
+}
+
+function populateFilters() {
+  const propertySelect = document.getElementById('propertyFilter');
+  const properties = [...new Set(allSites.map(s => s.propertyName))].sort();
+  properties.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    propertySelect.appendChild(opt);
+  });
+
+  const occupantSelect = document.getElementById('occupantFilter');
+  const occupantTypes = [...new Set(allObservations.map(o => o.occupantType).filter(Boolean))].sort();
+  occupantTypes.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    occupantSelect.appendChild(opt);
+  });
+
+  propertySelect.addEventListener('change', render);
+  occupantSelect.addEventListener('change', render);
+}
+
+function initMap() {
+  map = L.map('map').setView([40.153, -105.06], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18
+  }).addTo(map);
+
+  allSites.forEach(site => {
+    if (!site.coordinates) return;
+    const marker = L.circleMarker([site.coordinates.lat, site.coordinates.lng], {
+      radius: 9,
+      color: '#2F4A34',
+      fillColor: '#C99A2E',
+      fillOpacity: 0.85,
+      weight: 2
+    }).addTo(map);
+    marker.bindPopup(`<strong>${site.propertyName}</strong><br>Elevation: ${site.elevationMeters}m`);
+    siteMarkers[site.siteId] = marker;
+  });
+}
+
+function getFiltered() {
+  const property = document.getElementById('propertyFilter').value;
+  const occupant = document.getElementById('occupantFilter').value;
+  const siteIdForProperty = property
+    ? allSites.find(s => s.propertyName === property)?.siteId
+    : null;
+
+  return allObservations.filter(o => {
+    if (siteIdForProperty && o.siteId !== siteIdForProperty) return false;
+    if (occupant && o.occupantType !== occupant) return false;
+    return true;
+  });
+}
+
+function countBy(rows, field, fallbackLabel) {
+  const counts = {};
+  rows.forEach(r => {
+    const key = r[field] || fallbackLabel;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+function render() {
+  const filtered = getFiltered();
+  const withOccupant = filtered.filter(o => o.occupantType).length;
+  const sitesShown = new Set(filtered.map(o => o.siteId)).size;
+
+  document.getElementById('statTotal').textContent = filtered.length.toLocaleString();
+  document.getElementById('statOccupied').textContent = withOccupant.toLocaleString();
+  document.getElementById('statSites').textContent = sitesShown;
+
+  const occupantCounts = countBy(filtered.filter(o => o.occupantType), 'occupantType', 'Unknown');
+  const statusCounts = countBy(filtered, 'status', 'No status recorded');
+
+  drawChart('occupantChart', occupantCounts, 'occupant');
+  drawChart('statusChart', statusCounts, 'status');
+}
+
+function drawChart(canvasId, dataObj, kind) {
+  const labels = Object.keys(dataObj);
+  const values = Object.values(dataObj);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+
+  const existing = kind === 'occupant' ? occupantChart : statusChart;
+  if (existing) existing.destroy();
+
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: labels.map((_, i) => COLORS[i % COLORS.length])
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 } }
+      }
+    }
+  });
+
+  if (kind === 'occupant') occupantChart = chart;
+  else statusChart = chart;
+}
+
+loadData();
+</script>
+
 </body>
 </html>
