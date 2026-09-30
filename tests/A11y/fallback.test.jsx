@@ -20,7 +20,7 @@ describe('fallback accessibility', () => {
 
   it('defines a visible focus ring in the global CSS', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
-    const rule = css.match(/a:focus-visible\s*\{([^}]*)\}/)
+    const rule = css.match(/a:focus-visible[^{]*\{([^}]*)\}/)
 
     expect(rule).not.toBeNull()
     expect(rule[1]).toMatch(/outline:\s*\d+px solid/)
