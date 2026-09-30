@@ -12,3 +12,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
