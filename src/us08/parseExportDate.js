@@ -1,11 +1,15 @@
-
 export function parseExportDate(raw) {
   if (typeof raw !== 'string') {
     throw new Error('InvalidExportDateError')
   }
 
   const value = raw.trim()
-  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(value)
+
+  let match = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(value)
+
+  if (!match) {
+    match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value)
+  }
 
   if (!match) {
     throw new Error('InvalidExportDateError')
@@ -16,7 +20,6 @@ export function parseExportDate(raw) {
   const year = Number(match[3])
 
   const date = new Date(Date.UTC(year, month - 1, day))
-  date.setUTCFullYear(year)
 
   if (
     date.getUTCFullYear() !== year ||
@@ -28,4 +31,3 @@ export function parseExportDate(raw) {
 
   return date.toISOString().slice(0, 10)
 }
-

@@ -1,4 +1,3 @@
-
 import { parseCoordinatePair } from './parseCoordinatePair.js'
 import { normalizeNaValue } from './normalizeNaValue.js'
 
@@ -32,6 +31,7 @@ export function parseExportRows(rows, importBatchId) {
   const tunnelsById = new Map()
   const surveysByKey = new Map()
   const errors = []
+  const coordinateConflicts = new Set()
 
   for (const row of rows) {
     const propertyName = normalizeNaValue(row['Property Name'])
@@ -58,9 +58,12 @@ export function parseExportRows(rows, importBatchId) {
       const existingSite = sitesByName.get(propertyName)
 
       if (
-        existingSite.latitude !== coordinates.latitude ||
-        existingSite.longitude !== coordinates.longitude
+        (existingSite.latitude !== coordinates.latitude ||
+          existingSite.longitude !== coordinates.longitude) &&
+        !coordinateConflicts.has(propertyName)
       ) {
+        coordinateConflicts.add(propertyName)
+
         errors.push({
           code: 'COORDINATE_CONFLICT',
           message: `Conflicting coordinates for property: ${propertyName}`,
