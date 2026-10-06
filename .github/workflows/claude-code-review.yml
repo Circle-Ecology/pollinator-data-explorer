@@ -32,3 +32,4 @@ jobs:
             short top-level comment saying the diff looks fine instead of leaving
             any comments.
           claude_args: '--max-turns 15 --allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          show_full_output: true
