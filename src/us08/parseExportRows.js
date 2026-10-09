@@ -1,3 +1,4 @@
+
 import { parseCoordinatePair } from './parseCoordinatePair.js'
 import { normalizeNaValue } from './normalizeNaValue.js'
 
@@ -32,6 +33,7 @@ export function parseExportRows(rows, importBatchId) {
   const surveysByKey = new Map()
   const errors = []
   const coordinateConflicts = new Set()
+  const visibilityConflicts = new Set()
 
   for (const row of rows) {
     const propertyName = normalizeNaValue(row['Property Name'])
@@ -40,10 +42,10 @@ export function parseExportRows(rows, importBatchId) {
     const tunnelId = normalizeNaValue(row['Unique ID'])
     const surveyDate = normalizeNaValue(row['Observation Date'])
 
-    // Reuse parsed coordinates from parseExportCsv
-    // or parse them directly when this function is called alone
     const coordinates =
       row.__parsedCoordinates ?? parseCoordinatePair(row['Coordinates'])
+
+    const isPublic = normalizeBoolean(row['Is Public'])
 
     // Create one Site per property
     if (!sitesByName.has(propertyName)) {
@@ -55,7 +57,7 @@ export function parseExportRows(rows, importBatchId) {
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         elevationMeters: normalizeNumber(row['Elevation (meters)']),
-        isPublic: normalizeBoolean(row['Is Public']),
+        isPublic,
       })
     } else {
       const existingSite = sitesByName.get(propertyName)
@@ -70,6 +72,22 @@ export function parseExportRows(rows, importBatchId) {
         errors.push({
           code: 'COORDINATE_CONFLICT',
           message: `Conflicting coordinates for property: ${propertyName}`,
+          propertyName,
+        })
+      }
+
+      // Report conflicting public visibility settings
+      if (
+        existingSite.isPublic !== null &&
+        isPublic !== null &&
+        existingSite.isPublic !== isPublic &&
+        !visibilityConflicts.has(propertyName)
+      ) {
+        visibilityConflicts.add(propertyName)
+
+        errors.push({
+          code: 'PUBLIC_VISIBILITY_CONFLICT',
+          message: `Conflicting public visibility for property: ${propertyName}`,
           propertyName,
         })
       }
@@ -94,39 +112,70 @@ export function parseExportRows(rows, importBatchId) {
         gridRow: normalizeNaValue(row['Row']),
         gridColumn: normalizeNaValue(row['Column']),
       })
+    } else if (tunnelId) {
+      const existingTunnel = tunnelsById.get(tunnelId)
+
+      // Report when the same tunnel ID belongs to different sites
+      if (existingTunnel.siteId !== propertyName) {
+        errors.push({
+          code: 'TUNNEL_SITE_CONFLICT',
+          message: `Tunnel ${tunnelId} belongs to multiple properties`,
+          tunnelId,
+          originalSiteId: existingTunnel.siteId,
+          conflictingSiteId: propertyName,
+        })
+      }
     }
 
     // Create one Survey per unique tunnel and date
     if (tunnelId && surveyDate) {
       const surveyKey = `${tunnelId}:${surveyDate}`
 
+      const survey = {
+        tunnelId,
+        surveyDate,
+        observationStatus: normalizeNaValue(
+          row['Observation Status']
+        ),
+        occupantType: normalizeNaValue(row['Occupant type']),
+        nesterFamily: normalizeNaValue(row['Nester of family']),
+        generalId: normalizeNaValue(row['General ID']),
+        commonName: normalizeNaValue(row['Common Name']),
+        plugDepth: normalizeNumber(row['Plug Depth']),
+        plugComposition: normalizeNaValue(
+          row['Plug Composition']
+        ),
+        plugColor: normalizeNaValue(row['Plug Color']),
+        plugConfidence: normalizeNaValue(
+          row['Plug confidence']
+        ),
+        wholeOrHole: normalizeNaValue(row['Whole or hole']),
+        emergenceYear: normalizeNumber(row['Emergence Year']),
+        manufacturedEmpty: normalizeBoolean(
+          row['Manufactured Empty']
+        ),
+        recordStatus: 'pending',
+        importBatchId,
+      }
+
       if (!surveysByKey.has(surveyKey)) {
-        surveysByKey.set(surveyKey, {
-          tunnelId,
-          surveyDate,
-          observationStatus: normalizeNaValue(
-            row['Observation Status']
-          ),
-          occupantType: normalizeNaValue(row['Occupant type']),
-          nesterFamily: normalizeNaValue(row['Nester of family']),
-          generalId: normalizeNaValue(row['General ID']),
-          commonName: normalizeNaValue(row['Common Name']),
-          plugDepth: normalizeNumber(row['Plug Depth']),
-          plugComposition: normalizeNaValue(
-            row['Plug Composition']
-          ),
-          plugColor: normalizeNaValue(row['Plug Color']),
-          plugConfidence: normalizeNaValue(
-            row['Plug confidence']
-          ),
-          wholeOrHole: normalizeNaValue(row['Whole or hole']),
-          emergenceYear: normalizeNumber(row['Emergence Year']),
-          manufacturedEmpty: normalizeBoolean(
-            row['Manufactured Empty']
-          ),
-          recordStatus: 'pending',
-          importBatchId,
-        })
+        surveysByKey.set(surveyKey, survey)
+      } else {
+        const existingSurvey = surveysByKey.get(surveyKey)
+
+        // Report duplicate surveys when their data differs
+        const hasConflict = Object.keys(survey).some(
+          (key) => existingSurvey[key] !== survey[key]
+        )
+
+        if (hasConflict) {
+          errors.push({
+            code: 'DUPLICATE_SURVEY',
+            message: `Conflicting survey records for ${surveyKey}`,
+            tunnelId,
+            surveyDate,
+          })
+        }
       }
     }
   }

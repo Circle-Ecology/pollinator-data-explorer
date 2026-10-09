@@ -55,12 +55,22 @@ describe('US-08: Production Export Regression', () => {
 
       expect(coordinateConflicts).toHaveLength(1)
 
-      // Verify no unexpected validation errors
-      expect(
-        result.errors.filter(
-          (error) => error.code !== 'COORDINATE_CONFLICT'
-        )
-      ).toHaveLength(0)
+      // Verify known conflicting duplicate surveys.
+      // The current production CSV contains 41 conflicts.
+      const duplicateSurveyErrors = result.errors.filter(
+        (error) => error.code === 'DUPLICATE_SURVEY'
+      )
+
+      expect(duplicateSurveyErrors).toHaveLength(41)
+
+      // Verify no other unexpected validation errors
+      const unexpectedErrors = result.errors.filter(
+        (error) =>
+          error.code !== 'COORDINATE_CONFLICT' &&
+          error.code !== 'DUPLICATE_SURVEY'
+      )
+
+      expect(unexpectedErrors).toHaveLength(0)
     },
     70000 // Allow up to 70 seconds for the test
   )
