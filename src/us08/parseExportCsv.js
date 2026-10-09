@@ -1,8 +1,8 @@
-
 import { parseCsvText } from './parseCsvText.js'
 import { parseExportRows } from './parseExportRows.js'
 import { parseCoordinatePair } from './parseCoordinatePair.js'
 import { parseExportDate } from './parseExportDate.js'
+import { normalizeNaValue } from './normalizeNaValue.js'
 
 export function parseExportCsv(fileBuffer, importBatchId) {
   const rows = parseCsvText(fileBuffer)
@@ -12,21 +12,14 @@ export function parseExportCsv(fileBuffer, importBatchId) {
   const warnings = []
   let unsurveyedRowCount = 0
 
-  // Validate each CSV row
   rows.forEach((row, index) => {
     const rowNumber = index + 2
 
-    const propertyName = row['Property Name']?.trim()
-    const tunnelId = row['Unique ID']?.trim()
-    const surveyDate = row['Observation Date']?.trim()
+    const propertyName = normalizeNaValue(row['Property Name'])
+    const tunnelId = normalizeNaValue(row['Unique ID'])
+    const surveyDate = normalizeNaValue(row['Observation Date'])
 
-    // Check required fields
-    if (
-      !propertyName ||
-      propertyName.toUpperCase() === 'NA' ||
-      !tunnelId ||
-      tunnelId.toUpperCase() === 'NA'
-    ) {
+    if (!propertyName || !tunnelId) {
       errors.push({
         code: 'REQUIRED_FIELD_MISSING',
         rowNumber,
@@ -35,9 +28,10 @@ export function parseExportCsv(fileBuffer, importBatchId) {
       return
     }
 
-    // Validate coordinates
+    let coordinates
+
     try {
-      parseCoordinatePair(row['Coordinates'])
+      coordinates = parseCoordinatePair(row['Coordinates'])
     } catch {
       errors.push({
         code: 'MALFORMED_COORDINATES',
@@ -47,8 +41,7 @@ export function parseExportCsv(fileBuffer, importBatchId) {
       return
     }
 
-    // Handle rows without a survey date
-    if (!surveyDate || surveyDate.toUpperCase() === 'NA') {
+    if (!surveyDate) {
       unsurveyedRowCount++
 
       warnings.push(
@@ -58,18 +51,19 @@ export function parseExportCsv(fileBuffer, importBatchId) {
       validRows.push({
         ...row,
         'Observation Date': null,
+        __parsedCoordinates: coordinates,
       })
 
       return
     }
 
-    // Validate and normalize the survey date
     try {
       const normalizedDate = parseExportDate(surveyDate)
 
       validRows.push({
         ...row,
         'Observation Date': normalizedDate,
+        __parsedCoordinates: coordinates,
       })
     } catch {
       errors.push({
@@ -80,7 +74,6 @@ export function parseExportCsv(fileBuffer, importBatchId) {
     }
   })
 
-  // Convert valid rows into Site, Tunnel, and Survey records
   const result = parseExportRows(validRows, importBatchId)
 
   return {

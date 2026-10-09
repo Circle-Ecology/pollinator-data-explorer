@@ -1,4 +1,3 @@
-
 import { describe, it, expect } from 'vitest'
 import { parseCsvText } from '../../src/us08/parseCsvText.js'
 
@@ -89,5 +88,14 @@ describe('US-08: Parse CSV Text', () => {
 
   it('returns an empty array for an empty CSV', () => {
     expect(parseCsvText('')).toEqual([])
+  })
+
+  // Regression test: Verify correct row numbers after blank rows
+  it('reports the correct row number after a blank row', () => {
+    const csv = 'name,age\nAlice,25\n\nBob,30,extra'
+
+    expect(() => parseCsvText(csv)).toThrow(
+      'CSV row 4 has 3 columns; expected 2'
+    )
   })
 })

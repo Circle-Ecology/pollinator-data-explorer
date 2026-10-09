@@ -1,4 +1,3 @@
-
 export function parseCsvText(input) {
   const text = (
     typeof input === 'string'
@@ -61,11 +60,17 @@ export function parseCsvText(input) {
   const [headers, ...dataRows] = records
 
   return dataRows
-    .filter((values) => values.some((value) => value.trim() !== ''))
-    .map((values, index) => {
+    .map((values, index) => ({
+      values,
+      rowNumber: index + 2,
+    }))
+    .filter(({ values }) =>
+      values.some((value) => value.trim() !== '')
+    )
+    .map(({ values, rowNumber }) => {
       if (values.length !== headers.length) {
         throw new Error(
-          `CSV row ${index + 2} has ${values.length} columns; expected ${headers.length}`
+          `CSV row ${rowNumber} has ${values.length} columns; expected ${headers.length}`
         )
       }
 

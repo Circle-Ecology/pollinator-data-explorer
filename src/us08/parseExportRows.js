@@ -40,7 +40,10 @@ export function parseExportRows(rows, importBatchId) {
     const tunnelId = normalizeNaValue(row['Unique ID'])
     const surveyDate = normalizeNaValue(row['Observation Date'])
 
-    const coordinates = parseCoordinatePair(row['Coordinates'])
+    // Reuse parsed coordinates from parseExportCsv
+    // or parse them directly when this function is called alone
+    const coordinates =
+      row.__parsedCoordinates ?? parseCoordinatePair(row['Coordinates'])
 
     // Create one Site per property
     if (!sitesByName.has(propertyName)) {
