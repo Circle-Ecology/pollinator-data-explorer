@@ -25,8 +25,8 @@ function normalizeBoolean(raw) {
   return null
 }
 
-// Report each type of conflict once per site or tunnel.
-// Keep the first record rather than silently overwriting data.
+// Report each conflicting field once per entity.
+// Preserve the first record rather than overwriting it.
 function reportFieldConflicts(
   existing,
   incoming,
@@ -40,8 +40,7 @@ function reportFieldConflicts(
     const oldValue = existing[field]
     const newValue = incoming[field]
 
-    // A missing value alone is not considered a conflict.
-    if (oldValue === null || newValue === null) continue
+    if (oldValue == null || newValue == null) continue
     if (oldValue === newValue) continue
 
     const conflictKey = `${code}:${entityId}:${field}`
@@ -60,25 +59,44 @@ function reportFieldConflicts(
   }
 }
 
+// Resolve coordinates for both validated CSV rows
+// and direct calls to parseExportRows.
+function resolveCoordinates(row, errors) {
+  if (row.__parsedCoordinates != null) {
+    return row.__parsedCoordinates
+  }
+
+  try {
+    return parseCoordinatePair(row['Coordinates'])
+  } catch {
+    errors.push({
+      code: 'MALFORMED_COORDINATES',
+      rowNumber: row.__csvRowNumber ?? null,
+      message: 'Invalid coordinates',
+    })
+
+    return null
+  }
+}
+
 export function parseExportRows(rows, importBatchId) {
   const sitesByName = new Map()
   const tunnelsById = new Map()
   const surveysByKey = new Map()
   const errors = []
-
   const reportedConflicts = new Set()
 
   for (const row of rows) {
+    const coordinates = resolveCoordinates(row, errors)
+
+    // Skip malformed coordinates without crashing.
+    if (coordinates === null) continue
+
     const propertyName = normalizeNaValue(row['Property Name'])
     const city = normalizeNaValue(row['City'])
     const state = normalizeNaValue(row['State'])
     const tunnelId = normalizeNaValue(row['Unique ID'])
     const surveyDate = normalizeNaValue(row['Observation Date'])
-
-    const coordinates =
-      row.__parsedCoordinates ??
-      parseCoordinatePair(row['Coordinates'])
-
     const isPublic = normalizeBoolean(row['Is Public'])
 
     const site = {
@@ -92,13 +110,12 @@ export function parseExportRows(rows, importBatchId) {
       isPublic,
     }
 
-    // Create one Site per property.
     if (!sitesByName.has(propertyName)) {
       sitesByName.set(propertyName, site)
     } else {
       const existingSite = sitesByName.get(propertyName)
 
-      // Preserve the existing coordinate conflict error.
+      // Keep the existing coordinate conflict error shape.
       if (
         existingSite.latitude !== site.latitude ||
         existingSite.longitude !== site.longitude
@@ -116,14 +133,13 @@ export function parseExportRows(rows, importBatchId) {
         }
       }
 
-      // Preserve the existing public visibility conflict error.
+      // Keep the existing public visibility conflict error shape.
       if (
         existingSite.isPublic !== null &&
         site.isPublic !== null &&
         existingSite.isPublic !== site.isPublic
       ) {
-        const conflictKey =
-          `PUBLIC_VISIBILITY_CONFLICT:${propertyName}`
+        const conflictKey = `PUBLIC_VISIBILITY_CONFLICT:${propertyName}`
 
         if (!reportedConflicts.has(conflictKey)) {
           reportedConflicts.add(conflictKey)
@@ -136,7 +152,6 @@ export function parseExportRows(rows, importBatchId) {
         }
       }
 
-      // Detect conflicting site attributes.
       reportFieldConflicts(
         existingSite,
         site,
@@ -167,15 +182,13 @@ export function parseExportRows(rows, importBatchId) {
         gridColumn: normalizeNaValue(row['Column']),
       }
 
-      // Create one Tunnel per unique tunnel ID.
       if (!tunnelsById.has(tunnelId)) {
         tunnelsById.set(tunnelId, tunnel)
       } else {
         const existingTunnel = tunnelsById.get(tunnelId)
 
         if (existingTunnel.siteId !== propertyName) {
-          const conflictKey =
-            `TUNNEL_SITE_CONFLICT:${tunnelId}`
+          const conflictKey = `TUNNEL_SITE_CONFLICT:${tunnelId}`
 
           if (!reportedConflicts.has(conflictKey)) {
             reportedConflicts.add(conflictKey)
@@ -190,7 +203,6 @@ export function parseExportRows(rows, importBatchId) {
           }
         }
 
-        // Detect differences in other tunnel attributes.
         reportFieldConflicts(
           existingTunnel,
           tunnel,
@@ -213,7 +225,6 @@ export function parseExportRows(rows, importBatchId) {
       }
     }
 
-    // Create one Survey per tunnel and survey date.
     if (tunnelId && surveyDate) {
       const surveyKey = `${tunnelId}:${surveyDate}`
 
