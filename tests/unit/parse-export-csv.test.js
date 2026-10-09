@@ -248,7 +248,6 @@ describe('US-08: Parse Export CSV', () => {
     expect(result.surveys).toHaveLength(0)
   })
 
-  // NEW TEST 13
   it('maps the official US-07 CSV column names correctly', () => {
     const csv = [
       'Property Name,Coordinates,Unique ID,Observation Date,Row,Column,Plug confidence,Whole or hole',
@@ -267,7 +266,6 @@ describe('US-08: Parse Export CSV', () => {
     expect(result.surveys[0].wholeOrHole).toBe('Whole')
   })
 
-  // NEW TEST 14
   it('reports UNSURVEYED_ROW warnings without creating Surveys', () => {
     const csv = [
       'Property Name,Coordinates,Unique ID,Observation Date',
@@ -286,6 +284,41 @@ describe('US-08: Parse Export CSV', () => {
     expect(result.warnings).toEqual(
       expect.arrayContaining([
         expect.stringContaining('UNSURVEYED_ROW'),
+      ])
+    )
+  })
+
+  // TEST 15: Malformed rows do not stop valid rows from importing.
+  it('reports MALFORMED_ROW and continues importing valid rows', () => {
+    const csv = [
+      'Property Name,Coordinates,Unique ID,Observation Date',
+      'Test Farm,"40.15506, -105.0034",T001,07-24-2026',
+      'Test Farm,"40.15506, -105.0034",T002',
+      'Test Farm,"40.15506, -105.0034",T003,07-25-2026',
+    ].join('\n')
+
+    const result = parseExportCsv(csv, 'batch-015')
+
+    expect(result.totalRows).toBe(3)
+    expect(result.validRows).toBe(2)
+    expect(result.invalidRows).toBe(1)
+
+    expect(result.siteCount).toBe(1)
+    expect(result.tunnelCount).toBe(2)
+    expect(result.surveys).toHaveLength(2)
+
+    expect(result.tunnels.map((tunnel) => tunnel.tunnelId)).toEqual([
+      'T001',
+      'T003',
+    ])
+
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'MALFORMED_ROW',
+          rowNumber: 3,
+          message: expect.stringContaining('3 columns; expected 4'),
+        }),
       ])
     )
   })

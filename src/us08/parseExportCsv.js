@@ -1,3 +1,4 @@
+
 import { parseCsvText } from './parseCsvText.js'
 import { parseExportRows } from './parseExportRows.js'
 import { parseCoordinatePair } from './parseCoordinatePair.js'
@@ -13,8 +14,19 @@ export function parseExportCsv(fileBuffer, importBatchId) {
   let unsurveyedRowCount = 0
 
   rows.forEach((row, index) => {
-    // FIX: Preserve original CSV row number after blank rows
     const rowNumber = row.__csvRowNumber ?? index + 2
+
+    // Report malformed rows and continue processing.
+    if (row.__malformedRow === true) {
+      errors.push({
+        code: 'MALFORMED_ROW',
+        rowNumber,
+        message:
+          `CSV row ${rowNumber} has ${row.__actualColumns} columns; ` +
+          `expected ${row.__expectedColumns}`,
+      })
+      return
+    }
 
     const propertyName = normalizeNaValue(row['Property Name'])
     const tunnelId = normalizeNaValue(row['Unique ID'])

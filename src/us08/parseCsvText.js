@@ -1,3 +1,4 @@
+
 export function parseCsvText(input) {
   const text = (
     typeof input === 'string'
@@ -48,6 +49,7 @@ export function parseCsvText(input) {
     }
   }
 
+  // An unclosed quote makes the rest of the CSV ambiguous.
   if (inQuotes) {
     throw new Error('CSV contains an unclosed quoted field')
   }
@@ -68,10 +70,14 @@ export function parseCsvText(input) {
       values.some((value) => value.trim() !== '')
     )
     .map(({ values, rowNumber }) => {
+      // Report malformed rows without stopping the import.
       if (values.length !== headers.length) {
-        throw new Error(
-          `CSV row ${rowNumber} has ${values.length} columns; expected ${headers.length}`
-        )
+        return {
+          __malformedRow: true,
+          __csvRowNumber: rowNumber,
+          __actualColumns: values.length,
+          __expectedColumns: headers.length,
+        }
       }
 
       const parsedRow = Object.fromEntries(
@@ -81,8 +87,7 @@ export function parseCsvText(input) {
         ])
       )
 
-      // Preserve original CSV record number
-      // without changing the returned CSV fields
+      // Preserve original CSV record number.
       Object.defineProperty(parsedRow, '__csvRowNumber', {
         value: rowNumber,
         enumerable: false,

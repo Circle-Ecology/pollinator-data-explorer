@@ -1,3 +1,4 @@
+
 import { describe, it, expect } from 'vitest'
 import { parseCsvText } from '../../src/us08/parseCsvText.js'
 
@@ -70,12 +71,18 @@ describe('US-08: Parse CSV Text', () => {
     expect(result[0].Notes).toBe('First line\nSecond line')
   })
 
-  it('rejects rows with the wrong number of columns', () => {
+  it('reports rows with the wrong number of columns', () => {
     const csv = 'Property Name,Unique ID\nTest Farm'
 
-    expect(() => parseCsvText(csv)).toThrow(
-      /columns; expected/
-    )
+    const result = parseCsvText(csv)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toEqual({
+      __malformedRow: true,
+      __csvRowNumber: 2,
+      __actualColumns: 1,
+      __expectedColumns: 2,
+    })
   })
 
   it('rejects unclosed quoted fields', () => {
@@ -90,12 +97,24 @@ describe('US-08: Parse CSV Text', () => {
     expect(parseCsvText('')).toEqual([])
   })
 
-  // Regression test: Verify correct row numbers after blank rows
+  // Verify correct record numbers after blank rows
   it('reports the correct row number after a blank row', () => {
     const csv = 'name,age\nAlice,25\n\nBob,30,extra'
 
-    expect(() => parseCsvText(csv)).toThrow(
-      'CSV row 4 has 3 columns; expected 2'
-    )
+    const result = parseCsvText(csv)
+
+    expect(result).toHaveLength(2)
+
+    expect(result[0]).toEqual({
+      name: 'Alice',
+      age: '25',
+    })
+
+    expect(result[1]).toEqual({
+      __malformedRow: true,
+      __csvRowNumber: 4,
+      __actualColumns: 3,
+      __expectedColumns: 2,
+    })
   })
 })
