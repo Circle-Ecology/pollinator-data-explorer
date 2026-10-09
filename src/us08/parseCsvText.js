@@ -74,11 +74,20 @@ export function parseCsvText(input) {
         )
       }
 
-      return Object.fromEntries(
+      const parsedRow = Object.fromEntries(
         headers.map((header, column) => [
           header.trim(),
           values[column],
         ])
       )
+
+      // Preserve original CSV record number
+      // without changing the returned CSV fields
+      Object.defineProperty(parsedRow, '__csvRowNumber', {
+        value: rowNumber,
+        enumerable: false,
+      })
+
+      return parsedRow
     })
 }

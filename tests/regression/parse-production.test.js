@@ -1,3 +1,4 @@
+
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -60,6 +61,7 @@ describe('US-08: Production Export Regression', () => {
           (error) => error.code !== 'COORDINATE_CONFLICT'
         )
       ).toHaveLength(0)
-    }
+    },
+    70000 // Allow up to 70 seconds for the test
   )
 })

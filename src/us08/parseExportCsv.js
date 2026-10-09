@@ -13,7 +13,8 @@ export function parseExportCsv(fileBuffer, importBatchId) {
   let unsurveyedRowCount = 0
 
   rows.forEach((row, index) => {
-    const rowNumber = index + 2
+    // FIX: Preserve original CSV row number after blank rows
+    const rowNumber = row.__csvRowNumber ?? index + 2
 
     const propertyName = normalizeNaValue(row['Property Name'])
     const tunnelId = normalizeNaValue(row['Unique ID'])

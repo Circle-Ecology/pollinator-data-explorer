@@ -1,0 +1,4 @@
+Property Name,City,State,Coordinates,Unique ID,Observation Date,Observation Status
+Test Farm,Longmont,CO,"40.15506, -105.0034",T001,07-24-2026,Complete
+Test Farm,Longmont,CO,"invalid coordinates",T002,07-24-2026,Complete
+Test Farm,Longmont,CO,"40.15506, -105.0034",T003,07-24-2026,Complete
