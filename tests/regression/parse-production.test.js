@@ -55,19 +55,44 @@ describe('US-08: Production Export Regression', () => {
 
       expect(coordinateConflicts).toHaveLength(1)
 
-      // Verify known conflicting duplicate surveys.
-      // The current production CSV contains 41 conflicts.
+      // Verify known duplicate survey conflicts
       const duplicateSurveyErrors = result.errors.filter(
         (error) => error.code === 'DUPLICATE_SURVEY'
       )
 
       expect(duplicateSurveyErrors).toHaveLength(41)
 
-      // Verify no other unexpected validation errors
+      // Verify known site attribute conflicts
+      const siteAttributeConflicts = result.errors.filter(
+        (error) => error.code === 'SITE_ATTRIBUTE_CONFLICT'
+      )
+
+      expect(siteAttributeConflicts).toHaveLength(2)
+
+      expect(
+        siteAttributeConflicts.every(
+          (error) => error.field === 'elevationMeters'
+        )
+      ).toBe(true)
+
+      // Verify known tunnel attribute conflict
+      const tunnelAttributeConflicts = result.errors.filter(
+        (error) => error.code === 'TUNNEL_ATTRIBUTE_CONFLICT'
+      )
+
+      expect(tunnelAttributeConflicts).toHaveLength(1)
+      expect(tunnelAttributeConflicts[0].field).toBe('sunExposure')
+
+      // Verify no unexpected validation errors
+      const knownErrorCodes = new Set([
+        'COORDINATE_CONFLICT',
+        'DUPLICATE_SURVEY',
+        'SITE_ATTRIBUTE_CONFLICT',
+        'TUNNEL_ATTRIBUTE_CONFLICT',
+      ])
+
       const unexpectedErrors = result.errors.filter(
-        (error) =>
-          error.code !== 'COORDINATE_CONFLICT' &&
-          error.code !== 'DUPLICATE_SURVEY'
+        (error) => !knownErrorCodes.has(error.code)
       )
 
       expect(unexpectedErrors).toHaveLength(0)

@@ -2,7 +2,6 @@
 import { parseCoordinatePair } from './parseCoordinatePair.js'
 import { normalizeNaValue } from './normalizeNaValue.js'
 
-// Convert CSV numbers to actual numbers
 function normalizeNumber(raw) {
   const value = normalizeNaValue(raw)
 
@@ -12,14 +11,13 @@ function normalizeNumber(raw) {
   return Number.isFinite(number) ? number : null
 }
 
-// Convert CSV true/false values to booleans
 function normalizeBoolean(raw) {
   const value = normalizeNaValue(raw)
 
   if (value === null) return null
   if (typeof value === 'boolean') return value
 
-  const normalized = String(value).toLowerCase()
+  const normalized = String(value).trim().toLowerCase()
 
   if (normalized === 'true' || normalized === 'yes') return true
   if (normalized === 'false' || normalized === 'no') return false
@@ -27,13 +25,48 @@ function normalizeBoolean(raw) {
   return null
 }
 
+// Report each type of conflict once per site or tunnel.
+// Keep the first record rather than silently overwriting data.
+function reportFieldConflicts(
+  existing,
+  incoming,
+  fields,
+  entityId,
+  code,
+  errors,
+  reportedConflicts
+) {
+  for (const field of fields) {
+    const oldValue = existing[field]
+    const newValue = incoming[field]
+
+    // A missing value alone is not considered a conflict.
+    if (oldValue === null || newValue === null) continue
+    if (oldValue === newValue) continue
+
+    const conflictKey = `${code}:${entityId}:${field}`
+
+    if (reportedConflicts.has(conflictKey)) continue
+    reportedConflicts.add(conflictKey)
+
+    errors.push({
+      code,
+      message: `Conflicting ${field} for ${entityId}`,
+      entityId,
+      field,
+      originalValue: oldValue,
+      conflictingValue: newValue,
+    })
+  }
+}
+
 export function parseExportRows(rows, importBatchId) {
   const sitesByName = new Map()
   const tunnelsById = new Map()
   const surveysByKey = new Map()
   const errors = []
-  const coordinateConflicts = new Set()
-  const visibilityConflicts = new Set()
+
+  const reportedConflicts = new Set()
 
   for (const row of rows) {
     const propertyName = normalizeNaValue(row['Property Name'])
@@ -43,59 +76,80 @@ export function parseExportRows(rows, importBatchId) {
     const surveyDate = normalizeNaValue(row['Observation Date'])
 
     const coordinates =
-      row.__parsedCoordinates ?? parseCoordinatePair(row['Coordinates'])
+      row.__parsedCoordinates ??
+      parseCoordinatePair(row['Coordinates'])
 
     const isPublic = normalizeBoolean(row['Is Public'])
 
-    // Create one Site per property
+    const site = {
+      siteId: propertyName,
+      propertyName,
+      city,
+      state,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      elevationMeters: normalizeNumber(row['Elevation (meters)']),
+      isPublic,
+    }
+
+    // Create one Site per property.
     if (!sitesByName.has(propertyName)) {
-      sitesByName.set(propertyName, {
-        siteId: propertyName,
-        propertyName,
-        city,
-        state,
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        elevationMeters: normalizeNumber(row['Elevation (meters)']),
-        isPublic,
-      })
+      sitesByName.set(propertyName, site)
     } else {
       const existingSite = sitesByName.get(propertyName)
 
+      // Preserve the existing coordinate conflict error.
       if (
-        (existingSite.latitude !== coordinates.latitude ||
-          existingSite.longitude !== coordinates.longitude) &&
-        !coordinateConflicts.has(propertyName)
+        existingSite.latitude !== site.latitude ||
+        existingSite.longitude !== site.longitude
       ) {
-        coordinateConflicts.add(propertyName)
+        const conflictKey = `COORDINATE_CONFLICT:${propertyName}`
 
-        errors.push({
-          code: 'COORDINATE_CONFLICT',
-          message: `Conflicting coordinates for property: ${propertyName}`,
-          propertyName,
-        })
+        if (!reportedConflicts.has(conflictKey)) {
+          reportedConflicts.add(conflictKey)
+
+          errors.push({
+            code: 'COORDINATE_CONFLICT',
+            message: `Conflicting coordinates for property: ${propertyName}`,
+            propertyName,
+          })
+        }
       }
 
-      // Report conflicting public visibility settings
+      // Preserve the existing public visibility conflict error.
       if (
         existingSite.isPublic !== null &&
-        isPublic !== null &&
-        existingSite.isPublic !== isPublic &&
-        !visibilityConflicts.has(propertyName)
+        site.isPublic !== null &&
+        existingSite.isPublic !== site.isPublic
       ) {
-        visibilityConflicts.add(propertyName)
+        const conflictKey =
+          `PUBLIC_VISIBILITY_CONFLICT:${propertyName}`
 
-        errors.push({
-          code: 'PUBLIC_VISIBILITY_CONFLICT',
-          message: `Conflicting public visibility for property: ${propertyName}`,
-          propertyName,
-        })
+        if (!reportedConflicts.has(conflictKey)) {
+          reportedConflicts.add(conflictKey)
+
+          errors.push({
+            code: 'PUBLIC_VISIBILITY_CONFLICT',
+            message: `Conflicting public visibility for property: ${propertyName}`,
+            propertyName,
+          })
+        }
       }
+
+      // Detect conflicting site attributes.
+      reportFieldConflicts(
+        existingSite,
+        site,
+        ['city', 'state', 'elevationMeters'],
+        propertyName,
+        'SITE_ATTRIBUTE_CONFLICT',
+        errors,
+        reportedConflicts
+      )
     }
 
-    // Create one Tunnel per unique tunnel ID
-    if (tunnelId && !tunnelsById.has(tunnelId)) {
-      tunnelsById.set(tunnelId, {
+    if (tunnelId) {
+      const tunnel = {
         tunnelId,
         siteId: propertyName,
         blockNumber: normalizeNaValue(row['Block # (site)']),
@@ -111,23 +165,55 @@ export function parseExportRows(rows, importBatchId) {
         sunExposure: normalizeNaValue(row['Sun Exposure']),
         gridRow: normalizeNaValue(row['Row']),
         gridColumn: normalizeNaValue(row['Column']),
-      })
-    } else if (tunnelId) {
-      const existingTunnel = tunnelsById.get(tunnelId)
+      }
 
-      // Report when the same tunnel ID belongs to different sites
-      if (existingTunnel.siteId !== propertyName) {
-        errors.push({
-          code: 'TUNNEL_SITE_CONFLICT',
-          message: `Tunnel ${tunnelId} belongs to multiple properties`,
+      // Create one Tunnel per unique tunnel ID.
+      if (!tunnelsById.has(tunnelId)) {
+        tunnelsById.set(tunnelId, tunnel)
+      } else {
+        const existingTunnel = tunnelsById.get(tunnelId)
+
+        if (existingTunnel.siteId !== propertyName) {
+          const conflictKey =
+            `TUNNEL_SITE_CONFLICT:${tunnelId}`
+
+          if (!reportedConflicts.has(conflictKey)) {
+            reportedConflicts.add(conflictKey)
+
+            errors.push({
+              code: 'TUNNEL_SITE_CONFLICT',
+              message: `Tunnel ${tunnelId} belongs to multiple properties`,
+              tunnelId,
+              originalSiteId: existingTunnel.siteId,
+              conflictingSiteId: propertyName,
+            })
+          }
+        }
+
+        // Detect differences in other tunnel attributes.
+        reportFieldConflicts(
+          existingTunnel,
+          tunnel,
+          [
+            'blockNumber',
+            'direction',
+            'installationYear',
+            'tunnelDiameterInches',
+            'coarseWoodyDebrisType',
+            'substrateType',
+            'sunExposure',
+            'gridRow',
+            'gridColumn',
+          ],
           tunnelId,
-          originalSiteId: existingTunnel.siteId,
-          conflictingSiteId: propertyName,
-        })
+          'TUNNEL_ATTRIBUTE_CONFLICT',
+          errors,
+          reportedConflicts
+        )
       }
     }
 
-    // Create one Survey per unique tunnel and date
+    // Create one Survey per tunnel and survey date.
     if (tunnelId && surveyDate) {
       const surveyKey = `${tunnelId}:${surveyDate}`
 
@@ -163,18 +249,23 @@ export function parseExportRows(rows, importBatchId) {
       } else {
         const existingSurvey = surveysByKey.get(surveyKey)
 
-        // Report duplicate surveys when their data differs
         const hasConflict = Object.keys(survey).some(
           (key) => existingSurvey[key] !== survey[key]
         )
 
         if (hasConflict) {
-          errors.push({
-            code: 'DUPLICATE_SURVEY',
-            message: `Conflicting survey records for ${surveyKey}`,
-            tunnelId,
-            surveyDate,
-          })
+          const conflictKey = `DUPLICATE_SURVEY:${surveyKey}`
+
+          if (!reportedConflicts.has(conflictKey)) {
+            reportedConflicts.add(conflictKey)
+
+            errors.push({
+              code: 'DUPLICATE_SURVEY',
+              message: `Conflicting survey records for ${surveyKey}`,
+              tunnelId,
+              surveyDate,
+            })
+          }
         }
       }
     }
