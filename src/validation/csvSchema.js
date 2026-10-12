@@ -34,7 +34,6 @@ export const OPTIONAL_HEADERS = [
   'General ID',
   'Whole or hole',
   'Common Name',
-  'Notes',
   'Manufactured Empty',
   'Row',
   'Column',
@@ -48,6 +47,7 @@ export const STAFF_ONLY_HEADERS = [
   'Observer Email',
   'First Name',
   'Last Name',
+  'Notes',
 ]
 
 export const ALL_KNOWN_HEADERS = [

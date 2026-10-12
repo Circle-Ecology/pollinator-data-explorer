@@ -176,4 +176,28 @@ describe('validateSurveyRow', () => {
       expect(result.values['Occupant type']).toBe('Beetle')
     })
   })
+
+  describe('staff-only fields', () => {
+    it('never includes Observer, Observer Email, First Name, Last Name, or Notes in values', () => {
+      const result = validateSurveyRow(makeRow(), ROW_NUMBER)
+
+      expect(result.values).not.toHaveProperty('Observer')
+      expect(result.values).not.toHaveProperty('Observer Email')
+      expect(result.values).not.toHaveProperty('First Name')
+      expect(result.values).not.toHaveProperty('Last Name')
+      expect(result.values).not.toHaveProperty('Notes')
+    })
+
+    it('excludes staff-only fields even on an unsurveyed row', () => {
+      const result = validateSurveyRow(
+        makeRow({ 'Observation Date': 'NA', 'Observation Status': 'NA' }),
+        ROW_NUMBER,
+      )
+
+      expect(result.isUnsurveyed).toBe(true)
+      expect(Object.keys(result.values)).not.toEqual(
+        expect.arrayContaining(['Observer', 'Observer Email', 'First Name', 'Last Name', 'Notes']),
+      )
+    })
+  })
 })

@@ -15,4 +15,18 @@ describe('parseCsv', () => {
       ['said "hi"', 'Longmont'],
     ])
   })
+
+  it('skips blank lines instead of emitting a one-column row for each', () => {
+    expect(parseCsv('Property Name,City\r\n\r\nSherwood OS,Longmont\r\n\r\n')).toEqual([
+      ['Property Name', 'City'],
+      ['Sherwood OS', 'Longmont'],
+    ])
+  })
+
+  it('still keeps a row whose last field is genuinely empty', () => {
+    expect(parseCsv('Property Name,City\nSherwood OS,\n')).toEqual([
+      ['Property Name', 'City'],
+      ['Sherwood OS', ''],
+    ])
+  })
 })

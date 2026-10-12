@@ -114,7 +114,10 @@ export function validateExportFile(rows) {
       unsurveyedRowCount += 1
     }
     if (rowErrors.some((e) => e.code === ERROR_CODES.MALFORMED_COORDINATES)) {
-      flaggedSites.add(rowResult.values['Property Name'])
+      const propertyName = rowResult.values['Property Name']
+      if (propertyName) {
+        flaggedSites.add(propertyName)
+      }
     }
     if (rowErrors.length > 0) {
       invalidRows += 1

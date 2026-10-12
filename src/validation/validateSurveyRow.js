@@ -4,6 +4,7 @@ import {
   NUMERIC_HEADERS,
   LATITUDE_RANGE,
   LONGITUDE_RANGE,
+  STAFF_ONLY_HEADERS,
 } from './csvSchema'
 import { ERROR_CODES } from './errorCodes'
 import { createValidationError } from './createValidationError'
@@ -41,7 +42,9 @@ function isInRange(value, { min, max }) {
  * @returns {{
  *   isValid: boolean,
  *   isUnsurveyed: boolean,
- *   values: Object<string, string|null>, // row values with NA and blanks normalized to null
+ *   values: Object<string, string|null>, // row values with NA and blanks normalized to null;
+ *                                         // staff-only headers (csvSchema.STAFF_ONLY_HEADERS) are
+ *                                         // never included, so this is safe to pass toward public output
  *   errors: ValidationError[],   // REQUIRED_FIELD_MISSING, INVALID_NUMBER, INVALID_DATE, FUTURE_DATE,
  *                                // MALFORMED_COORDINATES, OUT_OF_RANGE, UNEXPECTED_ENUM_VALUE
  *   warnings: ValidationError[], // UNSURVEYED_ROW
@@ -50,6 +53,9 @@ function isInRange(value, { min, max }) {
 export function validateSurveyRow(row, rowNumber) {
   const values = {}
   for (const [header, value] of Object.entries(row)) {
+    if (STAFF_ONLY_HEADERS.includes(header)) {
+      continue
+    }
     values[header] = normalizeNaValue(value)
   }
 

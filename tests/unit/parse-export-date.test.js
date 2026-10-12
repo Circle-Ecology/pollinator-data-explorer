@@ -11,6 +11,10 @@ describe('parseExportDate', () => {
     expect(parseExportDate('10/1/2025')).toEqual({ year: 2025, month: 10, day: 1 })
   })
 
+  it('also parses zero-padded MM/DD/YYYY', () => {
+    expect(parseExportDate('07/24/2025')).toEqual({ year: 2025, month: 7, day: 24 })
+  })
+
   it('returns null for ISO dates', () => {
     expect(parseExportDate('2025-07-24')).toBeNull()
   })

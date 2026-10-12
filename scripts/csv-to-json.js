@@ -34,8 +34,12 @@ export function parseCsv(text) {
       if (char === '\r' && input[i + 1] === '\n') {
         i += 1
       }
-      row.push(field)
-      rows.push(row)
+      // Skip blank lines (an empty field with nothing already pushed this
+      // line) rather than emitting a spurious one-column row for each one.
+      if (field !== '' || row.length > 0) {
+        row.push(field)
+        rows.push(row)
+      }
       row = []
       field = ''
     } else {
