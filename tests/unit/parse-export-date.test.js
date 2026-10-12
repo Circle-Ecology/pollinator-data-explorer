@@ -1,59 +1,38 @@
+import { describe, expect, it } from 'vitest'
+import { parseExportDate } from '../../src/utils/parseExportDate'
 
-import { describe, it, expect } from 'vitest'
-import { parseExportDate } from '../../src/us08/parseExportDate.js'
-
-describe('US-08: Parse Export Date', () => {
-  it('converts MM-DD-YYYY to YYYY-MM-DD', () => {
-    expect(parseExportDate('07-24-2026')).toBe('2026-07-24')
+describe('parseExportDate', () => {
+  it('parses MM-DD-YYYY', () => {
+    expect(parseExportDate('07-24-2025')).toEqual({ year: 2025, month: 7, day: 24 })
   })
 
-  it('handles dates with surrounding spaces', () => {
-    expect(parseExportDate(' 07-24-2026 ')).toBe('2026-07-24')
+  it('parses M/D/YYYY from the re-saved export', () => {
+    expect(parseExportDate('7/24/2025')).toEqual({ year: 2025, month: 7, day: 24 })
+    expect(parseExportDate('10/1/2025')).toEqual({ year: 2025, month: 10, day: 1 })
   })
 
-  it('accepts a valid leap year date', () => {
-    expect(parseExportDate('02-29-2024')).toBe('2024-02-29')
+  it('also parses zero-padded MM/DD/YYYY', () => {
+    expect(parseExportDate('07/24/2025')).toEqual({ year: 2025, month: 7, day: 24 })
   })
 
-  it('rejects February 29 in a non-leap year', () => {
-    expect(() => parseExportDate('02-29-2025')).toThrow(
-      'InvalidExportDateError'
-    )
+  it('returns null for ISO dates', () => {
+    expect(parseExportDate('2025-07-24')).toBeNull()
   })
 
-  it('rejects months greater than 12', () => {
-    expect(() => parseExportDate('13-24-2026')).toThrow(
-      'InvalidExportDateError'
-    )
+  it('returns null for dates that do not exist', () => {
+    expect(parseExportDate('13-01-2025')).toBeNull()
+    expect(parseExportDate('02-30-2025')).toBeNull()
+    expect(parseExportDate('00-10-2025')).toBeNull()
   })
 
-  it('rejects impossible days', () => {
-    expect(() => parseExportDate('04-31-2026')).toThrow(
-      'InvalidExportDateError'
-    )
+  it('accepts Feb 29 only in leap years', () => {
+    expect(parseExportDate('02-29-2024')).toEqual({ year: 2024, month: 2, day: 29 })
+    expect(parseExportDate('02-29-2025')).toBeNull()
   })
 
-  it('rejects incorrect date formats', () => {
-    expect(() => parseExportDate('2026-07-24')).toThrow(
-      'InvalidExportDateError'
-    )
-  })
-
-  it('rejects NA values', () => {
-    expect(() => parseExportDate('NA')).toThrow(
-      'InvalidExportDateError'
-    )
-  })
-
-  it('rejects empty values', () => {
-    expect(() => parseExportDate('')).toThrow(
-      'InvalidExportDateError'
-    )
-  })
-
-  it('rejects non-string values', () => {
-    expect(() => parseExportDate(null)).toThrow(
-      'InvalidExportDateError'
-    )
+  it('returns null for mixed separators and empty values', () => {
+    expect(parseExportDate('07-24/2025')).toBeNull()
+    expect(parseExportDate('')).toBeNull()
+    expect(parseExportDate(null)).toBeNull()
   })
 })

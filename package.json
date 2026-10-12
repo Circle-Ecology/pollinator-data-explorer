@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "export:json": "node scripts/csv-to-json.js"
   },
   "dependencies": {
     "react": "^19.1.0",

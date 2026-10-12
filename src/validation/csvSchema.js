@@ -3,7 +3,8 @@
 // Field names on the right match docs/data-contract.md exactly.
 
 export const NULL_SENTINEL = 'NA'
-export const EXPORT_DATE_FORMAT = 'MM-DD-YYYY'
+// v02 uses MM-DD-YYYY; v02-2 (re-saved export) uses M/D/YYYY. Both are accepted.
+export const EXPORT_DATE_FORMATS = ['MM-DD-YYYY', 'M/D/YYYY']
 
 export const REQUIRED_HEADERS = [
   'Unique ID',
@@ -33,7 +34,6 @@ export const OPTIONAL_HEADERS = [
   'General ID',
   'Whole or hole',
   'Common Name',
-  'Notes',
   'Manufactured Empty',
   'Row',
   'Column',
@@ -47,6 +47,7 @@ export const STAFF_ONLY_HEADERS = [
   'Observer Email',
   'First Name',
   'Last Name',
+  'Notes',
 ]
 
 export const ALL_KNOWN_HEADERS = [
@@ -112,11 +113,11 @@ export const ALLOWED_VALUES = {
 }
 
 // Numeric columns checked for INVALID_NUMBER.
+// Plug Depth is not listed: the export stores text such as "1 inch", "flush", "protruding".
 export const NUMERIC_HEADERS = [
   'Installation Year',
   'Tunnel Diameter (inches)',
   'Emergence Year',
-  'Plug Depth',
   'Elevation (meters)',
 ]
 

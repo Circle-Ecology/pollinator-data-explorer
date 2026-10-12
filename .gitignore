@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Production export converted for the regression test (contains staff data)
+tests/fixtures/production-export.json
