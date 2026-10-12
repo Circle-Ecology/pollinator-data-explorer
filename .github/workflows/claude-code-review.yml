@@ -8,7 +8,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
     steps:
@@ -24,26 +24,71 @@ jobs:
             Check these:
             1. Correctness bugs.
             2. Clear reuse/simplification/efficiency issues.
-            3. Staff-only field leakage (high severity): none of `observerId`,
-               `observerEmail`, `observerFirstName`, `observerLastName`, or
-               `notes` may appear in any code path that produces public output -
-               public API responses, generated public dataset files
-               (sites.json, observations.json, PublicSiteSummary), or any
-               component that renders to the public map/embed.
-            4. Test coverage: if the PR title or description references a ticket
-               (e.g. "US-07", "#12"), run `gh issue view <number>` - on its own,
-               not chained with any other command - and check whether the PR's
-               tests cover its "Test-first (TDD) checklist" items. If no ticket
-               is referenced, check whether the new/changed logic has any
-               corresponding tests at all.
+            3. Staff-only field leakage: none of `observerId`, `observerEmail`,
+               `observerFirstName`, `observerLastName`, or `notes` may appear
+               in any code path that produces public output - public API
+               responses, generated public dataset files (sites.json,
+               observations.json, PublicSiteSummary), or any component that
+               renders to the public map/embed.
+            4. Test coverage: if the PR title or description references a
+               ticket (e.g. "US-07", "#12"), run `gh issue view <number>` - on
+               its own, not chained with any other command - and check
+               whether the PR's tests cover its "Test-first (TDD) checklist"
+               items. If no ticket is referenced, check whether the
+               new/changed logic has any corresponding tests at all.
 
-            Do all research and tool calls yourself, directly and synchronously -
-            never launch a background or async subagent to check PR status or
-            anything else, since this session cannot be resumed once a background
-            task completes.
+            Do all research and tool calls yourself, directly and
+            synchronously - never launch a background or async subagent to
+            check PR status or anything else, since this session cannot be
+            resumed once a background task completes.
 
-            Post findings as inline comments on the pull request using the
-            available GitHub inline-comment tool. If you find no issues, post one
-            short top-level comment saying the diff looks fine instead of leaving
-            any comments.
-          claude_args: '--max-turns 25 --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),mcp__github_inline_comment__create_inline_comment"'
+            Rate every finding exactly one of these severities:
+            - critical: staff-only field leakage to public output, data
+              loss/corruption, or a change that breaks the build or existing
+              tests.
+            - high: a correctness bug that violates a documented acceptance
+              criterion or produces wrong results in normal use, or any bug
+              in shared/foundational code multiple other tickets build on.
+            - medium: an edge-case bug, a real test-coverage gap, or a
+              meaningful inefficiency that doesn't affect correctness.
+            - low: style, simplification, or a minor, non-blocking
+              improvement.
+
+            Post exactly ONE pull request comment with `gh pr comment
+            ${{ github.event.pull_request.number }} --body-file <file>` -
+            never inline comments, never more than one comment. Write the
+            body to a temp file first since it is long. The comment's very
+            first line must be exactly
+            `<!-- SEVERITY_GATE: none|low|medium|high|critical -->`
+            using whichever single word is the HIGHEST severity among all
+            findings (or `none` if there are no findings) - this line drives
+            an automated merge gate, so it must always be present and must
+            always be that exact format.
+
+            After the marker line, structure the comment as one markdown
+            section per severity level present (`## Critical`, `## High`,
+            `## Medium`, `## Low`), omitting empty sections. Within each
+            section, order findings by impact to the codebase going forward
+            first (shared utilities, data contracts, and anything public-
+            facing before an isolated one-off issue) and list the exact
+            severity-highest-first section order (Critical, High, Medium,
+            Low). Each finding: the file and line, a one-sentence summary,
+            then enough explanation to act on it. If there are no findings at
+            all, the comment should just say so plainly below the marker
+            line.
+          claude_args: '--max-turns 25 --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr comment:*),Write"'
+      - name: Enforce severity gate
+        run: |
+          COMMENT=$(gh pr view "${{ github.event.pull_request.number }}" --json comments -q '.comments[-1].body // ""')
+          SEVERITY=$(echo "$COMMENT" | grep -oE '<!-- SEVERITY_GATE: (none|low|medium|high|critical) -->' | head -1 | grep -oE 'none|low|medium|high|critical')
+          if [ -z "$SEVERITY" ]; then
+            echo "::warning::Could not find a SEVERITY_GATE marker on the latest PR comment - not blocking, but the review may not have posted correctly."
+            exit 0
+          fi
+          echo "Highest severity found: $SEVERITY"
+          if [ "$SEVERITY" = "high" ] || [ "$SEVERITY" = "critical" ]; then
+            echo "::error::Blocking merge - review found a $SEVERITY severity finding. See the review comment on this PR."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
