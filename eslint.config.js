@@ -29,4 +29,11 @@ export default [
       ],
     },
   },
+  {
+    // Server-side data pipeline code runs in Node, not the browser.
+    files: ['src/pipeline/**/*.js', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ]
