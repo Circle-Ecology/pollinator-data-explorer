@@ -25,3 +25,6 @@ dist-ssr
 
 # Production export converted for the regression test (contains staff data)
 tests/fixtures/production-export.json
+
+# Raw sheet exports downloaded while testing (production data, never commit)
+/*.csv
