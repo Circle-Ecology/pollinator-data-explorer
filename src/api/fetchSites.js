@@ -1,15 +1,9 @@
-import { parseExportCsv } from '../us08/parseExportCsv'
-
-export async function fetchSheetCsv(url = import.meta.env.PUBLIC_SHEET_CSV_URL) {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Sheet request failed: ${response.status}`)
-  }
-  return response.text()
-}
-
+// TODO(US-24): point this at the public dataset file the US-23 scheduler produces.
+// The browser must never fetch the Google Sheet directly (see src/pipeline/).
 export async function fetchSites() {
-  const csv = await fetchSheetCsv()
-  const result = parseExportCsv(csv, `sheet-${new Date().toISOString()}`)
-  return result.sites
+  const response = await fetch('/api/sites')
+  if (!response.ok) {
+    throw new Error(`Sites request failed: ${response.status}`)
+  }
+  return response.json()
 }
