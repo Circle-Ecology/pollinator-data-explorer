@@ -10,6 +10,8 @@ export function startSheetScheduler({
   intervalMinutes = Number(process.env.SHEET_FETCH_INTERVAL_MINUTES) || DEFAULT_INTERVAL_MINUTES,
   fetchExport = fetchSheetExport,
   parseExport = parseExportCsv,
+  // Opt-in handoff only. Production wiring awaits approval/visibility and US-25.
+  onParsedResult,
   logger = console,
 } = {}) {
   let previousRawCsv = null
@@ -26,6 +28,14 @@ export function startSheetScheduler({
 
       if (result.status === 'success') {
         const parsed = parseExport(result.rawCsv, `sheet-${result.fetchedAt}`)
+        if (onParsedResult) {
+          // This checks reported diagnostics, not the missing full US-07 validation stage.
+          if (!parsed || !Array.isArray(parsed.errors) || parsed.errors.length ||
+            parsed.invalidRows !== 0 || parsed.isValid === false) {
+            throw new Error('Cannot hand off an invalid normalized import')
+          }
+          await onParsedResult(parsed)
+        }
         previousRawCsv = result.rawCsv
         lastRowCount = parsed.totalRows
       }
