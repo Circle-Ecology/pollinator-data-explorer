@@ -53,13 +53,15 @@ function publicSite(site) {
   return output
 }
 
-function publicSurvey(survey) {
+function publicSurvey(survey, siteId) {
   const date = survey.surveyDate
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
     !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) {
     throw new TypeError('Invalid public survey date')
   }
-  return project(survey, SURVEY_FIELDS, ['tunnelId', 'surveyDate', 'recordStatus'])
+  // siteId is resolved by the caller (tunnel -> site join), not a field on `survey` itself,
+  // so it is attached separately rather than through the SURVEY_FIELDS allowlist.
+  return { siteId: identifier(siteId), ...project(survey, SURVEY_FIELDS, ['tunnelId', 'surveyDate', 'recordStatus']) }
 }
 
 function compare(a, b) {
@@ -96,7 +98,7 @@ export function generatePublicDataset(parsedResult) {
     const tunnel = tunnelsById.get(identifier(survey.tunnelId))
     const site = tunnel && sitesById.get(tunnel.siteId)
     if (!site || site.isPublic !== true) continue
-    const output = publicSurvey(survey)
+    const output = publicSurvey(survey, site.siteId)
     const key = JSON.stringify([output.tunnelId, output.surveyDate])
     const existing = surveysByKey.get(key)
     if (existing && JSON.stringify(existing) !== JSON.stringify(output)) {

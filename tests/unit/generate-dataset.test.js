@@ -3,7 +3,7 @@ import { generatePublicDataset } from '../../src/pipeline/generatePublicDataset.
 import { makePublicDataset } from '../fixtures/publicDataset.js'
 
 const SITE_KEYS = ['siteId', 'propertyName', 'city', 'state', 'latitude', 'longitude', 'elevationMeters']
-const SURVEY_KEYS = ['tunnelId', 'surveyDate', 'observationStatus', 'occupantType', 'nesterFamily',
+const SURVEY_KEYS = ['siteId', 'tunnelId', 'surveyDate', 'observationStatus', 'occupantType', 'nesterFamily',
   'generalId', 'commonName', 'plugDepth', 'plugComposition', 'plugColor', 'plugConfidence',
   'wholeOrHole', 'emergenceYear', 'manufacturedEmpty', 'recordStatus']
 const PRIVATE_KEYS = ['observerId', 'observerEmail', 'observerFirstName', 'observerLastName',
@@ -71,6 +71,16 @@ describe('US-24 public projection', () => {
     input.tunnels[0] = { tunnelId: 'PRIVATE-looking-id', siteId: 'S1' }
     input.surveys[0].tunnelId = 'PRIVATE-looking-id'
     expect(generatePublicDataset(input).observations).toHaveLength(1)
+  })
+
+  it('attaches the resolved siteId to each public observation (US-14, #19)', () => {
+    const input = makePublicDataset()
+    input.sites.push({ ...input.sites[0], siteId: 'S2', propertyName: 'Second Site' })
+    input.tunnels.push({ tunnelId: 'T2', siteId: 'S2' })
+    input.surveys.push({ ...input.surveys[0], tunnelId: 'T2' })
+    const output = generatePublicDataset(input)
+    const bySiteId = Object.fromEntries(output.observations.map(s => [s.tunnelId, s.siteId]))
+    expect(bySiteId).toEqual({ T1: 'S1', T2: 'S2' })
   })
 
   it('sorts sites and survey natural keys without mutating even frozen input', () => {

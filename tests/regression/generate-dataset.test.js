@@ -15,7 +15,8 @@ it('US-24: transforms a verified wholly synthetic production-shaped dataset', ()
   expect(new Set(output.observations.map(s => s.tunnelId)).size).toBe(2973)
   const siteIds = new Set(output.sites.map(s => s.siteId))
   const tunnelSites = new Map(input.tunnels.map(t => [t.tunnelId, t.siteId]))
-  expect(output.observations.every(s => siteIds.has(tunnelSites.get(s.tunnelId)))).toBe(true)
+  expect(output.observations.every(s => siteIds.has(s.siteId))).toBe(true)
+  expect(output.observations.every(s => s.siteId === tunnelSites.get(s.tunnelId))).toBe(true)
   const reversed = { ...input, sites: input.sites.toReversed(), tunnels: input.tunnels.toReversed(),
     surveys: input.surveys.toReversed() }
   const repeat = generatePublicDataset(reversed)
