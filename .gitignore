@@ -31,3 +31,6 @@ tests/fixtures/production-export.json
 
 # Local secrets/config
 .env
+
+# Generated US-24 artifacts are build/staging output, not source fixtures.
+/data/*.json
