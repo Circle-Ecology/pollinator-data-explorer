@@ -39,10 +39,12 @@ Public objects follow the existing [data contract](data-contract.md):
 
 - `sites.json`: an array with exactly `siteId`, `propertyName`, `city`, `state`,
   `latitude`, `longitude`, `elevationMeters`.
-- `observations.json`: an array with exactly `tunnelId`, `surveyDate`,
+- `observations.json`: an array with exactly `siteId`, `tunnelId`, `surveyDate`,
   `observationStatus`, `occupantType`, `nesterFamily`, `generalId`, `commonName`,
   `plugDepth`, `plugComposition`, `plugColor`, `plugConfidence`, `wholeOrHole`,
-  `emergenceYear`, `manufacturedEmpty`, `recordStatus`.
+  `emergenceYear`, `manufacturedEmpty`, `recordStatus`. `siteId` is the resolved
+  `tunnelId → tunnel.siteId` join, added so a consumer can relate the two public
+  files without a third mapping file (see US-14, #19).
 - `dataset-status.json`: exactly `{ generatedAt, sourceRowCount, siteCount,
   tunnelCount, status: 'published' }`.
 
@@ -143,10 +145,13 @@ $env:TMP = $auditTemp
 - US-08 deliberately produces pending surveys; existing CSV fixtures have no
   explicit public-site authorization. Neither default has been changed. An
   approval/visibility column is a proposal, not an implemented workflow.
-- `PublicTunnelSurvey` is not separately defined. This implementation uses only
+- `PublicTunnelSurvey` is not separately defined. ~~This implementation uses only
   the existing public TunnelSurvey fields; it adds no `siteId` or tunnel file.
   A consumer cannot join the two public files without an agreed relationship
-  extension or another approved interface. Internal filtering uses the full join.
+  extension or another approved interface.~~ Resolved for US-14 (#19): each
+  `observations.json` record now also carries `siteId` (the resolved
+  `tunnelId → tunnel.siteId` join), so a consumer can relate a survey to its
+  site without a separate mapping file.
 - Map/details stories need aggregates absent from PublicSiteSummary. Their
   ownership and the public relationship extension require team agreement.
 - Production regression fixtures are unavailable. The six-site/performance
