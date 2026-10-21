@@ -9,9 +9,36 @@ files, or changing its input. It returns exactly `{ sites, observations, status 
 Pass the existing `ImportValidationResult`: `sites`, `tunnels`, `surveys`, `errors`
 arrays and nonnegative integer `totalRows` and `invalidRows`, alongside its existing
 batch/count/warning fields. Missing or malformed structure throws a generic error.
-Known invalid imports (`errors.length > 0`, `invalidRows > 0`, or `isValid: false`)
-are refused. This is a normalized-input precondition, not full CSV validation.
-US-07 validation is still not connected to the scheduled US-08 parser.
+
+Row-level problems elsewhere in the batch do not refuse the whole publish, but how
+they are handled depends on what US-08 did with the affected row:
+
+- A row that failed per-row validation (a malformed coordinate, a missing
+  required field, an unparseable date) is already dropped entirely - it never
+  reaches `sites`/`tunnels`/`surveys`, and only shows up via `invalidRows`.
+- A row that **conflicts** with an already-seen row for the same entity is *not*
+  dropped by US-08 - `parseExportRows` keeps the first-seen record and only
+  reports the conflict. Publishing that arbitrarily-chosen value would be
+  unreliable (for example, which row's `Is Public` flag "wins"), so
+  `generatePublicDataset` itself excludes any site, tunnel or survey named in one
+  of these conflict errors, rather than guess which row was right. Which codes
+  count as a conflict, which entity type each belongs to, and which error field
+  carries its id is `CONFLICT_CODES`, exported from `src/us08/parseExportRows.js`
+  as the single source of truth - a new conflict code is classified there in the
+  same change that adds it, not duplicated into a second list here.
+
+Either way the affected entity is informational via `errors`/`invalidRows`
+(surfaced through `dataset-status.json`'s `excludedRowCount`, below), not grounds
+to withhold everything else. Resolved this way for #45, after running the real
+Circle Ecology sheet through this pipeline and finding it has ~17% malformed-
+coordinate rows (one site's corrupted `Coordinates` column) as well as a handful
+of real attribute/coordinate/duplicate-survey conflicts, as a routine, ongoing
+feature of field data entry - requiring perfectly clean data forever was never
+realistic. An empty import (`totalRows === 0`) simply projects to empty output
+rather than throwing; the scheduler handoff (below) still declines to act on a
+parse that's empty or mostly unusable, to avoid an anomalous fetch wiping a live
+dataset. This is a normalized-input precondition, not full CSV validation. US-07
+validation is still not connected to the scheduled US-08 parser.
 
 Issue #32 specifies `status: ImportValidationResult`, while also requiring a
 different five-field metadata file. To preserve both explicit contracts, returned
@@ -45,8 +72,12 @@ Public objects follow the existing [data contract](data-contract.md):
   `emergenceYear`, `manufacturedEmpty`, `recordStatus`. `siteId` is the resolved
   `tunnelId → tunnel.siteId` join, added so a consumer can relate the two public
   files without a third mapping file (see US-14, #19).
-- `dataset-status.json`: exactly `{ generatedAt, sourceRowCount, siteCount,
-  tunnelCount, status: 'published' }`.
+- `dataset-status.json`: `{ generatedAt, sourceRowCount, siteCount, tunnelCount,
+  excludedRowCount, status: 'published' }`. `excludedRowCount` (added for #45) is
+  `parsedResult.invalidRows` plus the count of sites, tunnels and surveys
+  `generatePublicDataset` excluded for a conflict (via its exported
+  `countConflictedEntities`) - so either kind of problem is visible to whoever is
+  watching, rather than silently swallowed now that neither blocks the publish.
 
 Only these fields are constructed; no source object spreads are used for public
 projection. Observer identity fields, notes, import IDs, errors, warnings and
@@ -73,6 +104,10 @@ tests. It must return a valid Date. The writer returns only public metadata.
 - `siteCount`: number of public site records written.
 - `tunnelCount`: distinct tunnel IDs represented in written observations; excludes
   unsurveyed tunnels and tunnels without approved public surveys.
+- `excludedRowCount`: `parsedResult.invalidRows` plus conflict-excluded entities
+  (see above). A large or rising count is a signal something in the source sheet
+  needs attention, even though it no longer blocks the rest of the data from
+  publishing.
 
 The last two choices are explicit local interpretations pending team agreement.
 An empty authorized result is valid and writes empty arrays/zero public counts.
@@ -87,11 +122,18 @@ metadata label, not evidence that Netlify or a browser has received these files.
 
 ## Optional scheduler handoff
 
-`startSheetScheduler({ onParsedResult })` optionally awaits an asynchronous
-consumer after a successful changed fetch and parse. Known errors, nonzero/missing
-`invalidRows`, and missing error diagnostics prevent handoff. A rejected consumer
-is logged as failed; the previous CSV cache is updated only after completion.
-Unchanged fetches skip the consumer. Existing default fetch-only behavior remains.
+`startSheetScheduler({ onParsedResult, maxInvalidRatio = 0.9 })` optionally awaits
+an asynchronous consumer after a successful changed fetch and parse. A
+shape-invalid parse, one with zero valid rows, or one whose `invalidRows /
+totalRows` exceeds `maxInvalidRatio` all prevent handoff (#45 review) - the last
+one catches an all-invalid-but-nonzero fetch too, e.g. a renamed header or a
+corrupted column failing nearly every row, which would otherwise publish empty
+`sites.json`/`observations.json` over a live dataset. Row-level errors on an
+otherwise-good batch do not prevent handoff. Below the refusal threshold but
+above 20% invalid, a notice is logged (not thrown) so a rising problem is still
+visible. A rejected consumer is logged as failed; the previous CSV cache is
+updated only after completion. Unchanged fetches skip the consumer. Existing
+default fetch-only behavior remains.
 
 For isolated synthetic integration, an injected consumer can call:
 

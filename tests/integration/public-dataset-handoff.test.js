@@ -51,18 +51,43 @@ describe('US-24 opt-in scheduler boundary', () => {
     expect(onParsedResult).not.toHaveBeenCalled()
   })
 
-  it.each(['errors', 'invalidRows', 'isValid', 'missingDiagnostics'])('does not hand off a failed or unverified %s result', async field => {
+  it.each(['errors', 'invalidRows', 'isValid'])('still hands off a result with row-level %s elsewhere in the batch (#45)', async field => {
     const parsed = makePublicDataset()
-    if (field === 'errors') parsed.errors = [{ message: 'synthetic private diagnostic' }]
-    if (field === 'invalidRows') parsed.invalidRows = 1
+    Object.assign(parsed, { totalRows: 100, invalidRows: 1 }) // A realistic ratio, not 1 bad row out of 1 total.
+    if (field === 'errors') parsed.errors = [{ message: 'malformed coordinates on some other row' }]
     if (field === 'isValid') parsed.isValid = false
-    if (field === 'missingDiagnostics') delete parsed.errors
+    const onParsedResult = vi.fn()
+    start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onParsedResult).toHaveBeenCalledWith(parsed)
+  })
+
+  it.each(['missingDiagnostics', 'empty', 'allInvalid', 'mostlyInvalid'])(
+    'does not hand off a shape-invalid, empty or mostly invalid %s result', async field => {
+      const parsed = makePublicDataset()
+      if (field === 'missingDiagnostics') delete parsed.errors
+      if (field === 'empty') Object.assign(parsed, { totalRows: 0, validRows: 0 })
+      // A renamed header or corrupted column can fail every row without totalRows ever being 0 (#45 review).
+      if (field === 'allInvalid') Object.assign(parsed, { totalRows: 50, validRows: 0, invalidRows: 50 })
+      // Still nonzero validRows, but over maxInvalidRatio - not just an empty-parse edge case.
+      if (field === 'mostlyInvalid') Object.assign(parsed, { totalRows: 100, validRows: 5, invalidRows: 95 })
+      const onParsedResult = vi.fn()
+      const options = start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onParsedResult).not.toHaveBeenCalled()
+      expect(options.logger.error).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed',
+        error: 'Cannot hand off an empty or mostly invalid normalized import' }))
+    })
+
+  it('logs a notice but still hands off a fetch with a notable but non-refusing invalid ratio', async () => {
+    const parsed = makePublicDataset()
+    Object.assign(parsed, { totalRows: 100, invalidRows: 25 })
     const onParsedResult = vi.fn()
     const options = start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
     await vi.advanceTimersByTimeAsync(0)
-    expect(onParsedResult).not.toHaveBeenCalled()
-    expect(options.logger.error).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed',
-      error: 'Cannot hand off an invalid normalized import' }))
+    expect(onParsedResult).toHaveBeenCalledWith(parsed)
+    expect(options.logger.info).toHaveBeenCalledWith(expect.objectContaining({ status: 'notice',
+      invalidRows: 25, totalRows: 100 }))
   })
 
   it('catches a parse exception without invoking the consumer', async () => {
@@ -113,5 +138,32 @@ describe('US-24 opt-in scheduler boundary', () => {
     const result = generatePublicDataset(parsed)
     expect(result.sites).toEqual([])
     expect(result.observations).toEqual([])
+  })
+
+  it('publishes a clean site and excludes a conflicted one from a realistic mixed-quality CSV (#45 review)', async () => {
+    const csv = [
+      'Property Name,City,State,Coordinates,Unique ID,Observation Date,Observation Status,Is Public',
+      'Clean Meadow,Longmont,CO,"40.17, -105.10",T001,07-24-2025,Complete,true',
+      'Conflicted Ridge,Boulder,CO,"40.20, -105.20",T002,07-24-2025,Complete,true',
+      'Conflicted Ridge,Boulder,CO,"40.20, -105.20",T003,07-25-2025,Complete,false',
+      'Bad Coordinates Farm,Boulder,CO,not-a-coordinate,T004,07-24-2025,Complete,true',
+    ].join('\n')
+    const parsed = parseExportCsv(csv, 'mixed-quality-fixture')
+    // Confirm the fixture actually exercises what this test is about before asserting on it.
+    expect(parsed.totalRows).toBe(4)
+    expect(parsed.invalidRows).toBe(1)
+    expect(parsed.siteCount).toBe(2) // US-08 itself does not exclude Conflicted Ridge.
+    expect(parsed.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'MALFORMED_COORDINATES' }),
+      expect.objectContaining({ code: 'PUBLIC_VISIBILITY_CONFLICT', propertyName: 'Conflicted Ridge' }),
+    ]))
+
+    const outputDirectory = await mkdtemp(join(tmpdir(), 'us24-mixed-'))
+    directories.push(outputDirectory)
+    const metadata = await writePublicDataset(parsed, { outputDirectory })
+    const sites = JSON.parse(await readFile(join(outputDirectory, 'sites.json'), 'utf8'))
+    expect(sites.map(site => site.propertyName)).toEqual(['Clean Meadow'])
+    // 1 malformed-coordinate row excluded by US-08, plus Conflicted Ridge excluded for its conflict.
+    expect(metadata.excludedRowCount).toBe(2)
   })
 })
