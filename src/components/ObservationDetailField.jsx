@@ -5,7 +5,8 @@ function ObservationDetailField({ label, value }) {
     value === undefined ||
     (typeof value === 'string' && value.trim() === '') ||
     (typeof value === 'number' && !Number.isFinite(value)) ||
-    (Array.isArray(value) && value.length === 0)
+    (Array.isArray(value) && value.length === 0) ||
+    (typeof value === 'object' && !Array.isArray(value))
 
   let displayValue = 'Not recorded'
 

@@ -2,6 +2,25 @@
 import ObservationDetailField from './ObservationDetailField'
 import './ObservationDetailsPanel.css'
 
+const PUBLIC_FIELDS = [
+  { label: 'Site ID', key: 'siteId' },
+  { label: 'Tunnel ID', key: 'tunnelId' },
+  { label: 'Survey date', key: 'surveyDate' },
+  { label: 'Observation status', key: 'observationStatus' },
+  { label: 'Occupant type', key: 'occupantType' },
+  { label: 'Nester family', key: 'nesterFamily' },
+  { label: 'General ID', key: 'generalId' },
+  { label: 'Common name', key: 'commonName' },
+  { label: 'Plug depth', key: 'plugDepth' },
+  { label: 'Plug composition', key: 'plugComposition' },
+  { label: 'Plug color', key: 'plugColor' },
+  { label: 'Plug confidence', key: 'plugConfidence' },
+  { label: 'Whole or hole', key: 'wholeOrHole' },
+  { label: 'Emergence year', key: 'emergenceYear' },
+  { label: 'Manufactured empty', key: 'manufacturedEmpty' },
+  { label: 'Record status', key: 'recordStatus' },
+]
+
 function ObservationDetailsPanel({ observation }) {
   if (!observation) {
     return null
@@ -16,85 +35,13 @@ function ObservationDetailsPanel({ observation }) {
     >
       <h2>Observation Details</h2>
 
-      <ObservationDetailField
-        label="Site ID"
-        value={observation.siteId}
-      />
-
-      <ObservationDetailField
-        label="Tunnel ID"
-        value={observation.tunnelId}
-      />
-
-      <ObservationDetailField
-        label="Survey date"
-        value={observation.surveyDate}
-      />
-
-      <ObservationDetailField
-        label="Observation status"
-        value={observation.observationStatus}
-      />
-
-      <ObservationDetailField
-        label="Occupant type"
-        value={observation.occupantType}
-      />
-
-      <ObservationDetailField
-        label="Nester family"
-        value={observation.nesterFamily}
-      />
-
-      <ObservationDetailField
-        label="General ID"
-        value={observation.generalId}
-      />
-
-      <ObservationDetailField
-        label="Common name"
-        value={observation.commonName}
-      />
-
-      <ObservationDetailField
-        label="Plug depth"
-        value={observation.plugDepth}
-      />
-
-      <ObservationDetailField
-        label="Plug composition"
-        value={observation.plugComposition}
-      />
-
-      <ObservationDetailField
-        label="Plug color"
-        value={observation.plugColor}
-      />
-
-      <ObservationDetailField
-        label="Plug confidence"
-        value={observation.plugConfidence}
-      />
-
-      <ObservationDetailField
-        label="Whole or hole"
-        value={observation.wholeOrHole}
-      />
-
-      <ObservationDetailField
-        label="Emergence year"
-        value={observation.emergenceYear}
-      />
-
-      <ObservationDetailField
-        label="Manufactured empty"
-        value={observation.manufacturedEmpty}
-      />
-
-      <ObservationDetailField
-        label="Record status"
-        value={observation.recordStatus}
-      />
+      {PUBLIC_FIELDS.map(({ label, key }) => (
+        <ObservationDetailField
+          key={key}
+          label={label}
+          value={observation[key]}
+        />
+      ))}
     </section>
   )
 }

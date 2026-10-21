@@ -1,5 +1,5 @@
 
- // @vitest-environment jsdom
+// @vitest-environment jsdom
 
 import { describe, expect, it, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
@@ -111,5 +111,17 @@ describe('ObservationDetailField', () => {
     )
 
     expect(screen.getByText(/Not recorded/)).toBeTruthy()
+  })
+
+  it('displays Not recorded for an object value', () => {
+    render(
+      <ObservationDetailField
+        label="Common name"
+        value={{ name: 'Mason bee' }}
+      />
+    )
+
+    expect(screen.getByText('Not recorded')).toBeTruthy()
+    expect(screen.queryByText('[object Object]')).toBeNull()
   })
 })
