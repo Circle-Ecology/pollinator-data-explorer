@@ -68,6 +68,31 @@ function compare(a, b) {
   return a < b ? -1 : a > b ? 1 : 0
 }
 
+// US-08 conflict errors (two source rows disagree on one entity's fields) do not
+// exclude anything themselves - parseExportRows keeps the first-seen record and
+// only reports the conflict. Publishing that arbitrarily-chosen value (e.g. a
+// site's Is Public flag, or its coordinates) would be unreliable, so this layer
+// excludes any entity named in a conflict error rather than guess which row was
+// right - see #45 review.
+const SITE_CONFLICT_CODES = new Set(['COORDINATE_CONFLICT', 'PUBLIC_VISIBILITY_CONFLICT', 'SITE_ATTRIBUTE_CONFLICT'])
+const TUNNEL_CONFLICT_CODES = new Set(['TUNNEL_SITE_CONFLICT', 'TUNNEL_ATTRIBUTE_CONFLICT'])
+
+function conflictedIds(errors, codes) {
+  const ids = new Set()
+  for (const error of errors) {
+    if (isRecord(error) && codes.has(error.code)) ids.add(error.propertyName ?? error.tunnelId ?? error.entityId)
+  }
+  return ids
+}
+
+function conflictedSurveyKeys(errors) {
+  const keys = new Set()
+  for (const error of errors) {
+    if (isRecord(error) && error.code === 'DUPLICATE_SURVEY') keys.add(`${error.tunnelId}:${error.surveyDate}`)
+  }
+  return keys
+}
+
 /**
  * Pure public projection of a normalized US-08 ImportValidationResult.
  * `status` retains that INTERNAL result per #32; never serialize it publicly.
@@ -87,12 +112,16 @@ export function generatePublicDataset(parsedResult) {
   for (const key of ['sites', 'tunnels', 'surveys']) {
     if (!parsedResult[key].every(isRecord)) throw new TypeError('Invalid normalized record')
   }
-  const sitesById = lookup(parsedResult.sites, 'siteId')
-  const tunnelsById = lookup(parsedResult.tunnels, 'tunnelId')
+  const conflictedSiteIds = conflictedIds(parsedResult.errors, SITE_CONFLICT_CODES)
+  const conflictedTunnelIds = conflictedIds(parsedResult.errors, TUNNEL_CONFLICT_CODES)
+  const conflictedSurveys = conflictedSurveyKeys(parsedResult.errors)
+  const sitesById = lookup(parsedResult.sites.filter(site => !conflictedSiteIds.has(site.siteId)), 'siteId')
+  const tunnelsById = lookup(parsedResult.tunnels.filter(tunnel => !conflictedTunnelIds.has(tunnel.tunnelId)), 'tunnelId')
   for (const tunnel of tunnelsById.values()) identifier(tunnel.siteId)
 
   const surveysByKey = new Map()
   for (const survey of parsedResult.surveys) {
+    if (conflictedSurveys.has(`${survey.tunnelId}:${survey.surveyDate}`)) continue
     // Exact authorization checks precede projection; no truthy/case coercion.
     if (survey.recordStatus !== 'approved') continue
     const tunnel = tunnelsById.get(identifier(survey.tunnelId))

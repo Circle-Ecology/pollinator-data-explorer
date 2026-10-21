@@ -156,6 +156,46 @@ describe('US-24 public projection', () => {
     expect(output.observations).toHaveLength(1)
   })
 
+  it.each([
+    ['COORDINATE_CONFLICT', { propertyName: 'S1' }],
+    ['PUBLIC_VISIBILITY_CONFLICT', { propertyName: 'S1' }],
+    ['SITE_ATTRIBUTE_CONFLICT', { entityId: 'S1' }],
+  ])('excludes a site named in a %s error rather than publish its arbitrarily first-seen value (#45 review)',
+    (code, idFields) => {
+      const input = makePublicDataset()
+      input.errors = [{ code, message: 'conflict on some other row', ...idFields }]
+      const output = generatePublicDataset(input)
+      expect(output.sites).toEqual([])
+      expect(output.observations).toEqual([])
+    })
+
+  it.each([
+    ['TUNNEL_SITE_CONFLICT', { tunnelId: 'T1' }],
+    ['TUNNEL_ATTRIBUTE_CONFLICT', { entityId: 'T1' }],
+  ])('excludes a tunnel named in a %s error rather than publish its arbitrarily first-seen value (#45 review)',
+    (code, idFields) => {
+      const input = makePublicDataset()
+      input.errors = [{ code, message: 'conflict on some other row', ...idFields }]
+      const output = generatePublicDataset(input)
+      expect(output.observations).toEqual([])
+    })
+
+  it('excludes a survey named in a DUPLICATE_SURVEY error rather than publish its arbitrarily first-seen value (#45 review)', () => {
+    const input = makePublicDataset()
+    input.errors = [{ code: 'DUPLICATE_SURVEY', message: 'conflict', tunnelId: 'T1', surveyDate: '2025-01-01' }]
+    const output = generatePublicDataset(input)
+    expect(output.observations).toEqual([])
+  })
+
+  it('still publishes an unrelated site/tunnel/survey when only a different entity has a conflict', () => {
+    const input = makePublicDataset()
+    input.sites.push({ ...input.sites[0], siteId: 'S2', propertyName: 'Second Site' })
+    input.errors = [{ code: 'PUBLIC_VISIBILITY_CONFLICT', message: 'conflict', propertyName: 'S2' }]
+    const output = generatePublicDataset(input)
+    expect(output.sites.map(s => s.siteId)).toEqual(['S1'])
+    expect(output.observations).toHaveLength(1)
+  })
+
   it.each(['', null, {}, 123])('rejects invalid normalized identifiers %j', (id) => {
     const input = makePublicDataset()
     input.tunnels[0].tunnelId = id

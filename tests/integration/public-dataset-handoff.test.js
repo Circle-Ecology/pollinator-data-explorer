@@ -62,17 +62,20 @@ describe('US-24 opt-in scheduler boundary', () => {
     expect(onParsedResult).toHaveBeenCalledWith(parsed)
   })
 
-  it.each(['missingDiagnostics', 'empty'])('does not hand off a shape-invalid or empty %s result', async field => {
-    const parsed = makePublicDataset()
-    if (field === 'missingDiagnostics') delete parsed.errors
-    if (field === 'empty') parsed.totalRows = 0
-    const onParsedResult = vi.fn()
-    const options = start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
-    await vi.advanceTimersByTimeAsync(0)
-    expect(onParsedResult).not.toHaveBeenCalled()
-    expect(options.logger.error).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed',
-      error: 'Cannot hand off an invalid normalized import' }))
-  })
+  it.each(['missingDiagnostics', 'empty', 'allInvalid'])(
+    'does not hand off a shape-invalid, empty or entirely invalid %s result', async field => {
+      const parsed = makePublicDataset()
+      if (field === 'missingDiagnostics') delete parsed.errors
+      if (field === 'empty') Object.assign(parsed, { totalRows: 0, validRows: 0 })
+      // A renamed header or corrupted column can fail every row without totalRows ever being 0 (#45 review).
+      if (field === 'allInvalid') Object.assign(parsed, { totalRows: 50, validRows: 0, invalidRows: 50 })
+      const onParsedResult = vi.fn()
+      const options = start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onParsedResult).not.toHaveBeenCalled()
+      expect(options.logger.error).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed',
+        error: 'Cannot hand off an empty or entirely invalid normalized import' }))
+    })
 
   it('catches a parse exception without invoking the consumer', async () => {
     const onParsedResult = vi.fn()

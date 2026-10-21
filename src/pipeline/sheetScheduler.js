@@ -29,12 +29,17 @@ export function startSheetScheduler({
       if (result.status === 'success') {
         const parsed = parseExport(result.rawCsv, `sheet-${result.fetchedAt}`)
         if (onParsedResult) {
-          // Only refuse the handoff on a shape-level problem or a genuinely empty
-          // parse; row-level errors are excluded downstream, not grounds to refuse
-          // the whole batch - see #45. This checks reported diagnostics, not the
-          // missing full US-07 validation stage.
-          if (!parsed || !Array.isArray(parsed.errors) || parsed.totalRows === 0) {
-            throw new Error('Cannot hand off an invalid normalized import')
+          // Only refuse the handoff on a shape-level problem or a parse with nothing
+          // usable; row-level errors on an otherwise-good batch are excluded
+          // downstream, not grounds to refuse the whole batch - see #45. validRows
+          // (not totalRows) catches an all-invalid fetch too, e.g. a renamed header
+          // or a corrupted column that fails every row, not just an empty sheet -
+          // otherwise that run would publish empty sites.json/observations.json
+          // over a live dataset. This checks reported diagnostics, not the missing
+          // full US-07 validation stage.
+          if (!parsed || !Array.isArray(parsed.errors) ||
+            !Number.isSafeInteger(parsed.validRows) || parsed.validRows === 0) {
+            throw new Error('Cannot hand off an empty or entirely invalid normalized import')
           }
           await onParsedResult(parsed)
         }
