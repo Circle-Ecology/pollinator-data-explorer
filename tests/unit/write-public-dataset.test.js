@@ -77,6 +77,20 @@ describe('US-24 JSON artifacts', () => {
     expect(JSON.parse(await readFile(join(outputDirectory, 'sites.json'), 'utf8'))).toHaveLength(1)
   })
 
+  it('folds conflict-excluded entities into excludedRowCount, not just invalidRows (#45 review)', async () => {
+    const outputDirectory = await temporaryDirectory()
+    const input = makePublicDataset()
+    input.invalidRows = 2
+    input.errors = [
+      { message: 'malformed coordinates on some other row' },
+      { message: 'malformed coordinates on another row' },
+      { code: 'PUBLIC_VISIBILITY_CONFLICT', propertyName: 'S1' },
+    ]
+    const metadata = await writePublicDataset(input, { outputDirectory, now })
+    expect(metadata.excludedRowCount).toBe(3) // 2 invalid rows + 1 conflicted site.
+    expect(JSON.parse(await readFile(join(outputDirectory, 'sites.json'), 'utf8'))).toEqual([])
+  })
+
   it('rejects an invalid clock before writing', async () => {
     const outputDirectory = await temporaryDirectory()
     await expect(writePublicDataset(makePublicDataset(), { outputDirectory, now: () => new Date(NaN) }))

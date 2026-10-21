@@ -2,6 +2,29 @@
 import { parseCoordinatePair } from './parseCoordinatePair.js'
 import { normalizeNaValue } from './normalizeNaValue.js'
 
+// Single source of truth for every "kept the first-seen record, only reported
+// the conflict" error code this module can emit, grouped by the entity type it
+// names and the error field that carries that entity's id (or null when the id
+// is a composite read directly from the error, e.g. DUPLICATE_SURVEY). A new
+// conflict code belongs in exactly one of these groups the same change that
+// adds the `errors.push({ code: ... })` call below - consumers (generatePublicDataset)
+// rely on this manifest, not a copy of it, to know which published entities are
+// unreliable rather than refusing the whole batch - see #45.
+export const CONFLICT_CODES = Object.freeze({
+  site: Object.freeze({
+    COORDINATE_CONFLICT: 'propertyName',
+    PUBLIC_VISIBILITY_CONFLICT: 'propertyName',
+    SITE_ATTRIBUTE_CONFLICT: 'entityId',
+  }),
+  tunnel: Object.freeze({
+    TUNNEL_SITE_CONFLICT: 'tunnelId',
+    TUNNEL_ATTRIBUTE_CONFLICT: 'entityId',
+  }),
+  survey: Object.freeze({
+    DUPLICATE_SURVEY: null,
+  }),
+})
+
 function normalizeNumber(raw) {
   const value = normalizeNaValue(raw)
 

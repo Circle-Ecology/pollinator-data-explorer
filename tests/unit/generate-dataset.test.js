@@ -150,7 +150,6 @@ describe('US-24 public projection', () => {
     input.errors = [{ message: 'malformed coordinates on some other row' }]
     input.invalidRows = 1
     input.isValid = false
-    expect(() => generatePublicDataset(input)).not.toThrow()
     const output = generatePublicDataset(input)
     expect(output.sites).toHaveLength(1)
     expect(output.observations).toHaveLength(1)
@@ -194,6 +193,24 @@ describe('US-24 public projection', () => {
     const output = generatePublicDataset(input)
     expect(output.sites.map(s => s.siteId)).toEqual(['S1'])
     expect(output.observations).toHaveLength(1)
+  })
+
+  it('does not exclude a site whose id happens to match a different entity type\'s conflict id (#45 review)', () => {
+    const input = makePublicDataset()
+    // A TUNNEL_ATTRIBUTE_CONFLICT naming entityId 'S1' must not be mistaken for a site conflict on 'S1'.
+    input.errors = [{ code: 'TUNNEL_ATTRIBUTE_CONFLICT', message: 'conflict', entityId: 'S1', field: 'sunExposure' }]
+    const output = generatePublicDataset(input)
+    expect(output.sites.map(s => s.siteId)).toEqual(['S1'])
+  })
+
+  it('classifies every conflict code parseExportRows can emit (#45 review)', async () => {
+    const { CONFLICT_CODES } = await import('../../src/us08/parseExportRows.js')
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync(new URL('../../src/us08/parseExportRows.js', import.meta.url), 'utf8')
+    const emittedCodes = new Set([...source.matchAll(/'([A-Z][A-Z0-9_]*)'/g)].map(match => match[1]))
+    emittedCodes.delete('MALFORMED_COORDINATES') // Excluded at parse time; not a kept-first-seen conflict.
+    const classifiedCodes = new Set(Object.keys(CONFLICT_CODES).flatMap(entity => Object.keys(CONFLICT_CODES[entity])))
+    expect(classifiedCodes).toEqual(emittedCodes)
   })
 
   it.each(['', null, {}, 123])('rejects invalid normalized identifiers %j', (id) => {

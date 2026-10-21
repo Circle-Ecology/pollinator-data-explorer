@@ -1,3 +1,5 @@
+import { CONFLICT_CODES } from '../us08/parseExportRows.js'
+
 // These allowlists mirror docs/data-contract.md. Never spread source records here.
 const SITE_FIELDS = {
   siteId: 'string', propertyName: 'string', city: 'string', state: 'string',
@@ -73,14 +75,14 @@ function compare(a, b) {
 // only reports the conflict. Publishing that arbitrarily-chosen value (e.g. a
 // site's Is Public flag, or its coordinates) would be unreliable, so this layer
 // excludes any entity named in a conflict error rather than guess which row was
-// right - see #45 review.
-const SITE_CONFLICT_CODES = new Set(['COORDINATE_CONFLICT', 'PUBLIC_VISIBILITY_CONFLICT', 'SITE_ATTRIBUTE_CONFLICT'])
-const TUNNEL_CONFLICT_CODES = new Set(['TUNNEL_SITE_CONFLICT', 'TUNNEL_ATTRIBUTE_CONFLICT'])
-
-function conflictedIds(errors, codes) {
+// right - see #45 review. CONFLICT_CODES is the single source of truth for which
+// codes apply to which entity type and id field, owned by parseExportRows itself.
+function conflictedIds(errors, codeToIdField) {
   const ids = new Set()
   for (const error of errors) {
-    if (isRecord(error) && codes.has(error.code)) ids.add(error.propertyName ?? error.tunnelId ?? error.entityId)
+    if (!isRecord(error)) continue
+    const idField = codeToIdField[error.code]
+    if (idField) ids.add(error[idField])
   }
   return ids
 }
@@ -88,9 +90,22 @@ function conflictedIds(errors, codes) {
 function conflictedSurveyKeys(errors) {
   const keys = new Set()
   for (const error of errors) {
-    if (isRecord(error) && error.code === 'DUPLICATE_SURVEY') keys.add(`${error.tunnelId}:${error.surveyDate}`)
+    if (isRecord(error) && error.code in CONFLICT_CODES.survey) keys.add(`${error.tunnelId}:${error.surveyDate}`)
   }
   return keys
+}
+
+/**
+ * How many sites, tunnels and surveys generatePublicDataset will exclude from a
+ * parsedResult because a US-08 conflict error names them, not because they were
+ * individually invalid. Exposed so writePublicDataset can fold this into its
+ * published exclusion count without re-deriving the classification itself.
+ */
+export function countConflictedEntities(parsedResult) {
+  if (!isRecord(parsedResult) || !Array.isArray(parsedResult.errors)) return 0
+  return conflictedIds(parsedResult.errors, CONFLICT_CODES.site).size +
+    conflictedIds(parsedResult.errors, CONFLICT_CODES.tunnel).size +
+    conflictedSurveyKeys(parsedResult.errors).size
 }
 
 /**
@@ -112,8 +127,8 @@ export function generatePublicDataset(parsedResult) {
   for (const key of ['sites', 'tunnels', 'surveys']) {
     if (!parsedResult[key].every(isRecord)) throw new TypeError('Invalid normalized record')
   }
-  const conflictedSiteIds = conflictedIds(parsedResult.errors, SITE_CONFLICT_CODES)
-  const conflictedTunnelIds = conflictedIds(parsedResult.errors, TUNNEL_CONFLICT_CODES)
+  const conflictedSiteIds = conflictedIds(parsedResult.errors, CONFLICT_CODES.site)
+  const conflictedTunnelIds = conflictedIds(parsedResult.errors, CONFLICT_CODES.tunnel)
   const conflictedSurveys = conflictedSurveyKeys(parsedResult.errors)
   const sitesById = lookup(parsedResult.sites.filter(site => !conflictedSiteIds.has(site.siteId)), 'siteId')
   const tunnelsById = lookup(parsedResult.tunnels.filter(tunnel => !conflictedTunnelIds.has(tunnel.tunnelId)), 'tunnelId')
