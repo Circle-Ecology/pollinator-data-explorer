@@ -57,19 +57,62 @@ describe('ObservationDetailsPanel', () => {
   it('does not display private observation fields', () => {
     const observationWithPrivateData = {
       ...observation,
-      observerName: 'Private Observer',
+      observerId: 'private-123',
       observerEmail: 'private@example.com',
-      privateNotes: 'Confidential field notes',
+      observerFirstName: 'PrivateFirst',
+      observerLastName: 'PrivateLast',
+      notes: 'Confidential field notes',
+      importBatchId: 'private-batch-123',
     }
 
-    render(
+    const { container } = render(
       <ObservationDetailsPanel
         observation={observationWithPrivateData}
       />
     )
 
-    expect(screen.queryByText(/Private Observer/)).toBeNull()
-    expect(screen.queryByText(/private@example.com/)).toBeNull()
-    expect(screen.queryByText(/Confidential field notes/)).toBeNull()
+    expect(container.textContent).not.toContain('private-123')
+    expect(container.textContent).not.toContain('private@example.com')
+    expect(container.textContent).not.toContain('PrivateFirst')
+    expect(container.textContent).not.toContain('PrivateLast')
+    expect(container.textContent).not.toContain('Confidential field notes')
+    expect(container.textContent).not.toContain('private-batch-123')
+  })
+
+  it('renders an accessible non-modal dialog', () => {
+    render(<ObservationDetailsPanel observation={observation} />)
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Observation details',
+    })
+
+    expect(dialog).toBeTruthy()
+    expect(dialog.getAttribute('aria-modal')).toBe('false')
+  })
+
+  it('does not render a dialog without an observation', () => {
+    render(<ObservationDetailsPanel observation={null} />)
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('displays a valid zero value and formats false as No', () => {
+    const { container } = render(
+      <ObservationDetailsPanel observation={observation} />
+    )
+
+    expect(container.textContent).toContain('Plug depth: 0')
+    expect(container.textContent).toContain('Manufactured empty: No')
+  })
+
+  it('renders the observation details heading', () => {
+    render(<ObservationDetailsPanel observation={observation} />)
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Observation Details',
+        level: 2,
+      })
+    ).toBeTruthy()
   })
 })

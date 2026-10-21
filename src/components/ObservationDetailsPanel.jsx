@@ -9,6 +9,8 @@ function ObservationDetailsPanel({ observation }) {
 
   return (
     <section
+      role="dialog"
+      aria-modal="false"
       aria-label="Observation details"
       className="observation-details-panel"
     >
