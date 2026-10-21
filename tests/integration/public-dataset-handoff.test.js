@@ -51,12 +51,21 @@ describe('US-24 opt-in scheduler boundary', () => {
     expect(onParsedResult).not.toHaveBeenCalled()
   })
 
-  it.each(['errors', 'invalidRows', 'isValid', 'missingDiagnostics'])('does not hand off a failed or unverified %s result', async field => {
+  it.each(['errors', 'invalidRows', 'isValid'])('still hands off a result with row-level %s elsewhere in the batch (#45)', async field => {
     const parsed = makePublicDataset()
-    if (field === 'errors') parsed.errors = [{ message: 'synthetic private diagnostic' }]
+    if (field === 'errors') parsed.errors = [{ message: 'malformed coordinates on some other row' }]
     if (field === 'invalidRows') parsed.invalidRows = 1
     if (field === 'isValid') parsed.isValid = false
+    const onParsedResult = vi.fn()
+    start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onParsedResult).toHaveBeenCalledWith(parsed)
+  })
+
+  it.each(['missingDiagnostics', 'empty'])('does not hand off a shape-invalid or empty %s result', async field => {
+    const parsed = makePublicDataset()
     if (field === 'missingDiagnostics') delete parsed.errors
+    if (field === 'empty') parsed.totalRows = 0
     const onParsedResult = vi.fn()
     const options = start({ onParsedResult, parseExport: vi.fn().mockReturnValue(parsed) })
     await vi.advanceTimersByTimeAsync(0)

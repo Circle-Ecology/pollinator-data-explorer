@@ -26,6 +26,10 @@ export async function writePublicDataset(parsedResult, {
     siteCount: dataset.sites.length,
     // Count distinct tunnels actually represented by published surveys.
     tunnelCount: new Set(dataset.observations.map(survey => survey.tunnelId)).size,
+    // Rows US-08 flagged and excluded this run (malformed coordinates, duplicates,
+    // etc.) - surfaced so a row-level problem is visible, not silently swallowed,
+    // now that generatePublicDataset no longer refuses the whole batch over it (#45).
+    excludedRowCount: parsedResult.invalidRows,
     status: 'published',
   }
   // Serialize every candidate before filesystem operations; never serialize dataset.status.

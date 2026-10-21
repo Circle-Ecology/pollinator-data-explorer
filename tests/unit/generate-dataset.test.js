@@ -145,13 +145,15 @@ describe('US-24 public projection', () => {
     expect(() => generatePublicDataset(input)).toThrow('Invalid normalized import')
   })
 
-  it('rejects known failed imports with a generic error that does not include diagnostics', () => {
+  it('does not refuse the whole batch over row-level errors elsewhere in the import (#45)', () => {
     const input = makePublicDataset()
-    input.errors = [{ message: 'synthetic private diagnostic' }]
-    expect(() => generatePublicDataset(input)).toThrow(/^Cannot generate from an invalid import$/)
-    input.errors = []
+    input.errors = [{ message: 'malformed coordinates on some other row' }]
     input.invalidRows = 1
-    expect(() => generatePublicDataset(input)).toThrow('Cannot generate from an invalid import')
+    input.isValid = false
+    expect(() => generatePublicDataset(input)).not.toThrow()
+    const output = generatePublicDataset(input)
+    expect(output.sites).toHaveLength(1)
+    expect(output.observations).toHaveLength(1)
   })
 
   it.each(['', null, {}, 123])('rejects invalid normalized identifiers %j', (id) => {

@@ -73,6 +73,9 @@ function compare(a, b) {
  * `status` retains that INTERNAL result per #32; never serialize it publicly.
  * Missing optional public scalars become null; invalid eligible scalars throw.
  * Sites are explicitly public sites, including those without approved surveys.
+ * Row-level validation errors elsewhere in the batch (a malformed coordinate, a
+ * duplicate survey, one bad site) exclude just the affected records, not the
+ * whole publish - see #45. An empty import simply projects to empty output.
  */
 export function generatePublicDataset(parsedResult) {
   if (!isRecord(parsedResult) || !Number.isSafeInteger(parsedResult.totalRows) || parsedResult.totalRows < 0 ||
@@ -80,9 +83,6 @@ export function generatePublicDataset(parsedResult) {
     !Array.isArray(parsedResult.errors) ||
     !['sites', 'tunnels', 'surveys'].every(key => Array.isArray(parsedResult[key]))) {
     throw new TypeError('Invalid normalized import')
-  }
-  if (parsedResult.errors.length || parsedResult.invalidRows || parsedResult.isValid === false) {
-    throw new TypeError('Cannot generate from an invalid import')
   }
   for (const key of ['sites', 'tunnels', 'surveys']) {
     if (!parsedResult[key].every(isRecord)) throw new TypeError('Invalid normalized record')

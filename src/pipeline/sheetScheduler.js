@@ -29,9 +29,11 @@ export function startSheetScheduler({
       if (result.status === 'success') {
         const parsed = parseExport(result.rawCsv, `sheet-${result.fetchedAt}`)
         if (onParsedResult) {
-          // This checks reported diagnostics, not the missing full US-07 validation stage.
-          if (!parsed || !Array.isArray(parsed.errors) || parsed.errors.length ||
-            parsed.invalidRows !== 0 || parsed.isValid === false) {
+          // Only refuse the handoff on a shape-level problem or a genuinely empty
+          // parse; row-level errors are excluded downstream, not grounds to refuse
+          // the whole batch - see #45. This checks reported diagnostics, not the
+          // missing full US-07 validation stage.
+          if (!parsed || !Array.isArray(parsed.errors) || parsed.totalRows === 0) {
             throw new Error('Cannot hand off an invalid normalized import')
           }
           await onParsedResult(parsed)

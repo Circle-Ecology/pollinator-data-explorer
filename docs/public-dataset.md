@@ -9,9 +9,20 @@ files, or changing its input. It returns exactly `{ sites, observations, status 
 Pass the existing `ImportValidationResult`: `sites`, `tunnels`, `surveys`, `errors`
 arrays and nonnegative integer `totalRows` and `invalidRows`, alongside its existing
 batch/count/warning fields. Missing or malformed structure throws a generic error.
-Known invalid imports (`errors.length > 0`, `invalidRows > 0`, or `isValid: false`)
-are refused. This is a normalized-input precondition, not full CSV validation.
-US-07 validation is still not connected to the scheduled US-08 parser.
+
+Row-level problems elsewhere in the batch (a malformed coordinate, a duplicate
+survey, one bad site) do not refuse the whole publish - US-08 has already excluded
+those rows from `sites`/`tunnels`/`surveys`, so their presence in `errors`/
+`invalidRows` is informational, surfaced via `dataset-status.json`'s
+`excludedRowCount` (below), not grounds to withhold everything else. Resolved this
+way for #45, after running the real Circle Ecology sheet through this pipeline and
+finding it has ~17% malformed-coordinate rows (one site's corrupted `Coordinates`
+column) as a routine, ongoing feature of field data entry - requiring perfectly
+clean data forever was never realistic. An empty import (`totalRows === 0`) simply
+projects to empty output rather than throwing; the scheduler handoff (below) still
+declines to act on an empty parse, to avoid an anomalous fetch wiping a live
+dataset. This is a normalized-input precondition, not full CSV validation. US-07
+validation is still not connected to the scheduled US-08 parser.
 
 Issue #32 specifies `status: ImportValidationResult`, while also requiring a
 different five-field metadata file. To preserve both explicit contracts, returned
@@ -45,8 +56,11 @@ Public objects follow the existing [data contract](data-contract.md):
   `emergenceYear`, `manufacturedEmpty`, `recordStatus`. `siteId` is the resolved
   `tunnelId → tunnel.siteId` join, added so a consumer can relate the two public
   files without a third mapping file (see US-14, #19).
-- `dataset-status.json`: exactly `{ generatedAt, sourceRowCount, siteCount,
-  tunnelCount, status: 'published' }`.
+- `dataset-status.json`: `{ generatedAt, sourceRowCount, siteCount, tunnelCount,
+  excludedRowCount, status: 'published' }`. `excludedRowCount` (added for #45) is
+  `parsedResult.invalidRows` - how many source rows US-08 excluded this run - so a
+  row-level problem is visible to whoever is watching, rather than silently
+  swallowed now that it no longer blocks the publish.
 
 Only these fields are constructed; no source object spreads are used for public
 projection. Observer identity fields, notes, import IDs, errors, warnings and
@@ -73,6 +87,10 @@ tests. It must return a valid Date. The writer returns only public metadata.
 - `siteCount`: number of public site records written.
 - `tunnelCount`: distinct tunnel IDs represented in written observations; excludes
   unsurveyed tunnels and tunnels without approved public surveys.
+- `excludedRowCount`: `parsedResult.invalidRows` - source rows US-08 flagged and
+  excluded this run, regardless of why. A large or rising count is a signal
+  something in the source sheet needs attention, even though it no longer blocks
+  the rest of the data from publishing.
 
 The last two choices are explicit local interpretations pending team agreement.
 An empty authorized result is valid and writes empty arrays/zero public counts.

@@ -32,7 +32,7 @@ describe('US-24 JSON artifacts', () => {
     input.warnings = ['synthetic private warning']
     const metadata = await writePublicDataset(input, { outputDirectory: join(directory, 'data'), now })
     expect(metadata).toEqual({ generatedAt: now().toISOString(), sourceRowCount: 99,
-      siteCount: 2, tunnelCount: 1, status: 'published' })
+      siteCount: 2, tunnelCount: 1, excludedRowCount: 0, status: 'published' })
     const files = await readdir(join(directory, 'data'))
     expect(files.sort()).toEqual(['dataset-status.json', 'observations.json', 'sites.json'])
     const contents = await Promise.all(files.map(name => readFile(join(directory, 'data', name), 'utf8')))
@@ -67,13 +67,14 @@ describe('US-24 JSON artifacts', () => {
     expect(new Date(metadata.generatedAt).toISOString()).toBe(metadata.generatedAt)
   })
 
-  it('rejects invalid inputs before creating output', async () => {
-    const root = await temporaryDirectory()
+  it('still writes output when the import has row-level errors elsewhere (#45)', async () => {
+    const outputDirectory = await temporaryDirectory()
     const input = makePublicDataset()
-    input.errors = [{ message: 'synthetic private diagnostic' }]
-    await expect(writePublicDataset(input, { outputDirectory: join(root, 'data'), now }))
-      .rejects.toThrow('Cannot generate from an invalid import')
-    expect(await readdir(root)).toEqual([])
+    input.errors = [{ message: 'malformed coordinates on some other row' }]
+    input.invalidRows = 1
+    const metadata = await writePublicDataset(input, { outputDirectory, now })
+    expect(metadata.excludedRowCount).toBe(1)
+    expect(JSON.parse(await readFile(join(outputDirectory, 'sites.json'), 'utf8'))).toHaveLength(1)
   })
 
   it('rejects an invalid clock before writing', async () => {
