@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "export:json": "node scripts/csv-to-json.js",
-    "pipeline:fetch": "node --env-file-if-exists=.env scripts/fetch-sheet.js"
+    "pipeline:fetch": "node --env-file-if-exists=.env scripts/fetch-sheet.js",
+    "pipeline:publish": "node --env-file-if-exists=.env scripts/publish-sheet.js"
   },
   "dependencies": {
     "react": "^19.1.0",

@@ -141,10 +141,19 @@ For isolated synthetic integration, an injected consumer can call:
 onParsedResult: parsed => writePublicDataset(parsed, { outputDirectory: staging })
 ```
 
-The production launcher does not enable this callback. Before doing so, the team
-must connect authoritative approval/visibility enrichment, full US-07 validation,
-and US-25 publication safety. If authorization resides outside the CSV, its version
-must participate in regeneration decisions; unchanged CSV alone is insufficient.
+The production launcher (`scripts/fetch-sheet.js`, `npm run pipeline:fetch`) does
+not enable this callback. Before doing so, the team must connect authoritative
+approval/visibility enrichment, full US-07 validation, and US-25 publication
+safety. If authorization resides outside the CSV, its version must participate in
+regeneration decisions; unchanged CSV alone is insufficient.
+
+`scripts/publish-sheet.js` (`npm run pipeline:publish`) is the manual/staging
+alternative (#47): a single fetch -> parse -> write run against the real sheet
+that exits rather than scheduling further fetches, for verifying real-data
+behavior and producing staging output to inspect. It calls `fetchSheetExport`,
+`parseExportCsv` and `writePublicDataset` directly rather than through
+`startSheetScheduler`'s `onParsedResult`, since a one-shot run has no need for
+the scheduler's interval/stop lifecycle.
 
 ## Tests and synthetic demonstration (PowerShell)
 
