@@ -1,32 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
-import { fetchSites } from '../api/fetchSites'
-import ExplorerErrorState from './ExplorerErrorState'
+import MapView from './MapView'
 
-function EmbedPage({ loadSites = fetchSites }) {
-  const [state, setState] = useState({ status: 'loading' })
-
-  const load = useCallback(() => {
-    setState({ status: 'loading' })
-    loadSites()
-      .then((sites) => setState({ status: 'ready', sites }))
-      .catch(() => setState({ status: 'error' }))
-  }, [loadSites])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  if (state.status === 'error') {
-    return <ExplorerErrorState onRetry={load} />
-  }
-
-  if (state.status === 'loading') {
-    return <p role="status">Loading pollinator data…</p>
-  }
-
+// The embed is a scrollable dashboard page, not a map-only viewport: the map is
+// a bounded section at the top (see MapView), and the data-visualization
+// dashboard section below it is reachable by scrolling past the map. That
+// section has no ticket/design yet, so only its placement is reserved here.
+function EmbedPage() {
   return (
     <div data-testid="explorer-map">
-      {/* map + charts mount here once those stories land */}
+      <MapView />
+      {/* Data visualization dashboard mounts here, below the map, once that story lands */}
     </div>
   )
 }
