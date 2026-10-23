@@ -276,7 +276,11 @@ export function parseExportRows(rows, importBatchId) {
         manufacturedEmpty: normalizeBoolean(
           row['Manufactured Empty']
         ),
-        recordStatus: 'pending',
+        // Every submitted observation is treated as approved by default - no
+        // manual review step exists, and the whole dataset is meant to be
+        // public, mirroring the isPublic default above. 'pending'/'rejected'
+        // remain valid recordStatus values for a future approval workflow.
+        recordStatus: 'approved',
         importBatchId,
       }
 
