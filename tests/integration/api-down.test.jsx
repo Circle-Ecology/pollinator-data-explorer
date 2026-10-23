@@ -7,6 +7,7 @@ import EmbedPage from '../../src/components/EmbedPage'
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }) => <div>{children}</div>,
   TileLayer: () => null,
+  useMap: () => ({ fitBounds: vi.fn(), setView: vi.fn() }),
   useMapEvents: () => null,
   CircleMarker: ({ children }) => <div>{children}</div>,
   Circle: ({ children }) => <div>{children}</div>,

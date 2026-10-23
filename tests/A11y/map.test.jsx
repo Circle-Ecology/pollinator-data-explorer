@@ -1,27 +1,31 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { useEffect, useRef } from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MapView from '../../src/components/MapView'
 
 afterEach(cleanup)
 
+const { openPopupSpy } = vi.hoisted(() => ({ openPopupSpy: vi.fn() }))
+beforeEach(() => openPopupSpy.mockClear())
+
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }) => <div>{children}</div>,
   TileLayer: () => null,
+  useMap: () => ({ fitBounds: vi.fn(), setView: vi.fn() }),
   useMapEvents: () => null,
   CircleMarker: ({ eventHandlers, children }) => {
     const ref = useRef(null)
     useEffect(() => {
-      eventHandlers?.add?.({ target: { getElement: () => ref.current } })
+      eventHandlers?.add?.({ target: { getElement: () => ref.current, openPopup: openPopupSpy } })
     }, [eventHandlers])
     return <div ref={ref}>{children}</div>
   },
   Circle: ({ eventHandlers, children }) => {
     const ref = useRef(null)
     useEffect(() => {
-      eventHandlers?.add?.({ target: { getElement: () => ref.current } })
+      eventHandlers?.add?.({ target: { getElement: () => ref.current, openPopup: openPopupSpy } })
     }, [eventHandlers])
     return <div ref={ref}>{children}</div>
   },
@@ -42,6 +46,26 @@ describe('map accessibility', () => {
     expect(marker).toHaveFocus()
 
     expect(screen.getByRole('button', { name: 'St. Vrain Greenway' })).toBeInTheDocument()
+  })
+
+  it('opens the site popup when a focused marker receives Enter (#51 review)', async () => {
+    render(<MapView loadSites={() => Promise.resolve(sites)} />)
+
+    const marker = await screen.findByRole('button', { name: 'Boulder Creek Estates OS' })
+    fireEvent.keyDown(marker, { key: 'Enter' })
+
+    expect(openPopupSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the site popup when a focused marker receives Space, not other keys', async () => {
+    render(<MapView loadSites={() => Promise.resolve(sites)} />)
+
+    const marker = await screen.findByRole('button', { name: 'Boulder Creek Estates OS' })
+    fireEvent.keyDown(marker, { key: 'Tab' })
+    expect(openPopupSpy).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(marker, { key: ' ' })
+    expect(openPopupSpy).toHaveBeenCalledTimes(1)
   })
 
   it('announces the retry control to screen readers when the sites request fails', async () => {

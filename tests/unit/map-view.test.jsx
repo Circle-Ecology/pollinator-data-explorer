@@ -2,10 +2,18 @@
 import '@testing-library/jest-dom/vitest'
 import { useEffect, useRef } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MapView from '../../src/components/MapView'
 
 afterEach(cleanup)
+beforeEach(() => {
+  fakeMap.fitBounds.mockClear()
+  fakeMap.setView.mockClear()
+})
+
+const { fakeMap } = vi.hoisted(() => ({
+  fakeMap: { fitBounds: vi.fn(), setView: vi.fn() },
+}))
 
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children, center, zoom, bounds }) => (
@@ -19,6 +27,7 @@ vi.mock('react-leaflet', () => ({
     </div>
   ),
   TileLayer: () => null,
+  useMap: () => fakeMap,
   useMapEvents: () => null,
   CircleMarker: ({ radius, eventHandlers, center, children }) => {
     const ref = useRef(null)
@@ -129,5 +138,22 @@ describe('MapView', () => {
     expect(siteOne).toHaveFocus()
     beeHotel.focus()
     expect(beeHotel).toHaveFocus()
+  })
+
+  it('fits the viewport to marker bounds once sites arrive, not just the loading-time default (#51 review)', async () => {
+    render(<MapView loadSites={() => Promise.resolve(sites)} />)
+
+    await waitFor(() => expect(screen.getAllByTestId('site-marker')).toHaveLength(6))
+    expect(fakeMap.fitBounds).toHaveBeenCalledWith(
+      [[40.15, -105.12], [40.2, -105.09]],
+      { padding: [40, 40] },
+    )
+  })
+
+  it('re-centers on the single site rather than the loading-time default for a one-site result', async () => {
+    render(<MapView loadSites={() => Promise.resolve([sites[0]])} />)
+
+    await waitFor(() => expect(screen.getAllByTestId('site-marker')).toHaveLength(1))
+    expect(fakeMap.setView).toHaveBeenCalledWith([40.1672, -105.1019], 12)
   })
 })

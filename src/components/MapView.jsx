@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import './MapView.css'
 import { getPublicSites } from '../api/getPublicSites'
@@ -21,6 +21,30 @@ function ZoomWatcher({ onZoomChange }) {
   useMapEvents({
     zoomend: (event) => onZoomChange(event.target.getZoom()),
   })
+  return null
+}
+
+// react-leaflet only reads MapContainer's center/zoom/bounds props on first
+// mount - it never re-applies them when they change later. MapContainer is
+// mounted immediately (during loading, before real sites exist), so without
+// this the map would stay on the loading-time default forever once data
+// arrives. Keyed on a content-stable string, not the viewport object itself,
+// so this only re-fits when the computed viewport actually changes - not on
+// every render (e.g. from ZoomWatcher's own zoom-state updates), which would
+// otherwise fight the visitor's own pan/zoom.
+function ViewportFitter({ viewport }) {
+  const map = useMap()
+  const viewportKey = JSON.stringify(viewport)
+
+  useEffect(() => {
+    if (viewport.bounds) {
+      map.fitBounds(viewport.bounds, viewport.boundsOptions)
+    } else if (viewport.center) {
+      map.setView(viewport.center, viewport.zoom)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- viewportKey is viewport's content, deliberately not viewport itself.
+  }, [map, viewportKey])
+
   return null
 }
 
@@ -74,6 +98,7 @@ function MapView({ loadSites = getPublicSites }) {
           style={{ height: '100%', width: '100%' }}
         >
           <ZoomWatcher onZoomChange={setZoom} />
+          <ViewportFitter viewport={viewport} />
           <TileLayer url={TILE_URL} />
           {sites.map((site) => (
             <SiteMarker
