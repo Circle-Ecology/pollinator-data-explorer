@@ -131,12 +131,15 @@ describe('US-24 opt-in scheduler boundary', () => {
       .toMatchObject({ sourceRowCount: 1, siteCount: 1, tunnelCount: 1, status: 'published' })
   })
 
-  it('does not alter the US-08 pending default or invent site authorization', () => {
+  it('does not alter the US-08 pending survey default, but does default a site to public', () => {
     const parsed = parseExportCsv('Property Name,Coordinates,Unique ID,Observation Date\nSynthetic,"40, -105",T1,01-01-2025', 'synthetic')
     expect(parsed.surveys[0].recordStatus).toBe('pending')
-    expect(parsed.sites[0].isPublic).toBeNull()
+    expect(parsed.sites[0].isPublic).toBe(true)
     const result = generatePublicDataset(parsed)
-    expect(result.sites).toEqual([])
+    // The site itself is public by default; its lone survey is still excluded
+    // since recordStatus stays 'pending' until approved - a separate, still
+    // unimplemented workflow.
+    expect(result.sites).toHaveLength(1)
     expect(result.observations).toEqual([])
   })
 

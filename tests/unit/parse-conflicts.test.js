@@ -118,3 +118,27 @@ describe('US-08: Data conflict detection', () => {
     expect(result.surveys).toHaveLength(1)
   })
 })
+
+describe('US-08: site visibility default', () => {
+  it('defaults a site to public when the Is Public column is blank or missing', () => {
+    const rowWithoutColumn = makeRow()
+    delete rowWithoutColumn['Is Public']
+    expect(parseExportRows([rowWithoutColumn], 'test-batch').sites[0].isPublic).toBe(true)
+    expect(parseExportRows([makeRow({ 'Is Public': '' })], 'test-batch').sites[0].isPublic).toBe(true)
+  })
+
+  it('still hides a site with an explicit FALSE/NO', () => {
+    expect(parseExportRows([makeRow({ 'Is Public': 'false' })], 'test-batch').sites[0].isPublic).toBe(false)
+    expect(parseExportRows([makeRow({ 'Is Public': 'no' })], 'test-batch').sites[0].isPublic).toBe(false)
+  })
+
+  it('still conflicts when a blank row (now public) disagrees with an explicit FALSE elsewhere', () => {
+    const blankRow = makeRow()
+    delete blankRow['Is Public']
+    const result = parseExportRows([blankRow, makeRow({ 'Is Public': 'false' })], 'test-batch')
+
+    expect(result.errors).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PUBLIC_VISIBILITY_CONFLICT' })])
+    )
+  })
+})
