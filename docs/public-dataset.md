@@ -193,9 +193,12 @@ $env:TMP = $auditTemp
 
 ## Production decisions still required
 
-- US-08 deliberately produces pending surveys; existing CSV fixtures have no
-  explicit public-site authorization. Neither default has been changed. An
-  approval/visibility column is a proposal, not an implemented workflow.
+- US-08 deliberately produces pending surveys; a survey still requires explicit
+  approval before it can be published - that default has not changed, and
+  remains an unimplemented workflow. Site visibility is resolved, separately:
+  the whole dataset is meant to be public, so `Is Public` now defaults to
+  `true` when the column is blank or missing a row, rather than defaulting to
+  hidden; an explicit `FALSE`/`NO` still hides a site.
 - `PublicTunnelSurvey` is not separately defined. ~~This implementation uses only
   the existing public TunnelSurvey fields; it adds no `siteId` or tunnel file.
   A consumer cannot join the two public files without an agreed relationship

@@ -120,7 +120,12 @@ export function parseExportRows(rows, importBatchId) {
     const state = normalizeNaValue(row['State'])
     const tunnelId = normalizeNaValue(row['Unique ID'])
     const surveyDate = normalizeNaValue(row['Observation Date'])
-    const isPublic = normalizeBoolean(row['Is Public'])
+    // A site defaults to public unless a row explicitly says otherwise - the
+    // whole dataset is meant to be public, and most rows will never have this
+    // column filled in. An explicit FALSE/NO still hides a site; two rows
+    // disagreeing (one blank/true, one explicit false) still conflicts below,
+    // since a blank value is resolved to true before being compared.
+    const isPublic = normalizeBoolean(row['Is Public']) ?? true
 
     const site = {
       siteId: propertyName,
@@ -156,12 +161,9 @@ export function parseExportRows(rows, importBatchId) {
         }
       }
 
-      // Keep the existing public visibility conflict error shape.
-      if (
-        existingSite.isPublic !== null &&
-        site.isPublic !== null &&
-        existingSite.isPublic !== site.isPublic
-      ) {
+      // isPublic is never null (see above), so this always compares real values -
+      // a blank row disagreeing with an explicit FALSE elsewhere still conflicts.
+      if (existingSite.isPublic !== site.isPublic) {
         const conflictKey = `PUBLIC_VISIBILITY_CONFLICT:${propertyName}`
 
         if (!reportedConflicts.has(conflictKey)) {
