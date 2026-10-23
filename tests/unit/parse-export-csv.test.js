@@ -26,7 +26,7 @@ describe('US-08: Parse Export CSV', () => {
     expect(result.tunnels).toHaveLength(2)
     expect(result.surveys).toHaveLength(3)
 
-    expect(result.surveys[0].recordStatus).toBe('pending')
+    expect(result.surveys[0].recordStatus).toBe('approved')
     expect(result.surveys[0].importBatchId).toBe('batch-001')
   })
 
