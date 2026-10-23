@@ -179,7 +179,7 @@ describe('US-08: Normalize Export Rows', () => {
       observationStatus: null,
       occupantType: 'Bee',
       nesterFamily: null,
-      recordStatus: 'pending',
+      recordStatus: 'approved',
       importBatchId: 'batch-001',
     })
   })
@@ -236,7 +236,7 @@ describe('US-08: Normalize Export Rows', () => {
     expect(result.surveys[0]).toMatchObject({
       tunnelId: 'T001',
       surveyDate: '07-24-2026',
-      recordStatus: 'pending',
+      recordStatus: 'approved',
       importBatchId: 'batch-001',
     })
   })

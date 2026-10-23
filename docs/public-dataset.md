@@ -193,12 +193,13 @@ $env:TMP = $auditTemp
 
 ## Production decisions still required
 
-- US-08 deliberately produces pending surveys; a survey still requires explicit
-  approval before it can be published - that default has not changed, and
-  remains an unimplemented workflow. Site visibility is resolved, separately:
-  the whole dataset is meant to be public, so `Is Public` now defaults to
-  `true` when the column is blank or missing a row, rather than defaulting to
-  hidden; an explicit `FALSE`/`NO` still hides a site.
+- Resolved: the whole dataset is meant to be public, with no manual review
+  step in place, so both defaults now favor publishing rather than withholding.
+  `Is Public` defaults to `true` when the column is blank or missing a row,
+  rather than defaulting to hidden; an explicit `FALSE`/`NO` still hides a
+  site. `recordStatus` defaults to `approved` rather than `pending`; `pending`
+  and `rejected` remain valid values for a future approval workflow, should
+  one be built later.
 - `PublicTunnelSurvey` is not separately defined. ~~This implementation uses only
   the existing public TunnelSurvey fields; it adds no `siteId` or tunnel file.
   A consumer cannot join the two public files without an agreed relationship
