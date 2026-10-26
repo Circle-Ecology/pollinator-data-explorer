@@ -1,5 +1,8 @@
 [build]
-  command = "npm run build"
+  # Fetch the sheet and write the public dataset into public/ so Vite copies it
+  # into dist/. SHEET_CSV_EXPORT_URL is set in Netlify's environment variables.
+  # If the fetch fails the build fails, so the previous deploy stays live.
+  command = "npm run pipeline:publish -- public/data && npm run build"
   publish = "dist"
 
 [build.environment]
