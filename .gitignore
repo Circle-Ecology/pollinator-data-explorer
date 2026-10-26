@@ -34,3 +34,7 @@ tests/fixtures/production-export.json
 
 # Generated US-24 artifacts are build/staging output, not source fixtures.
 /data/*.json
+
+# Local dev copy of the public dataset, served by Vite's public/ dir for
+# manual testing against getPublicSites - not a committed source fixture.
+/public/data/*.json
