@@ -7,12 +7,10 @@ import './ObservationDetailsPanel.css'
 const PUBLIC_FIELDS = [
   { label: 'Site ID', key: 'siteId' },
   { label: 'Tunnel ID', key: 'tunnelId' },
-  { label: 'Survey date', key: 'surveyDate' },
   { label: 'Observation status', key: 'observationStatus' },
   { label: 'Occupant type', key: 'occupantType' },
   { label: 'Nester family', key: 'nesterFamily' },
   { label: 'General ID', key: 'generalId' },
-  { label: 'Common name', key: 'commonName' },
   { label: 'Plug depth', key: 'plugDepth' },
   { label: 'Plug composition', key: 'plugComposition' },
   { label: 'Plug color', key: 'plugColor' },
@@ -53,6 +51,34 @@ function ObservationDetailsPanel({
     return null
   }
 
+  const speciesCommonName =
+    observation.speciesCommonName ??
+    observation.commonName ??
+    'Not recorded'
+
+  const speciesScientificName =
+    observation.speciesScientificName ??
+    'Not recorded'
+
+  const observationDate =
+    observation.observationDate ??
+    observation.surveyDate
+
+  const siteName =
+    site?.propertyName ??
+    observation.siteName ??
+    'Not recorded'
+
+  const latitude =
+    site?.latitude ??
+    observation.latitude ??
+    'Not recorded'
+
+  const longitude =
+    site?.longitude ??
+    observation.longitude ??
+    'Not recorded'
+
   return (
     <section
       role="dialog"
@@ -75,13 +101,42 @@ function ObservationDetailsPanel({
         )}
       </div>
 
+      <ObservationDetailField
+        label="Species common name"
+        value={speciesCommonName}
+      />
+
+      <ObservationDetailField
+        label="Species scientific name"
+        value={speciesScientificName}
+      />
+
+      <ObservationDetailField
+        label="Observation date"
+        value={
+          observationDate
+            ? formatObservationDate(observationDate)
+            : 'Not recorded'
+        }
+      />
+
+      <ObservationDetailField
+        label="Site name"
+        value={siteName}
+      />
+
+      <ObservationDetailField
+        label="Latitude"
+        value={latitude}
+      />
+
+      <ObservationDetailField
+        label="Longitude"
+        value={longitude}
+      />
+
       {site && (
         <>
-          <ObservationDetailField
-            label="Site name"
-            value={site.propertyName}
-          />
-
           <ObservationDetailField
             label="City"
             value={site.city}
@@ -91,16 +146,6 @@ function ObservationDetailsPanel({
             label="State"
             value={site.state}
           />
-
-          <ObservationDetailField
-            label="Latitude"
-            value={site.latitude}
-          />
-
-          <ObservationDetailField
-            label="Longitude"
-            value={site.longitude}
-          />
         </>
       )}
 
@@ -108,11 +153,7 @@ function ObservationDetailsPanel({
         <ObservationDetailField
           key={key}
           label={label}
-          value={
-            key === 'surveyDate'
-              ? formatObservationDate(observation[key])
-              : observation[key]
-          }
+          value={observation[key]}
         />
       ))}
     </section>

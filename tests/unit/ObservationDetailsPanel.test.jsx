@@ -128,17 +128,17 @@ describe('ObservationDetailsPanel', () => {
     ).toBeTruthy()
   })
 
-  it('formats the survey date correctly', () => {
+  it('formats the observation date correctly', () => {
     const { container } = render(
       <ObservationDetailsPanel observation={observation} />
     )
 
     expect(container.textContent).toContain(
-      'Survey date: July 24, 2026'
+      'Observation date: July 24, 2026'
     )
   })
 
-  it('does not shift the survey date backward by one day', () => {
+  it('does not shift the observation date backward by one day', () => {
     const observationWithDate = {
       ...observation,
       surveyDate: '2026-01-01',
@@ -149,7 +149,7 @@ describe('ObservationDetailsPanel', () => {
     )
 
     expect(container.textContent).toContain(
-      'Survey date: January 1, 2026'
+      'Observation date: January 1, 2026'
     )
 
     expect(container.textContent).not.toContain(
@@ -256,5 +256,84 @@ describe('ObservationDetailsPanel', () => {
 
     expect(screen.getByText(/Leafcutter bee/)).toBeTruthy()
     expect(screen.queryByText(/Blue orchard bee/)).toBeNull()
+  })
+
+  it('displays all required US-15 observation fields', () => {
+    const { container } = render(
+      <ObservationDetailsPanel
+        observation={observation}
+        site={site}
+      />
+    )
+
+    expect(container.textContent).toContain(
+      'Species common name: Blue orchard bee'
+    )
+    expect(container.textContent).toContain(
+      'Species scientific name: Not recorded'
+    )
+    expect(container.textContent).toContain(
+      'Observation date: July 24, 2026'
+    )
+    expect(container.textContent).toContain(
+      'Site name: Test Pollinator Garden'
+    )
+    expect(container.textContent).toContain('Latitude: 39.7392')
+    expect(container.textContent).toContain('Longitude: -104.9903')
+  })
+
+  it('displays a scientific name when provided', () => {
+    const observationWithScientificName = {
+      ...observation,
+      speciesScientificName: 'Osmia lignaria',
+    }
+
+    const { container } = render(
+      <ObservationDetailsPanel
+        observation={observationWithScientificName}
+      />
+    )
+
+    expect(container.textContent).toContain(
+      'Species scientific name: Osmia lignaria'
+    )
+    expect(container.textContent).not.toContain(
+      'Species scientific name: Not recorded'
+    )
+  })
+
+  it('supports acceptance criteria field names', () => {
+    const observationWithRequiredNames = {
+      ...observation,
+      commonName: null,
+      surveyDate: null,
+      speciesCommonName: 'Leafcutter bee',
+      speciesScientificName: 'Megachile rotundata',
+      observationDate: '2026-08-15',
+      siteName: 'Meadow Garden',
+      latitude: 40.123,
+      longitude: -105.456,
+    }
+
+    const { container } = render(
+      <ObservationDetailsPanel
+        observation={observationWithRequiredNames}
+      />
+    )
+
+    expect(container.textContent).toContain(
+      'Species common name: Leafcutter bee'
+    )
+    expect(container.textContent).toContain(
+      'Species scientific name: Megachile rotundata'
+    )
+    expect(container.textContent).toContain(
+      'Observation date: August 15, 2026'
+    )
+    expect(container.textContent).toContain(
+      'Site name: Meadow Garden'
+    )
+    expect(container.textContent).toContain('Latitude: 40.123')
+    expect(container.textContent).toContain('Longitude: -105.456')
   })
 })
