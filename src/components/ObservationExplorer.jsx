@@ -2,10 +2,7 @@
 import { useEffect, useState } from 'react'
 import ObservationSelector from './ObservationSelector'
 import ObservationDetailsPanel from './ObservationDetailsPanel'
-
-function getObservationId(observation) {
-  return `${observation.tunnelId}:${observation.surveyDate}`
-}
+import { getObservationId } from '../utils/getObservationId'
 
 function ObservationExplorer({
   site,
@@ -39,13 +36,13 @@ function ObservationExplorer({
       ? null
       : selectedObservationId ??
         (siteObservations.length > 0
-          ? getObservationId(siteObservations[0])
+          ? getObservationId(siteObservations[0], 0)
           : null)
 
   const selectedObservation =
     siteObservations.find(
-      (observation) =>
-        getObservationId(observation) === activeObservationId
+      (observation, index) =>
+        getObservationId(observation, index) === activeObservationId
     ) ?? null
 
   const handleSelectObservation = (observationId) => {

@@ -72,9 +72,7 @@ describe('ObservationSelector', () => {
       screen.getByRole('button', { name: /Leafcutter bee/ })
     )
 
-    expect(onSelectObservation).toHaveBeenCalledWith(
-      'tunnel-20:2026-07-25'
-    )
+    expect(onSelectObservation).toHaveBeenCalledWith('site-1:1')
   })
 
   it('marks the selected observation', () => {
@@ -82,7 +80,7 @@ describe('ObservationSelector', () => {
       <ObservationSelector
         site={site}
         observations={observations}
-        selectedObservationId="tunnel-10:2026-07-24"
+        selectedObservationId="site-1:0"
       />
     )
 
@@ -90,6 +88,11 @@ describe('ObservationSelector', () => {
       screen.getByRole('button', { name: /Blue orchard bee/ })
         .getAttribute('aria-pressed')
     ).toBe('true')
+
+    expect(
+      screen.getByRole('button', { name: /Leafcutter bee/ })
+        .getAttribute('aria-pressed')
+    ).toBe('false')
   })
 
   it('shows a message when the site has no observations', () => {
@@ -121,5 +124,67 @@ describe('ObservationSelector', () => {
 
     expect(container.textContent).not.toContain('Private Observer')
     expect(container.textContent).not.toContain('private@example.com')
+  })
+
+  it('selects duplicate tunnel and date records independently', () => {
+    const onSelectObservation = vi.fn()
+
+    const duplicateObservations = [
+      {
+        siteId: 'site-1',
+        tunnelId: 'tunnel-10',
+        surveyDate: '2026-07-24',
+        commonName: 'Blue orchard bee',
+      },
+      {
+        siteId: 'site-1',
+        tunnelId: 'tunnel-10',
+        surveyDate: '2026-07-24',
+        commonName: 'Leafcutter bee',
+      },
+    ]
+
+    const { rerender } = render(
+      <ObservationSelector
+        site={site}
+        observations={duplicateObservations}
+        selectedObservationId="site-1:0"
+        onSelectObservation={onSelectObservation}
+      />
+    )
+
+    const firstButton = screen.getByRole('button', {
+      name: /Blue orchard bee/,
+    })
+
+    const secondButton = screen.getByRole('button', {
+      name: /Leafcutter bee/,
+    })
+
+    expect(firstButton.getAttribute('aria-pressed')).toBe('true')
+    expect(secondButton.getAttribute('aria-pressed')).toBe('false')
+
+    fireEvent.click(secondButton)
+
+    expect(onSelectObservation).toHaveBeenCalledWith('site-1:1')
+
+    rerender(
+      <ObservationSelector
+        site={site}
+        observations={duplicateObservations}
+        selectedObservationId="site-1:1"
+        onSelectObservation={onSelectObservation}
+      />
+    )
+
+    expect(
+      screen.getByRole('button', { name: /Blue orchard bee/ })
+        .getAttribute('aria-pressed')
+    ).toBe('false')
+
+    expect(
+      screen.getByRole('button', { name: /Leafcutter bee/ })
+        .getAttribute('aria-pressed')
+    ).toBe('true')
   })
 })

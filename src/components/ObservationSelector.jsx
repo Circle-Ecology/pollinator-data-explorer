@@ -1,5 +1,6 @@
 
 import { formatSurveyDate } from '../utils/formatSurveyDate'
+import { getObservationId } from '../utils/getObservationId'
 
 function ObservationSelector({
   site,
@@ -26,9 +27,11 @@ function ObservationSelector({
         <p>No observations available for this site.</p>
       ) : (
         <ul>
-          {siteObservations.map((observation) => {
-            const observationId =
-              `${observation.tunnelId}:${observation.surveyDate}`
+          {siteObservations.map((observation, index) => {
+            const observationId = getObservationId(
+              observation,
+              index
+            )
 
             return (
               <li key={observationId}>
