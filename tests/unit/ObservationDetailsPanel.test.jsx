@@ -1,5 +1,5 @@
 
-// @vitest-environment jsdom
+ // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -152,9 +152,7 @@ describe('ObservationDetailsPanel', () => {
       'Observation date: January 1, 2026'
     )
 
-    expect(container.textContent).not.toContain(
-      'December 31, 2025'
-    )
+    expect(container.textContent).not.toContain('December 31, 2025')
   })
 
   it('calls onClose when the Close button is clicked', () => {
@@ -167,11 +165,11 @@ describe('ObservationDetailsPanel', () => {
       />
     )
 
-    const closeButton = screen.getByRole('button', {
-      name: 'Close observation details',
-    })
-
-    fireEvent.click(closeButton)
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Close observation details',
+      })
+    )
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -186,9 +184,7 @@ describe('ObservationDetailsPanel', () => {
       />
     )
 
-    fireEvent.keyDown(document, {
-      key: 'Escape',
-    })
+    fireEvent.keyDown(document, { key: 'Escape' })
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -208,15 +204,9 @@ describe('ObservationDetailsPanel', () => {
       />
     )
 
-    expect(container.textContent).toContain(
-      'Site name: Not recorded'
-    )
-    expect(container.textContent).toContain(
-      'City: Not recorded'
-    )
-    expect(container.textContent).toContain(
-      'State: Not recorded'
-    )
+    expect(container.textContent).toContain('Site name: Not recorded')
+    expect(container.textContent).toContain('City: Not recorded')
+    expect(container.textContent).toContain('State: Not recorded')
     expect(container.textContent).not.toContain('undefined')
   })
 
@@ -330,10 +320,31 @@ describe('ObservationDetailsPanel', () => {
     expect(container.textContent).toContain(
       'Observation date: August 15, 2026'
     )
-    expect(container.textContent).toContain(
-      'Site name: Meadow Garden'
-    )
+    expect(container.textContent).toContain('Site name: Meadow Garden')
     expect(container.textContent).toContain('Latitude: 40.123')
     expect(container.textContent).toContain('Longitude: -105.456')
+  })
+
+  it('renders the details panel and controls for mobile layouts', () => {
+    render(
+      <ObservationDetailsPanel
+        observation={observation}
+        site={site}
+        onClose={vi.fn()}
+      />
+    )
+
+    const panel = screen.getByRole('dialog', {
+      name: 'Observation Details',
+    })
+
+    expect(panel).toBeTruthy()
+    expect(
+      screen.getByRole('button', {
+        name: 'Close observation details',
+      })
+    ).toBeTruthy()
+
+    expect(panel.className).toContain('observation-details-panel')
   })
 })

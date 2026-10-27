@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react'
 import ObservationSelector from './ObservationSelector'
 import ObservationDetailsPanel from './ObservationDetailsPanel'
@@ -10,10 +9,11 @@ function ObservationExplorer({
   markerSelectionCount = 0,
   onCloseDetails,
 }) {
-  const [selection, setSelection] = useState(null)
+  const [selectedObservationId, setSelectedObservationId] =
+    useState(undefined)
 
   useEffect(() => {
-    setSelection(null)
+    setSelectedObservationId(undefined)
   }, [markerSelectionCount])
 
   const siteObservations = site
@@ -22,22 +22,12 @@ function ObservationExplorer({
       )
     : []
 
-  const isCurrentSite =
-    selection !== null &&
-    site !== null &&
-    selection.siteId === site.siteId
-
-  const selectedObservationId = isCurrentSite
-    ? selection.observationId
-    : null
-
   const activeObservationId =
-    isCurrentSite && selection.closed
-      ? null
-      : selectedObservationId ??
-        (siteObservations.length > 0
-          ? getObservationId(siteObservations[0], 0)
-          : null)
+    selectedObservationId === undefined
+      ? siteObservations.length > 0
+        ? getObservationId(siteObservations[0], 0)
+        : null
+      : selectedObservationId
 
   const selectedObservation =
     siteObservations.find(
@@ -46,24 +36,11 @@ function ObservationExplorer({
     ) ?? null
 
   const handleSelectObservation = (observationId) => {
-    if (!site) return
-
-    setSelection({
-      siteId: site.siteId,
-      observationId,
-      closed: false,
-    })
+    setSelectedObservationId(observationId)
   }
 
   const handleClose = () => {
-    if (!site) return
-
-    setSelection({
-      siteId: site.siteId,
-      observationId: null,
-      closed: true,
-    })
-
+    setSelectedObservationId(null)
     onCloseDetails?.()
   }
 
