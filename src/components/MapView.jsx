@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react'
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -12,6 +13,7 @@ import MapAttribution from './MapAttribution'
 import MapLegend from './MapLegend'
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+
 // Below this zoom, meter-accurate circles shrink to near-invisible dots, so we
 // switch to fixed-pixel markers for visibility; at/above it, circles are large
 // enough on screen that true-to-scale (meter) sizing is more useful.
@@ -48,7 +50,8 @@ function ViewportFitter({ viewport }) {
   return null
 }
 
-function MapView({ loadSites = getPublicSites }) {
+// US-15: onSelectSite is optional, preserving existing MapView usage.
+function MapView({ loadSites = getPublicSites, onSelectSite }) {
   const [state, setState] = useState({ status: 'loading' })
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
 
@@ -64,15 +67,18 @@ function MapView({ loadSites = getPublicSites }) {
   }, [load])
 
   const rawSites = state.status === 'ready' ? state.sites : []
+
   // Defense in depth: the map never places a marker at a fallback/zero
   // coordinate, regardless of whether the data source already filtered.
   const sites = rawSites.filter(
     (site) => Number.isFinite(site.latitude) && Number.isFinite(site.longitude),
   )
+
   const viewport = computeMapBounds(sites) ?? {
     center: [DEFAULT_CENTER.latitude, DEFAULT_CENTER.longitude],
     zoom: DEFAULT_ZOOM,
   }
+
   const allCounts = sites.map((site) => site.occupiedTunnelCount)
   const trueToScale = zoom >= ZOOM_SWITCH_THRESHOLD
 
@@ -100,17 +106,21 @@ function MapView({ loadSites = getPublicSites }) {
           <ZoomWatcher onZoomChange={setZoom} />
           <ViewportFitter viewport={viewport} />
           <TileLayer url={TILE_URL} />
+
           {sites.map((site) => (
             <SiteMarker
               key={site.siteId}
               site={site}
               allCounts={allCounts}
               trueToScale={trueToScale}
+              onSelectSite={onSelectSite}
             />
           ))}
         </MapContainer>
+
         <MapLegend counts={allCounts} trueToScale={trueToScale} />
       </div>
+
       <MapAttribution />
     </div>
   )
