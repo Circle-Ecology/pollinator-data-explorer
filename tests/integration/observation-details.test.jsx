@@ -1,5 +1,5 @@
 
- // @vitest-environment jsdom
+// @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -14,10 +14,12 @@ import EmbedPage from '../../src/components/EmbedPage'
 
 vi.mock('react-leaflet', () => {
   function MockMarker({ children, eventHandlers }) {
+    const siteName = children?.props?.children?.[0]?.props?.children
+
     return (
       <button
         type="button"
-        aria-label="Test Pollinator Garden"
+        aria-label={siteName}
         onClick={(event) => {
           const markerElement = event.currentTarget
 
@@ -57,6 +59,15 @@ const sites = [
     longitude: -104.9903,
     elevationMeters: 1609,
   },
+  {
+    siteId: 'site-2',
+    propertyName: 'Second Pollinator Garden',
+    city: 'Boulder',
+    state: 'Colorado',
+    latitude: 40.015,
+    longitude: -105.2705,
+    elevationMeters: 1655,
+  },
 ]
 
 const observations = [
@@ -74,7 +85,25 @@ const observations = [
     commonName: 'Leafcutter bee',
     observationStatus: 'Active',
   },
+  {
+    siteId: 'site-2',
+    tunnelId: 'tunnel-30',
+    surveyDate: '2026-08-01',
+    commonName: 'Mason bee',
+    observationStatus: 'Complete',
+  },
 ]
+
+function mockPublicData(data = observations) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url) => ({
+      ok: true,
+      json: async () =>
+        String(url).includes('sites.json') ? sites : data,
+    }))
+  )
+}
 
 afterEach(() => {
   cleanup()
@@ -82,16 +111,8 @@ afterEach(() => {
 })
 
 describe('US-15 observation details integration', () => {
-  it('opens observations when a site marker is selected', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url) => ({
-        ok: true,
-        json: async () =>
-          String(url).includes('sites.json') ? sites : observations,
-      }))
-    )
-
+  it('opens the details panel immediately when a marker is selected', async () => {
+    mockPublicData()
     render(<EmbedPage />)
 
     const marker = await screen.findByRole('button', {
@@ -100,56 +121,68 @@ describe('US-15 observation details integration', () => {
 
     fireEvent.click(marker)
 
-    expect(
-      await screen.findByText('Observations at Test Pollinator Garden')
-    ).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', {
+      name: 'Observation Details',
+    })
+
+    expect(dialog).toHaveTextContent('Blue orchard bee')
+    expect(dialog).toHaveTextContent('Test Pollinator Garden')
+    expect(dialog).toHaveTextContent('July 24, 2026')
   })
 
-  it('displays and switches between selected observations', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url) => ({
-        ok: true,
-        json: async () =>
-          String(url).includes('sites.json') ? sites : observations,
-      }))
-    )
-
+  it('switches between observations at the same site', async () => {
+    mockPublicData()
     render(<EmbedPage />)
 
-    const marker = await screen.findByRole('button', {
-      name: 'Test Pollinator Garden',
-    })
-
-    fireEvent.click(marker)
-
     fireEvent.click(
-      await screen.findByRole('button', { name: /Blue orchard bee/ })
+      await screen.findByRole('button', {
+        name: 'Test Pollinator Garden',
+      })
     )
-
-    expect(
-      screen.getByRole('dialog', { name: 'Observation Details' })
-    ).toHaveTextContent('Blue orchard bee')
 
     fireEvent.click(
       screen.getByRole('button', { name: /Leafcutter bee/ })
     )
 
+    const dialog = screen.getByRole('dialog', {
+      name: 'Observation Details',
+    })
+
+    expect(dialog).toHaveTextContent('Leafcutter bee')
+    expect(dialog).not.toHaveTextContent('Blue orchard bee')
+  })
+
+  it('updates the panel when a different site marker is selected', async () => {
+    mockPublicData()
+    render(<EmbedPage />)
+
+    const firstMarker = await screen.findByRole('button', {
+      name: 'Test Pollinator Garden',
+    })
+
+    fireEvent.click(firstMarker)
+
     expect(
       screen.getByRole('dialog', { name: 'Observation Details' })
-    ).toHaveTextContent('Leafcutter bee')
+    ).toHaveTextContent('Blue orchard bee')
+
+    const secondMarker = screen.getByRole('button', {
+      name: 'Second Pollinator Garden',
+    })
+
+    fireEvent.click(secondMarker)
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Observation Details',
+    })
+
+    expect(dialog).toHaveTextContent('Mason bee')
+    expect(dialog).toHaveTextContent('Second Pollinator Garden')
+    expect(dialog).not.toHaveTextContent('Blue orchard bee')
   })
 
   it('closes details with Escape and returns focus to the marker', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url) => ({
-        ok: true,
-        json: async () =>
-          String(url).includes('sites.json') ? sites : observations,
-      }))
-    )
-
+    mockPublicData()
     render(<EmbedPage />)
 
     const marker = await screen.findByRole('button', {
@@ -159,18 +192,12 @@ describe('US-15 observation details integration', () => {
     marker.focus()
     fireEvent.click(marker)
 
-    const observationButton = await screen.findByRole('button', {
+    const observationButton = screen.getByRole('button', {
       name: /Blue orchard bee/,
     })
 
     observationButton.focus()
-    fireEvent.click(observationButton)
 
-    expect(
-      screen.getByRole('dialog', { name: 'Observation Details' })
-    ).toBeInTheDocument()
-
-    // Focus must be away from the marker before closing.
     expect(marker).not.toHaveFocus()
 
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -186,19 +213,37 @@ describe('US-15 observation details integration', () => {
       {
         ...observations[0],
         observerName: 'Private Observer',
+        observerEmail: 'private@example.com',
+        observerId: 'private-123',
+        observerFirstName: 'PrivateFirst',
+        observerLastName: 'PrivateLast',
+        notes: 'Confidential staff notes',
       },
     ]
 
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url) => ({
-        ok: true,
-        json: async () =>
-          String(url).includes('sites.json') ? sites : privateObservations,
-      }))
-    )
+    mockPublicData(privateObservations)
 
     const { container } = render(<EmbedPage />)
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Test Pollinator Garden',
+      })
+    )
+
+    const text = container.textContent
+
+    expect(text).not.toContain('Private Observer')
+    expect(text).not.toContain('private@example.com')
+    expect(text).not.toContain('private-123')
+    expect(text).not.toContain('PrivateFirst')
+    expect(text).not.toContain('PrivateLast')
+    expect(text).not.toContain('Confidential staff notes')
+  })
+
+  it('reopens details when the same marker is clicked after closing', async () => {
+    mockPublicData()
+    render(<EmbedPage />)
 
     const marker = await screen.findByRole('button', {
       name: 'Test Pollinator Garden',
@@ -206,10 +251,22 @@ describe('US-15 observation details integration', () => {
 
     fireEvent.click(marker)
 
+    expect(
+      screen.getByRole('dialog', { name: 'Observation Details' })
+    ).toHaveTextContent('Blue orchard bee')
+
     fireEvent.click(
-      await screen.findByRole('button', { name: /Blue orchard bee/ })
+      screen.getByRole('button', {
+        name: 'Close observation details',
+      })
     )
 
-    expect(container.textContent).not.toContain('Private Observer')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(marker)
+
+    expect(
+      screen.getByRole('dialog', { name: 'Observation Details' })
+    ).toHaveTextContent('Blue orchard bee')
   })
 })

@@ -6,6 +6,7 @@ import { getPublicObservations } from '../api/getPublicObservations'
 
 function EmbedPage() {
   const [selectedSite, setSelectedSite] = useState(null)
+  const [markerSelectionCount, setMarkerSelectionCount] = useState(0)
   const [observations, setObservations] = useState([])
   const [observationsError, setObservationsError] = useState(false)
   const selectedMarkerRef = useRef(null)
@@ -29,6 +30,7 @@ function EmbedPage() {
   const handleSelectSite = (site, markerElement) => {
     selectedMarkerRef.current = markerElement
     setSelectedSite(site)
+    setMarkerSelectionCount((count) => count + 1)
   }
 
   const handleCloseDetails = () => {
@@ -49,6 +51,7 @@ function EmbedPage() {
         <ObservationExplorer
           site={selectedSite}
           observations={observations}
+          markerSelectionCount={markerSelectionCount}
           onCloseDetails={handleCloseDetails}
         />
       )}

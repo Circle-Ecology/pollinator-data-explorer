@@ -32,13 +32,22 @@ describe('ObservationExplorer', () => {
     },
   ]
 
-  it('shows the observation selector for a selected site', () => {
+  it('automatically opens the details panel for a selected site', () => {
     render(
       <ObservationExplorer site={site} observations={observations} />
     )
 
-    expect(screen.getByText('Observations at Test Pollinator Garden')).toBeTruthy()
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(
+      screen.getByText('Observations at Test Pollinator Garden')
+    ).toBeTruthy()
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Observation Details',
+    })
+
+    expect(dialog.textContent).toContain('Blue orchard bee')
+    expect(dialog.textContent).toContain('Test Pollinator Garden')
+    expect(dialog.textContent).toContain('July 24, 2026')
   })
 
   it('opens the details panel when an observation is selected', () => {
@@ -46,7 +55,9 @@ describe('ObservationExplorer', () => {
       <ObservationExplorer site={site} observations={observations} />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Blue orchard bee/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /Blue orchard bee/ })
+    )
 
     const dialog = screen.getByRole('dialog', {
       name: 'Observation Details',
@@ -61,8 +72,13 @@ describe('ObservationExplorer', () => {
       <ObservationExplorer site={site} observations={observations} />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Blue orchard bee/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Leafcutter bee/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /Blue orchard bee/ })
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Leafcutter bee/ })
+    )
 
     const dialog = screen.getByRole('dialog', {
       name: 'Observation Details',
@@ -77,10 +93,11 @@ describe('ObservationExplorer', () => {
       <ObservationExplorer site={site} observations={observations} />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Blue orchard bee/ }))
-    fireEvent.click(screen.getByRole('button', {
-      name: 'Close observation details',
-    }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Close observation details',
+      })
+    )
 
     expect(screen.queryByRole('dialog')).toBeNull()
   })
@@ -90,7 +107,6 @@ describe('ObservationExplorer', () => {
       <ObservationExplorer site={site} observations={observations} />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Blue orchard bee/ }))
     fireEvent.keyDown(document, { key: 'Escape' })
 
     expect(screen.queryByRole('dialog')).toBeNull()

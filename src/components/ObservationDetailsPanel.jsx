@@ -1,6 +1,6 @@
 
 import { useEffect, useId } from 'react'
-import { formatSurveyDate } from '../utils/formatSurveyDate'
+import { formatObservationDate } from '../utils/formatSurveyDate'
 import ObservationDetailField from './ObservationDetailField'
 import './ObservationDetailsPanel.css'
 
@@ -110,7 +110,7 @@ function ObservationDetailsPanel({
           label={label}
           value={
             key === 'surveyDate'
-              ? formatSurveyDate(observation[key])
+              ? formatObservationDate(observation[key])
               : observation[key]
           }
         />

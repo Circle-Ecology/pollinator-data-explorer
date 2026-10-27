@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ObservationSelector from './ObservationSelector'
 import ObservationDetailsPanel from './ObservationDetailsPanel'
 
@@ -10,20 +10,63 @@ function getObservationId(observation) {
 function ObservationExplorer({
   site,
   observations = [],
+  markerSelectionCount = 0,
   onCloseDetails,
 }) {
-  const [selectedObservationId, setSelectedObservationId] = useState(null)
+  const [selection, setSelection] = useState(null)
 
-  const selectedObservation = site
-    ? observations.find(
-        (observation) =>
-          observation.siteId === site.siteId &&
-          getObservationId(observation) === selectedObservationId
+  useEffect(() => {
+    setSelection(null)
+  }, [markerSelectionCount])
+
+  const siteObservations = site
+    ? observations.filter(
+        (observation) => observation.siteId === site.siteId
       )
+    : []
+
+  const isCurrentSite =
+    selection !== null &&
+    site !== null &&
+    selection.siteId === site.siteId
+
+  const selectedObservationId = isCurrentSite
+    ? selection.observationId
     : null
 
+  const activeObservationId =
+    isCurrentSite && selection.closed
+      ? null
+      : selectedObservationId ??
+        (siteObservations.length > 0
+          ? getObservationId(siteObservations[0])
+          : null)
+
+  const selectedObservation =
+    siteObservations.find(
+      (observation) =>
+        getObservationId(observation) === activeObservationId
+    ) ?? null
+
+  const handleSelectObservation = (observationId) => {
+    if (!site) return
+
+    setSelection({
+      siteId: site.siteId,
+      observationId,
+      closed: false,
+    })
+  }
+
   const handleClose = () => {
-    setSelectedObservationId(null)
+    if (!site) return
+
+    setSelection({
+      siteId: site.siteId,
+      observationId: null,
+      closed: true,
+    })
+
     onCloseDetails?.()
   }
 
@@ -32,8 +75,8 @@ function ObservationExplorer({
       <ObservationSelector
         site={site}
         observations={observations}
-        selectedObservationId={selectedObservationId}
-        onSelectObservation={setSelectedObservationId}
+        selectedObservationId={activeObservationId}
+        onSelectObservation={handleSelectObservation}
       />
 
       <ObservationDetailsPanel
