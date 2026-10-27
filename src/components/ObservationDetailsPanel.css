@@ -1,0 +1,67 @@
+
+.observation-details-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  text-align: left;
+  border: 1px solid #777;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.observation-details-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.observation-details-panel h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.observation-details-panel-close {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #777;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.observation-details-panel-close:hover {
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.observation-details-panel-close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.observation-details-panel p {
+  margin: 0.75rem 0;
+  line-height: 1.5;
+}
+
+.observation-details-panel strong {
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .observation-details-panel {
+    padding: 1rem;
+  }
+
+  .observation-details-panel h2 {
+    font-size: 1.25rem;
+  }
+
+  .observation-details-panel-header {
+    align-items: flex-start;
+  }
+}
