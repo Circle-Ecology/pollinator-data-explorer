@@ -2,6 +2,29 @@
 import { parseCoordinatePair } from './parseCoordinatePair.js'
 import { normalizeNaValue } from './normalizeNaValue.js'
 
+// Single source of truth for every "kept the first-seen record, only reported
+// the conflict" error code this module can emit, grouped by the entity type it
+// names and the error field that carries that entity's id (or null when the id
+// is a composite read directly from the error, e.g. DUPLICATE_SURVEY). A new
+// conflict code belongs in exactly one of these groups the same change that
+// adds the `errors.push({ code: ... })` call below - consumers (generatePublicDataset)
+// rely on this manifest, not a copy of it, to know which published entities are
+// unreliable rather than refusing the whole batch - see #45.
+export const CONFLICT_CODES = Object.freeze({
+  site: Object.freeze({
+    COORDINATE_CONFLICT: 'propertyName',
+    PUBLIC_VISIBILITY_CONFLICT: 'propertyName',
+    SITE_ATTRIBUTE_CONFLICT: 'entityId',
+  }),
+  tunnel: Object.freeze({
+    TUNNEL_SITE_CONFLICT: 'tunnelId',
+    TUNNEL_ATTRIBUTE_CONFLICT: 'entityId',
+  }),
+  survey: Object.freeze({
+    DUPLICATE_SURVEY: null,
+  }),
+})
+
 function normalizeNumber(raw) {
   const value = normalizeNaValue(raw)
 
@@ -97,7 +120,12 @@ export function parseExportRows(rows, importBatchId) {
     const state = normalizeNaValue(row['State'])
     const tunnelId = normalizeNaValue(row['Unique ID'])
     const surveyDate = normalizeNaValue(row['Observation Date'])
-    const isPublic = normalizeBoolean(row['Is Public'])
+    // A site defaults to public unless a row explicitly says otherwise - the
+    // whole dataset is meant to be public, and most rows will never have this
+    // column filled in. An explicit FALSE/NO still hides a site; two rows
+    // disagreeing (one blank/true, one explicit false) still conflicts below,
+    // since a blank value is resolved to true before being compared.
+    const isPublic = normalizeBoolean(row['Is Public']) ?? true
 
     const site = {
       siteId: propertyName,
@@ -133,12 +161,9 @@ export function parseExportRows(rows, importBatchId) {
         }
       }
 
-      // Keep the existing public visibility conflict error shape.
-      if (
-        existingSite.isPublic !== null &&
-        site.isPublic !== null &&
-        existingSite.isPublic !== site.isPublic
-      ) {
+      // isPublic is never null (see above), so this always compares real values -
+      // a blank row disagreeing with an explicit FALSE elsewhere still conflicts.
+      if (existingSite.isPublic !== site.isPublic) {
         const conflictKey = `PUBLIC_VISIBILITY_CONFLICT:${propertyName}`
 
         if (!reportedConflicts.has(conflictKey)) {
@@ -251,7 +276,11 @@ export function parseExportRows(rows, importBatchId) {
         manufacturedEmpty: normalizeBoolean(
           row['Manufactured Empty']
         ),
-        recordStatus: 'pending',
+        // Every submitted observation is treated as approved by default - no
+        // manual review step exists, and the whole dataset is meant to be
+        // public, mirroring the isPublic default above. 'pending'/'rejected'
+        // remain valid recordStatus values for a future approval workflow.
+        recordStatus: 'approved',
         importBatchId,
       }
 

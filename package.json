@@ -10,11 +10,14 @@
     "preview": "vite preview",
     "test": "vitest run",
     "export:json": "node scripts/csv-to-json.js",
-    "pipeline:fetch": "node --env-file-if-exists=.env scripts/fetch-sheet.js"
+    "pipeline:fetch": "node --env-file-if-exists=.env scripts/fetch-sheet.js",
+    "pipeline:publish": "node --env-file-if-exists=.env scripts/publish-sheet.js"
   },
   "dependencies": {
+    "leaflet": "^1.9.4",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

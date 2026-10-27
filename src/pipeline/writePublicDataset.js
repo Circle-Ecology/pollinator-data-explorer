@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { generatePublicDataset } from './generatePublicDataset.js'
+import { countConflictedEntities, generatePublicDataset } from './generatePublicDataset.js'
 
 const DEFAULT_OUTPUT_DIRECTORY = fileURLToPath(new URL('../../data/', import.meta.url))
 
@@ -26,6 +26,12 @@ export async function writePublicDataset(parsedResult, {
     siteCount: dataset.sites.length,
     // Count distinct tunnels actually represented by published surveys.
     tunnelCount: new Set(dataset.observations.map(survey => survey.tunnelId)).size,
+    // Rows US-08 excluded entirely (malformed coordinates, missing fields, etc.)
+    // plus entities generatePublicDataset itself excluded for a reported conflict
+    // (kept first-seen by US-08, unreliable to publish) - surfaced so a row-level
+    // problem is visible, not silently swallowed, now that generatePublicDataset
+    // no longer refuses the whole batch over it (#45).
+    excludedRowCount: parsedResult.invalidRows + countConflictedEntities(parsedResult),
     status: 'published',
   }
   // Serialize every candidate before filesystem operations; never serialize dataset.status.

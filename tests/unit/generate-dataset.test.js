@@ -145,13 +145,72 @@ describe('US-24 public projection', () => {
     expect(() => generatePublicDataset(input)).toThrow('Invalid normalized import')
   })
 
-  it('rejects known failed imports with a generic error that does not include diagnostics', () => {
+  it('does not refuse the whole batch over row-level errors elsewhere in the import (#45)', () => {
     const input = makePublicDataset()
-    input.errors = [{ message: 'synthetic private diagnostic' }]
-    expect(() => generatePublicDataset(input)).toThrow(/^Cannot generate from an invalid import$/)
-    input.errors = []
+    input.errors = [{ message: 'malformed coordinates on some other row' }]
     input.invalidRows = 1
-    expect(() => generatePublicDataset(input)).toThrow('Cannot generate from an invalid import')
+    input.isValid = false
+    const output = generatePublicDataset(input)
+    expect(output.sites).toHaveLength(1)
+    expect(output.observations).toHaveLength(1)
+  })
+
+  it.each([
+    ['COORDINATE_CONFLICT', { propertyName: 'S1' }],
+    ['PUBLIC_VISIBILITY_CONFLICT', { propertyName: 'S1' }],
+    ['SITE_ATTRIBUTE_CONFLICT', { entityId: 'S1' }],
+  ])('excludes a site named in a %s error rather than publish its arbitrarily first-seen value (#45 review)',
+    (code, idFields) => {
+      const input = makePublicDataset()
+      input.errors = [{ code, message: 'conflict on some other row', ...idFields }]
+      const output = generatePublicDataset(input)
+      expect(output.sites).toEqual([])
+      expect(output.observations).toEqual([])
+    })
+
+  it.each([
+    ['TUNNEL_SITE_CONFLICT', { tunnelId: 'T1' }],
+    ['TUNNEL_ATTRIBUTE_CONFLICT', { entityId: 'T1' }],
+  ])('excludes a tunnel named in a %s error rather than publish its arbitrarily first-seen value (#45 review)',
+    (code, idFields) => {
+      const input = makePublicDataset()
+      input.errors = [{ code, message: 'conflict on some other row', ...idFields }]
+      const output = generatePublicDataset(input)
+      expect(output.observations).toEqual([])
+    })
+
+  it('excludes a survey named in a DUPLICATE_SURVEY error rather than publish its arbitrarily first-seen value (#45 review)', () => {
+    const input = makePublicDataset()
+    input.errors = [{ code: 'DUPLICATE_SURVEY', message: 'conflict', tunnelId: 'T1', surveyDate: '2025-01-01' }]
+    const output = generatePublicDataset(input)
+    expect(output.observations).toEqual([])
+  })
+
+  it('still publishes an unrelated site/tunnel/survey when only a different entity has a conflict', () => {
+    const input = makePublicDataset()
+    input.sites.push({ ...input.sites[0], siteId: 'S2', propertyName: 'Second Site' })
+    input.errors = [{ code: 'PUBLIC_VISIBILITY_CONFLICT', message: 'conflict', propertyName: 'S2' }]
+    const output = generatePublicDataset(input)
+    expect(output.sites.map(s => s.siteId)).toEqual(['S1'])
+    expect(output.observations).toHaveLength(1)
+  })
+
+  it('does not exclude a site whose id happens to match a different entity type\'s conflict id (#45 review)', () => {
+    const input = makePublicDataset()
+    // A TUNNEL_ATTRIBUTE_CONFLICT naming entityId 'S1' must not be mistaken for a site conflict on 'S1'.
+    input.errors = [{ code: 'TUNNEL_ATTRIBUTE_CONFLICT', message: 'conflict', entityId: 'S1', field: 'sunExposure' }]
+    const output = generatePublicDataset(input)
+    expect(output.sites.map(s => s.siteId)).toEqual(['S1'])
+  })
+
+  it('classifies every conflict code parseExportRows can emit (#45 review)', async () => {
+    const { CONFLICT_CODES } = await import('../../src/us08/parseExportRows.js')
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync(new URL('../../src/us08/parseExportRows.js', import.meta.url), 'utf8')
+    const emittedCodes = new Set([...source.matchAll(/'([A-Z][A-Z0-9_]*)'/g)].map(match => match[1]))
+    emittedCodes.delete('MALFORMED_COORDINATES') // Excluded at parse time; not a kept-first-seen conflict.
+    const classifiedCodes = new Set(Object.keys(CONFLICT_CODES).flatMap(entity => Object.keys(CONFLICT_CODES[entity])))
+    expect(classifiedCodes).toEqual(emittedCodes)
   })
 
   it.each(['', null, {}, 123])('rejects invalid normalized identifiers %j', (id) => {
