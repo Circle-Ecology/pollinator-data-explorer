@@ -9,7 +9,10 @@ function EmbedPage() {
   const [markerSelectionCount, setMarkerSelectionCount] = useState(0)
   const [observations, setObservations] = useState([])
   const [observationsError, setObservationsError] = useState(false)
+
   const selectedMarkerRef = useRef(null)
+  const selectedSiteRef = useRef(null)
+  const mapContainerRef = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -29,16 +32,44 @@ function EmbedPage() {
 
   const handleSelectSite = (site, markerElement) => {
     selectedMarkerRef.current = markerElement
+    selectedSiteRef.current = site
+
     setSelectedSite(site)
     setMarkerSelectionCount((count) => count + 1)
   }
 
   const handleCloseDetails = () => {
-    selectedMarkerRef.current?.focus?.()
+    const previousMarker = selectedMarkerRef.current
+
+    if (
+      previousMarker?.isConnected &&
+      typeof previousMarker.focus === 'function'
+    ) {
+      previousMarker.focus()
+      return
+    }
+
+    const siteName = selectedSiteRef.current?.propertyName
+    const container = mapContainerRef.current
+
+    if (!siteName || !container) return
+
+    const markers = container.querySelectorAll(
+      '[role="button"][aria-label]'
+    )
+
+    const replacementMarker = Array.from(markers).find(
+      (marker) => marker.getAttribute('aria-label') === siteName
+    )
+
+    if (replacementMarker) {
+      replacementMarker.focus()
+      selectedMarkerRef.current = replacementMarker
+    }
   }
 
   return (
-    <div data-testid="explorer-map">
+    <div data-testid="explorer-map" ref={mapContainerRef}>
       <MapView onSelectSite={handleSelectSite} />
 
       {observationsError && (

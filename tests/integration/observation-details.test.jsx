@@ -19,6 +19,7 @@ vi.mock('react-leaflet', () => {
     return (
       <button
         type="button"
+        role="button"
         aria-label={siteName}
         onClick={(event) => {
           const markerElement = event.currentTarget
@@ -205,6 +206,49 @@ describe('US-15 observation details integration', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(marker).toHaveFocus()
+    })
+  })
+
+  it('restores focus to a replacement marker after the original is detached', async () => {
+    mockPublicData()
+    render(<EmbedPage />)
+
+    const originalMarker = await screen.findByRole('button', {
+      name: 'Test Pollinator Garden',
+    })
+
+    originalMarker.focus()
+    fireEvent.click(originalMarker)
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'Observation Details',
+      })
+    ).toBeInTheDocument()
+
+    const replacementMarker = originalMarker.cloneNode(true)
+
+    originalMarker.replaceWith(replacementMarker)
+
+    expect(originalMarker.isConnected).toBe(false)
+    expect(replacementMarker.isConnected).toBe(true)
+
+    const observationButton = screen.getByRole('button', {
+      name: /Blue orchard bee/,
+    })
+
+    observationButton.focus()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'Observation Details',
+        })
+      ).not.toBeInTheDocument()
+
+      expect(replacementMarker).toHaveFocus()
     })
   })
 

@@ -193,6 +193,33 @@ describe('ObservationDetailsPanel', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('displays Not recorded when site information is missing', () => {
+    const siteWithMissingFields = {
+      ...site,
+      propertyName: null,
+      city: null,
+      state: undefined,
+    }
+
+    const { container } = render(
+      <ObservationDetailsPanel
+        observation={observation}
+        site={siteWithMissingFields}
+      />
+    )
+
+    expect(container.textContent).toContain(
+      'Site name: Not recorded'
+    )
+    expect(container.textContent).toContain(
+      'City: Not recorded'
+    )
+    expect(container.textContent).toContain(
+      'State: Not recorded'
+    )
+    expect(container.textContent).not.toContain('undefined')
+  })
+
   it('displays public site information and coordinates', () => {
     const { container } = render(
       <ObservationDetailsPanel
