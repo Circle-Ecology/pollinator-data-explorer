@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from 'react'
 import ObservationSelector from './ObservationSelector'
 import ObservationDetailsPanel from './ObservationDetailsPanel'
+import SiteDetailsPanel from './SiteDetailsPanel'
 import { getObservationId } from '../utils/getObservationId'
 
 function ObservationExplorer({
@@ -12,8 +14,11 @@ function ObservationExplorer({
   const [selectedObservationId, setSelectedObservationId] =
     useState(undefined)
 
+  const [detailsClosed, setDetailsClosed] = useState(false)
+
   useEffect(() => {
     setSelectedObservationId(undefined)
+    setDetailsClosed(false)
   }, [markerSelectionCount])
 
   const siteObservations = site
@@ -37,15 +42,21 @@ function ObservationExplorer({
 
   const handleSelectObservation = (observationId) => {
     setSelectedObservationId(observationId)
+    setDetailsClosed(false)
   }
 
   const handleClose = () => {
     setSelectedObservationId(null)
+    setDetailsClosed(true)
     onCloseDetails?.()
   }
 
   return (
     <div className="observation-explorer">
+      {site && !detailsClosed && (
+        <SiteDetailsPanel site={site} />
+      )}
+
       <ObservationSelector
         site={site}
         observations={observations}
@@ -53,11 +64,13 @@ function ObservationExplorer({
         onSelectObservation={handleSelectObservation}
       />
 
-      <ObservationDetailsPanel
-        observation={selectedObservation}
-        site={site}
-        onClose={handleClose}
-      />
+      {!detailsClosed && (
+        <ObservationDetailsPanel
+          observation={selectedObservation}
+          site={site}
+          onClose={handleClose}
+        />
+      )}
     </div>
   )
 }

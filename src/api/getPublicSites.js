@@ -1,16 +1,23 @@
 
 import { fetchPublicObservations } from './fetchPublicObservations'
 
-// A tunnel counts as "occupied" when a published survey found something in it.
-// "Empty" and "Retired hole" are explicitly not occupancy; this is a documented
-// implementation choice (see US-14, #19), not a confirmed stakeholder decision.
-const OCCUPIED_STATUSES = new Set(['Complete', 'Active', 'Reopened'])
+// US-14 occupancy rules.
+// Preserve the existing behavior until the stakeholder confirms it.
+const OCCUPIED_STATUSES = new Set([
+  'Complete',
+  'Active',
+  'Reopened',
+])
 
 function countOccupiedTunnelsBySite(observations) {
   const occupiedTunnelsBySite = new Map()
 
   for (const observation of observations) {
     if (!OCCUPIED_STATUSES.has(observation.observationStatus)) {
+      continue
+    }
+
+    if (!observation.siteId || !observation.tunnelId) {
       continue
     }
 
@@ -27,14 +34,64 @@ function countOccupiedTunnelsBySite(observations) {
   return occupiedTunnelsBySite
 }
 
+// US-15: Calculate site statistics from published observations.
+function calculateSiteStats(observations) {
+  const statsBySite = new Map()
+
+  for (const observation of observations) {
+    const { siteId, tunnelId, surveyDate } = observation
+
+    if (!siteId) continue
+
+    if (!statsBySite.has(siteId)) {
+      statsBySite.set(siteId, {
+        tunnelIds: new Set(),
+        surveyDates: new Set(),
+      })
+    }
+
+    const stats = statsBySite.get(siteId)
+
+    if (tunnelId) {
+      stats.tunnelIds.add(tunnelId)
+    }
+
+    if (
+      typeof surveyDate === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(surveyDate)
+    ) {
+      stats.surveyDates.add(surveyDate)
+    }
+  }
+
+  return statsBySite
+}
+
 async function fetchJson(path) {
   const response = await fetch(path)
 
   if (!response.ok) {
-    throw new Error(`Request for ${path} failed: ${response.status}`)
+    throw new Error(
+      `Request for ${path} failed: ${response.status}`
+    )
   }
 
   return response.json()
+}
+
+function hasValidCoordinates(site) {
+  const { latitude, longitude } = site
+
+  return (
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  )
 }
 
 export async function getPublicSites() {
@@ -43,17 +100,46 @@ export async function getPublicSites() {
     fetchPublicObservations(),
   ])
 
-  const occupiedTunnelsBySite = countOccupiedTunnelsBySite(observations)
+  const occupiedTunnelsBySite =
+    countOccupiedTunnelsBySite(observations)
 
-  return sites
-    .filter(
-      (site) =>
-        Number.isFinite(site.latitude) &&
-        Number.isFinite(site.longitude)
-    )
-    .map((site) => ({
+  const statsBySite = calculateSiteStats(observations)
+
+  const validSites = []
+  const invalidSites = []
+
+  for (const site of sites) {
+    if (!hasValidCoordinates(site)) {
+      invalidSites.push({
+        siteId: site.siteId,
+        propertyName: site.propertyName,
+        latitude: site.latitude,
+        longitude: site.longitude,
+      })
+
+      continue
+    }
+
+    const stats = statsBySite.get(site.siteId)
+    const dates = [...(stats?.surveyDates ?? [])].sort()
+
+    validSites.push({
       ...site,
+      firstSurveyDate: dates[0] ?? null,
+      lastSurveyDate: dates.at(-1) ?? null,
+      surveyDateCount: dates.length,
+      tunnelCount: stats?.tunnelIds.size ?? 0,
       occupiedTunnelCount:
         occupiedTunnelsBySite.get(site.siteId)?.size ?? 0,
-    }))
+    })
+  }
+
+  if (invalidSites.length > 0) {
+    console.warn(
+      `${invalidSites.length} site(s) have invalid coordinates:`,
+      invalidSites
+    )
+  }
+
+  return validSites
 }
