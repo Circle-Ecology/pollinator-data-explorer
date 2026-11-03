@@ -1,9 +1,14 @@
+
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 import SiteDetailsPanel from '../../src/components/SiteDetailsPanel'
+
+afterEach(() => {
+  cleanup()
+})
 
 const site = {
   propertyName: 'Test Farm',
@@ -19,7 +24,7 @@ const site = {
 }
 
 describe('SiteDetailsPanel', () => {
-  it('renders the site details', () => {
+  it('renders the site details in a table', () => {
     render(<SiteDetailsPanel site={site} />)
 
     expect(
@@ -27,24 +32,38 @@ describe('SiteDetailsPanel', () => {
     ).toBeInTheDocument()
 
     expect(screen.getByText('Test Farm')).toBeInTheDocument()
-    expect(screen.getByText(/Longmont/)).toBeInTheDocument()
-    expect(screen.getByText(/CO/)).toBeInTheDocument()
-    expect(screen.getByText(/1520/)).toBeInTheDocument()
 
     expect(
-      screen.getByText(/Tunnel count/).parentElement
-    ).toHaveTextContent('Tunnel count: 10')
+      screen.getByRole('table', { name: 'Site information' })
+    ).toBeInTheDocument()
 
     expect(
-      screen.getByText(/Occupancy rate/).parentElement
-    ).toHaveTextContent('Occupancy rate: 40% (4 of 10)')
-
-    expect(screen.getByText(/July 24, 2025/)).toBeInTheDocument()
-    expect(screen.getByText(/July 24, 2026/)).toBeInTheDocument()
+      screen.getByRole('row', { name: /City/ })
+    ).toHaveTextContent('Longmont')
 
     expect(
-      screen.getByText(/Survey visits/).parentElement
-    ).toHaveTextContent('Survey visits: 2')
+      screen.getByRole('row', { name: /State/ })
+    ).toHaveTextContent('CO')
+
+    expect(
+      screen.getByRole('row', { name: /Elevation/ })
+    ).toHaveTextContent('1520 meters')
+
+    expect(
+      screen.getByRole('row', { name: /Tunnel count/ })
+    ).toHaveTextContent('10')
+
+    expect(
+      screen.getByRole('row', { name: /Occupancy rate/ })
+    ).toHaveTextContent('40% (4 of 10)')
+
+    expect(
+      screen.getByRole('row', { name: /Survey dates/ })
+    ).toHaveTextContent('July 24, 2025 - July 24, 2026')
+
+    expect(
+      screen.getByRole('row', { name: /Survey visits/ })
+    ).toHaveTextContent('2')
   })
 
   it('does not show private observer information or notes', () => {
@@ -68,5 +87,31 @@ describe('SiteDetailsPanel', () => {
     expect(
       screen.queryByText('Private Observer')
     ).not.toBeInTheDocument()
+  })
+
+  it('displays the site activity duration from survey dates', () => {
+    render(<SiteDetailsPanel site={site} />)
+
+    expect(
+      screen.getByRole('row', {
+        name: /Site activity duration/,
+      })
+    ).toHaveTextContent('366 calendar days')
+  })
+
+  it('shows Not recorded when survey dates are missing', () => {
+    const siteWithoutDates = {
+      ...site,
+      firstSurveyDate: null,
+      lastSurveyDate: null,
+    }
+
+    render(<SiteDetailsPanel site={siteWithoutDates} />)
+
+    expect(
+      screen.getByRole('row', {
+        name: /Site activity duration/,
+      })
+    ).toHaveTextContent('Not recorded')
   })
 })
