@@ -1,76 +1,59 @@
 
 import { useEffect, useState } from 'react'
-import ObservationSelector from './ObservationSelector'
-import ObservationDetailsPanel from './ObservationDetailsPanel'
 import SiteDetailsPanel from './SiteDetailsPanel'
-import { getObservationId } from '../utils/getObservationId'
 
 function ObservationExplorer({
   site,
-  observations = [],
   markerSelectionCount = 0,
   onCloseDetails,
 }) {
-  const [selectedObservationId, setSelectedObservationId] =
-    useState(undefined)
+  const [closed, setClosed] = useState(false)
+  const [closedSelectionCount, setClosedSelectionCount] = useState(null)
 
-  const [detailsClosed, setDetailsClosed] = useState(false)
+  const isClosed =
+    closed && closedSelectionCount === markerSelectionCount
 
   useEffect(() => {
-    setSelectedObservationId(undefined)
-    setDetailsClosed(false)
-  }, [markerSelectionCount])
+    if (!site || isClosed) return
 
-  const siteObservations = site
-    ? observations.filter(
-        (observation) => observation.siteId === site.siteId
-      )
-    : []
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setClosed(true)
+        setClosedSelectionCount(markerSelectionCount)
+        onCloseDetails?.()
+      }
+    }
 
-  const activeObservationId =
-    selectedObservationId === undefined
-      ? siteObservations.length > 0
-        ? getObservationId(siteObservations[0], 0)
-        : null
-      : selectedObservationId
+    document.addEventListener('keydown', handleKeyDown)
 
-  const selectedObservation =
-    siteObservations.find(
-      (observation, index) =>
-        getObservationId(observation, index) === activeObservationId
-    ) ?? null
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [site, isClosed, markerSelectionCount, onCloseDetails])
 
-  const handleSelectObservation = (observationId) => {
-    setSelectedObservationId(observationId)
-    setDetailsClosed(false)
+  if (!site || isClosed) {
+    return null
   }
 
   const handleClose = () => {
-    setSelectedObservationId(null)
-    setDetailsClosed(true)
+    setClosed(true)
+    setClosedSelectionCount(markerSelectionCount)
     onCloseDetails?.()
   }
 
   return (
     <div className="observation-explorer">
-      {site && !detailsClosed && (
-        <SiteDetailsPanel site={site} />
-      )}
+      <SiteDetailsPanel site={site} />
 
-      <ObservationSelector
-        site={site}
-        observations={observations}
-        selectedObservationId={activeObservationId}
-        onSelectObservation={handleSelectObservation}
-      />
-
-      {!detailsClosed && (
-        <ObservationDetailsPanel
-          observation={selectedObservation}
-          site={site}
-          onClose={handleClose}
-        />
-      )}
+      <button
+        type="button"
+        className="site-details-close"
+        aria-label="Close site details"
+        onClick={handleClose}
+      >
+        Close
+      </button>
     </div>
   )
 }

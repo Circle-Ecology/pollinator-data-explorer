@@ -2,8 +2,8 @@
  // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
 import SiteDetailsPanel from '../../src/components/SiteDetailsPanel'
 
 afterEach(() => {
@@ -11,262 +11,177 @@ afterEach(() => {
 })
 
 const site = {
+  siteId: 'site-1',
   propertyName: 'Test Farm',
   city: 'Longmont',
   state: 'CO',
+  latitude: 40.1672,
+  longitude: -105.1019,
   elevationMeters: 1520,
-  tunnelCount: 10,
-  occupiedTunnelCount: 4,
-  firstSurveyDate: '2025-07-24',
-  lastSurveyDate: '2026-07-24',
-  surveyDateCount: 2,
-  generalIds: ['Bee A', 'Bee B'],
-  tunnels: [],
 }
 
-describe('SiteDetailsPanel', () => {
-  it('renders the selected site summary', () => {
+describe('SiteDetailsPanel - US-15', () => {
+  it('renders the required site information', () => {
     render(<SiteDetailsPanel site={site} />)
 
-    expect(
-      screen.getByRole('dialog', {
-        name: 'Site details: Test Farm',
-      })
-    ).toBeInTheDocument()
-
-    expect(
-      screen.getByRole('heading', { name: 'Site Details' })
-    ).toBeInTheDocument()
-
-    expect(
-      screen.getByRole('heading', { name: 'Test Farm' })
-    ).toBeInTheDocument()
-
-    expect(screen.getByText('Location')).toBeInTheDocument()
-    expect(screen.getByText('Longmont, CO')).toBeInTheDocument()
-
-    expect(screen.getByText('Elevation')).toBeInTheDocument()
-    expect(screen.getByText('1520 meters')).toBeInTheDocument()
-
-    expect(screen.getByText('Total tunnels')).toBeInTheDocument()
-    expect(screen.getByText('10')).toBeInTheDocument()
-
-    expect(screen.getByText('General IDs')).toBeInTheDocument()
-    expect(screen.getByText('Bee A, Bee B')).toBeInTheDocument()
-
-    expect(screen.getByText('Total holes')).toBeInTheDocument()
-    expect(screen.getByText('Active duration')).toBeInTheDocument()
-  })
-
-  it('does not show private observer information or notes', () => {
-    const siteWithPrivateData = {
-      ...site,
-      observerName: 'Private Observer',
-      observerEmail: 'observer@circleecology.com',
-      notes: 'Private staff note',
-    }
-
-    render(<SiteDetailsPanel site={siteWithPrivateData} />)
-
-    expect(
-      screen.queryByText('Private Observer')
-    ).not.toBeInTheDocument()
-
-    expect(
-      screen.queryByText('observer@circleecology.com')
-    ).not.toBeInTheDocument()
-
-    expect(
-      screen.queryByText('Private staff note')
-    ).not.toBeInTheDocument()
-  })
-
-  it('displays the site activity duration from survey dates', () => {
-    render(<SiteDetailsPanel site={site} />)
-
-    expect(
-      screen.getByText('366 calendar days')
-    ).toBeInTheDocument()
-  })
-
-  it('shows Not recorded when survey dates are missing', () => {
-    const siteWithoutDates = {
-      ...site,
-      firstSurveyDate: null,
-      lastSurveyDate: null,
-    }
-
-    render(<SiteDetailsPanel site={siteWithoutDates} />)
-
-    expect(
-      screen.getByText('Active duration').parentElement
-    ).toHaveTextContent('Not recorded')
-  })
-
-  it('displays public tunnel information in one table', () => {
-    const siteWithTunnels = {
-      ...site,
-      tunnels: [
-        {
-          tunnelId: 'T1',
-          tunnelDiameterInches: 0.25,
-          preference: 'Wood',
-        },
-        {
-          tunnelId: 'T2',
-          tunnelDiameterInches: 0.375,
-          preference: 'Bamboo',
-        },
-      ],
-    }
-
-    render(<SiteDetailsPanel site={siteWithTunnels} />)
-
-    expect(
-      screen.getByRole('region', {
-        name: 'Tunnel Information',
-      })
-    ).toBeInTheDocument()
-
-    const table = screen.getByRole('table', {
-      name: 'Tunnel information table',
+    const dialog = screen.getByRole('dialog', {
+      name: 'Site details: Test Farm',
     })
 
-    expect(
-      within(table).getByRole('columnheader', {
-        name: 'Tunnel ID',
-      })
-    ).toBeInTheDocument()
-
-    expect(
-      within(table).getByRole('columnheader', {
-        name: 'Preference',
-      })
-    ).toBeInTheDocument()
-
-    expect(
-      within(table).getByRole('columnheader', {
-        name: 'Diameter',
-      })
-    ).toBeInTheDocument()
-
-    expect(
-      within(table).getByRole('row', { name: /T1/ })
-    ).toHaveTextContent('Wood')
-
-    expect(
-      within(table).getByRole('row', { name: /T1/ })
-    ).toHaveTextContent('0.25 inches')
-
-    expect(
-      within(table).getByRole('row', { name: /T2/ })
-    ).toHaveTextContent('Bamboo')
-
-    expect(
-      within(table).getByRole('row', { name: /T2/ })
-    ).toHaveTextContent('0.375 inches')
-
-    expect(
-      within(table).getAllByRole('row')
-    ).toHaveLength(3)
+    expect(dialog).toHaveAttribute('aria-modal', 'false')
+    expect(dialog).toHaveTextContent('Test Farm')
+    expect(dialog).toHaveTextContent('Longmont, CO')
+    expect(dialog).toHaveTextContent('40.1672')
+    expect(dialog).toHaveTextContent('-105.1019')
+    expect(dialog).toHaveTextContent('1520 meters')
   })
 
-  it('shows Not recorded for missing tunnel attributes', () => {
-    const siteWithMissingTunnelData = {
-      ...site,
-      tunnels: [
-        {
-          tunnelId: 'T3',
-          preference: null,
-          tunnelDiameterInches: null,
-        },
-      ],
-    }
-
-    render(<SiteDetailsPanel site={siteWithMissingTunnelData} />)
-
-    const table = screen.getByRole('table', {
-      name: 'Tunnel information table',
-    })
-
-    const tunnelRow = within(table).getByRole('row', {
-      name: /T3/,
-    })
-
-    const cells = within(tunnelRow).getAllByRole('cell')
-
-    expect(cells).toHaveLength(3)
-    expect(cells[0]).toHaveTextContent('T3')
-    expect(cells[1]).toHaveTextContent('Not recorded')
-    expect(cells[2]).toHaveTextContent('Not recorded')
-  })
-
-  it('shows an empty-state message when no tunnels exist', () => {
-    render(<SiteDetailsPanel site={{ ...site, tunnels: [] }} />)
-
-    const table = screen.getByRole('table', {
-      name: 'Tunnel information table',
-    })
-
-    expect(table).toBeInTheDocument()
-
-    expect(
-      within(table).getByText('No tunnel information recorded.')
-    ).toBeInTheDocument()
-  })
-
-  it('shows Not recorded when General IDs are missing', () => {
+  it('shows Not recorded for missing optional values', () => {
     render(
       <SiteDetailsPanel
-        site={{ ...site, generalIds: [] }}
+        site={{
+          ...site,
+          city: null,
+          state: null,
+          latitude: null,
+          longitude: null,
+          elevationMeters: null,
+        }}
       />
     )
 
+    const dialog = screen.getByRole('dialog')
+
     expect(
-      screen.getByText('General IDs').parentElement
-    ).toHaveTextContent('Not recorded')
+      screen.getAllByText('Not recorded').length
+    ).toBeGreaterThanOrEqual(4)
+
+    expect(dialog).not.toHaveTextContent('undefined')
+    expect(dialog).not.toHaveTextContent('null')
   })
 
-  it('displays a supplied hole count', () => {
+  it('does not expose staff-only fields', () => {
     render(
       <SiteDetailsPanel
-        site={{ ...site, holeCount: 25 }}
+        site={{
+          ...site,
+          observerName: 'Private Observer',
+          observerEmail: 'private@example.com',
+          notes: 'Confidential staff note',
+        }}
       />
     )
 
-    expect(screen.getByText('Total holes')).toBeInTheDocument()
-    expect(screen.getByText('25')).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog).not.toHaveTextContent('Private Observer')
+    expect(dialog).not.toHaveTextContent('private@example.com')
+    expect(dialog).not.toHaveTextContent('Confidential staff note')
   })
 
-  it('does not display another sites information', () => {
-    const selectedSite = {
-      ...site,
-      propertyName: 'Selected Farm',
-      generalIds: ['Bee C'],
-      tunnels: [
-        {
-          tunnelId: 'T9',
-          preference: 'Wood',
-          tunnelDiameterInches: 0.5,
-        },
-      ],
-    }
+  it('shows the tunnel count without exposing individual tunnel data', () => {
+    render(
+      <SiteDetailsPanel
+        site={{
+          ...site,
+          generalIds: ['Bee A'],
+          tunnelCount: 10,
+          holeCount: 25,
+          tunnels: [{ tunnelId: 'T1' }],
+        }}
+      />
+    )
 
-    render(<SiteDetailsPanel site={selectedSite} />)
+    const dialog = screen.getByRole('dialog')
 
-    expect(screen.getByText('Selected Farm')).toBeInTheDocument()
-    expect(screen.getByText('Bee C')).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('Tunnel count: 10')
+    expect(dialog).not.toHaveTextContent('Bee A')
+    expect(dialog).not.toHaveTextContent('Tunnel ID')
+    expect(dialog).not.toHaveTextContent('T1')
+    expect(dialog).not.toHaveTextContent('Total holes')
+  })
 
-    expect(
-      screen.getByRole('row', { name: /T9/ })
-    ).toBeInTheDocument()
+  it('updates when the selected site changes', () => {
+    const { rerender } = render(
+      <SiteDetailsPanel site={site} />
+    )
 
-    expect(
-      screen.queryByText('Test Farm')
-    ).not.toBeInTheDocument()
+    rerender(
+      <SiteDetailsPanel
+        site={{
+          ...site,
+          siteId: 'site-2',
+          propertyName: 'Second Farm',
+          city: 'Boulder',
+        }}
+      />
+    )
 
-    expect(
-      screen.queryByText('Bee A, Bee B')
-    ).not.toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', {
+      name: 'Site details: Second Farm',
+    })
+
+    expect(dialog).toHaveTextContent('Boulder, CO')
+    expect(dialog).not.toHaveTextContent('Test Farm')
+  })
+
+  it('preserves zero as a valid coordinate and elevation', () => {
+    render(
+      <SiteDetailsPanel
+        site={{
+          ...site,
+          latitude: 0,
+          longitude: 0,
+          elevationMeters: 0,
+        }}
+      />
+    )
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog).toHaveTextContent('Latitude: 0')
+    expect(dialog).toHaveTextContent('Longitude: 0')
+    expect(dialog).toHaveTextContent('Elevation: 0 meters')
+  })
+
+  it('displays survey statistics and occupancy rate', () => {
+    render(
+      <SiteDetailsPanel
+        site={{
+          ...site,
+          firstSurveyDate: '2023-05-07',
+          lastSurveyDate: '2026-10-01',
+          surveyDateCount: 32,
+          tunnelCount: 449,
+          occupiedTunnelCount: 170,
+        }}
+      />
+    )
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog).toHaveTextContent('Survey visits: 32')
+    expect(dialog).toHaveTextContent('Tunnel count: 449')
+    expect(dialog).toHaveTextContent(
+      'Occupancy rate: 38% (170 of 449)'
+    )
+    expect(dialog).toHaveTextContent('May 7, 2023')
+    expect(dialog).toHaveTextContent('October 1, 2026')
+  })
+
+  it('does not display unsupported occupant information', () => {
+    render(
+      <SiteDetailsPanel
+        site={{ ...site, taxaCounts: [] }}
+      />
+    )
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog).not.toHaveTextContent(
+      'No identified occupants recorded.'
+    )
+
+    expect(dialog).not.toHaveTextContent('Top taxa')
   })
 })
