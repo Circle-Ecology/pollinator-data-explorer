@@ -67,6 +67,7 @@ function calculateSiteStats(observations) {
   return statsBySite
 }
 
+// Load public JSON data.
 async function fetchJson(path) {
   const response = await fetch(path)
 
@@ -79,6 +80,7 @@ async function fetchJson(path) {
   return response.json()
 }
 
+// Validate site coordinates before displaying map markers.
 function hasValidCoordinates(site) {
   const { latitude, longitude } = site
 
@@ -95,14 +97,31 @@ function hasValidCoordinates(site) {
 }
 
 export async function getPublicSites() {
-  const [sites, observations] = await Promise.all([
+  // Load sites, observations, and public tunnel records.
+  const [sites, observations, tunnels] = await Promise.all([
     fetchJson('/data/sites.json'),
     fetchPublicObservations(),
+    fetchJson('/data/tunnels.json'),
   ])
 
+  // US-15: Group tunnel records by site.
+  const tunnelsBySite = new Map()
+
+  for (const tunnel of tunnels) {
+    if (!tunnel.siteId) continue
+
+    if (!tunnelsBySite.has(tunnel.siteId)) {
+      tunnelsBySite.set(tunnel.siteId, [])
+    }
+
+    tunnelsBySite.get(tunnel.siteId).push(tunnel)
+  }
+
+  // US-14: Preserve existing occupancy calculations.
   const occupiedTunnelsBySite =
     countOccupiedTunnelsBySite(observations)
 
+  // US-15: Preserve existing survey statistics.
   const statsBySite = calculateSiteStats(observations)
 
   const validSites = []
@@ -125,10 +144,17 @@ export async function getPublicSites() {
 
     validSites.push({
       ...site,
+
+      // US-15: Public tunnel details for this site.
+      tunnels: tunnelsBySite.get(site.siteId) ?? [],
+
+      // Existing site statistics.
       firstSurveyDate: dates[0] ?? null,
       lastSurveyDate: dates.at(-1) ?? null,
       surveyDateCount: dates.length,
       tunnelCount: stats?.tunnelIds.size ?? 0,
+
+      // US-14: Existing occupancy count.
       occupiedTunnelCount:
         occupiedTunnelsBySite.get(site.siteId)?.size ?? 0,
     })

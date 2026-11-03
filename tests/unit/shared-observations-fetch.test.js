@@ -26,6 +26,19 @@ describe('shared public observations fetching', () => {
       },
     ]
 
+    // US-15: Public tunnel data.
+    const tunnels = [
+      {
+        siteId: 'site-1',
+        tunnelId: 'tunnel-1',
+        direction: 'North',
+        installationYear: 2024,
+        tunnelDiameterInches: 0.25,
+        substrateType: 'Wood',
+        sunExposure: 'Full sun',
+      },
+    ]
+
     const fetchMock = vi.fn(async (path) => {
       if (path === '/data/sites.json') {
         return {
@@ -41,6 +54,14 @@ describe('shared public observations fetching', () => {
         }
       }
 
+      // US-15: Handle the new public tunnel dataset.
+      if (path === '/data/tunnels.json') {
+        return {
+          ok: true,
+          json: async () => tunnels,
+        }
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -51,9 +72,16 @@ describe('shared public observations fetching', () => {
       getPublicObservations(),
     ])
 
+    // Preserve existing US-14 occupancy behavior.
     expect(loadedSites[0].occupiedTunnelCount).toBe(1)
+
+    // Verify public observations are returned correctly.
     expect(loadedObservations).toEqual(observations)
 
+    // US-15: Verify tunnel records are associated with the site.
+    expect(loadedSites[0].tunnels).toEqual(tunnels)
+
+    // Confirm simultaneous requests share one observations fetch.
     const observationRequests = fetchMock.mock.calls.filter(
       ([path]) => path === '/data/observations.json'
     )

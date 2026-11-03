@@ -1,3 +1,4 @@
+
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,35 +18,50 @@ export async function writePublicDataset(parsedResult, {
 } = {}) {
   const dataset = generatePublicDataset(parsedResult)
   const timestamp = now()
+
   if (!(timestamp instanceof Date) || !Number.isFinite(timestamp.getTime())) {
     throw new TypeError('Invalid generation timestamp')
   }
+
   const metadata = {
     generatedAt: timestamp.toISOString(),
     sourceRowCount: parsedResult.totalRows,
     siteCount: dataset.sites.length,
+
     // Count distinct tunnels actually represented by published surveys.
-    tunnelCount: new Set(dataset.observations.map(survey => survey.tunnelId)).size,
-    // Rows US-08 excluded entirely (malformed coordinates, missing fields, etc.)
-    // plus entities generatePublicDataset itself excluded for a reported conflict
-    // (kept first-seen by US-08, unreliable to publish) - surfaced so a row-level
-    // problem is visible, not silently swallowed, now that generatePublicDataset
-    // no longer refuses the whole batch over it (#45).
-    excludedRowCount: parsedResult.invalidRows + countConflictedEntities(parsedResult),
+    tunnelCount: new Set(
+      dataset.observations.map(survey => survey.tunnelId)
+    ).size,
+
+    // Include invalid rows and entities excluded because of conflicts.
+    excludedRowCount:
+      parsedResult.invalidRows + countConflictedEntities(parsedResult),
+
     status: 'published',
   }
-  // Serialize every candidate before filesystem operations; never serialize dataset.status.
+
+  // Serialize public data only. Never serialize dataset.status.
   const files = [
     ['sites.json', JSON.stringify(dataset.sites)],
+    ['tunnels.json', JSON.stringify(dataset.tunnels)],
     ['observations.json', JSON.stringify(dataset.observations)],
     ['dataset-status.json', JSON.stringify(metadata)],
   ]
+
   try {
     await mkdir(outputDirectory, { recursive: true })
-    for (const [name, contents] of files) await writeFile(join(outputDirectory, name), contents, 'utf8')
+
+    for (const [name, contents] of files) {
+      await writeFile(
+        join(outputDirectory, name),
+        contents,
+        'utf8'
+      )
+    }
   } catch {
-    // Do not include source records, diagnostics, or filesystem details in the error.
+    // Do not expose source records or filesystem details.
     throw new Error('Unable to write public dataset')
   }
+
   return metadata
 }

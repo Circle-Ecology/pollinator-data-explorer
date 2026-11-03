@@ -81,6 +81,7 @@ function SiteDetailsPanel({ site }) {
     >
       <h2>{site.propertyName}</h2>
 
+      {/* Existing site information */}
       <div style={{ overflowX: 'auto' }}>
         <table
           aria-label="Site information"
@@ -117,6 +118,75 @@ function SiteDetailsPanel({ site }) {
         </table>
       </div>
 
+      {/* US-15: Public tunnel details */}
+      {Array.isArray(site.tunnels) && site.tunnels.length > 0 && (
+        <section aria-label="Tunnel details">
+          <h3>Tunnel Details</h3>
+
+          {site.tunnels.map((tunnel, index) => {
+            const tunnelRows = [
+              ['Direction', tunnel.direction],
+              ['Diameter (inches)', tunnel.tunnelDiameterInches],
+              ['Installation year', tunnel.installationYear],
+              ['Substrate type', tunnel.substrateType],
+              ['Sun exposure', tunnel.sunExposure],
+              [
+                'Coarse woody debris type',
+                tunnel.coarseWoodyDebrisType,
+              ],
+            ]
+
+            return (
+              <div
+                key={`${tunnel.tunnelId}-${index}`}
+                style={{ marginBottom: '20px' }}
+              >
+                <h4>
+                  Tunnel {formatValue(tunnel.tunnelId)}
+                </h4>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table
+                    aria-label={`Tunnel ${formatValue(tunnel.tunnelId)} information`}
+                    style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <tbody>
+                      {tunnelRows.map(([label, value]) => (
+                        <tr key={label}>
+                          <th
+                            scope="row"
+                            style={{
+                              padding: '10px',
+                              borderBottom: '1px solid #ddd',
+                              verticalAlign: 'top',
+                            }}
+                          >
+                            {label}:
+                          </th>
+                          <td
+                            style={{
+                              padding: '10px',
+                              borderBottom: '1px solid #ddd',
+                            }}
+                          >
+                            {formatValue(value)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
+        </section>
+      )}
+
+      {/* Existing taxa breakdown */}
       <TaxaBreakdownList taxaCounts={site.taxaCounts || []} />
     </div>
   )
