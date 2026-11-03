@@ -39,7 +39,7 @@ function calculateSiteStats(observations) {
   const statsBySite = new Map()
 
   for (const observation of observations) {
-    const { siteId, tunnelId, surveyDate } = observation
+    const { siteId, tunnelId, surveyDate, generalId } = observation
 
     if (!siteId) continue
 
@@ -47,6 +47,7 @@ function calculateSiteStats(observations) {
       statsBySite.set(siteId, {
         tunnelIds: new Set(),
         surveyDates: new Set(),
+        generalIds: new Set(),
       })
     }
 
@@ -61,6 +62,13 @@ function calculateSiteStats(observations) {
       /^\d{4}-\d{2}-\d{2}$/.test(surveyDate)
     ) {
       stats.surveyDates.add(surveyDate)
+    }
+
+    if (
+      typeof generalId === 'string' &&
+      generalId.trim() !== ''
+    ) {
+      stats.generalIds.add(generalId.trim())
     }
   }
 
@@ -121,7 +129,7 @@ export async function getPublicSites() {
   const occupiedTunnelsBySite =
     countOccupiedTunnelsBySite(observations)
 
-  // US-15: Preserve existing survey statistics.
+  // US-15: Calculate survey statistics and General IDs.
   const statsBySite = calculateSiteStats(observations)
 
   const validSites = []
@@ -142,16 +150,28 @@ export async function getPublicSites() {
     const stats = statsBySite.get(site.siteId)
     const dates = [...(stats?.surveyDates ?? [])].sort()
 
+    const generalIds = [
+      ...(stats?.generalIds ?? []),
+    ].sort()
+
+    const siteTunnels =
+      tunnelsBySite.get(site.siteId) ?? []
+
     validSites.push({
       ...site,
 
       // US-15: Public tunnel details for this site.
-      tunnels: tunnelsBySite.get(site.siteId) ?? [],
+      tunnels: siteTunnels,
+
+      // US-15: Unique General IDs for this site.
+      generalIds,
 
       // Existing site statistics.
       firstSurveyDate: dates[0] ?? null,
       lastSurveyDate: dates.at(-1) ?? null,
       surveyDateCount: dates.length,
+
+      // Preserve the existing surveyed-tunnel count.
       tunnelCount: stats?.tunnelIds.size ?? 0,
 
       // US-14: Existing occupancy count.
