@@ -1,0 +1,36 @@
+name: Scheduled Netlify deploy
+
+# Once a day, ask Netlify to rebuild the site. The Netlify build runs
+# `npm run pipeline:publish`, which pulls the published Google Sheet, validates
+# it and regenerates the public dataset, so sheet edits go live without anyone
+# clicking "Trigger deploy". If the sheet data is bad the build fails and the
+# previous deploy stays live (see netlify.toml).
+#
+# Setup: create a build hook in Netlify (Site configuration > Build & deploy >
+# Build hooks) and save its URL as the repository secret NETLIFY_BUILD_HOOK_URL.
+
+on:
+  schedule:
+    # 10:17 UTC = 3:17 AM MST / 4:17 AM MDT. GitHub cron is always UTC.
+    - cron: '17 10 * * *'
+  workflow_dispatch: # lets anyone run it by hand from the Actions tab
+
+permissions: {}
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call Netlify build hook
+        env:
+          HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "::error::NETLIFY_BUILD_HOOK_URL secret is not set. See the setup note at the top of this file."
+            exit 1
+          fi
+          curl --fail --silent --show-error --retry 3 --retry-delay 10 \
+            -X POST -d '{}' \
+            "$HOOK_URL?trigger_title=Scheduled+daily+sheet+refresh"
+          echo "Netlify build triggered."
