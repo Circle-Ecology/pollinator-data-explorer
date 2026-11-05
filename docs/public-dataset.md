@@ -213,3 +213,18 @@ $env:TMP = $auditTemp
   demonstration is synthetic, not evidence of current production authorization.
 - No US-25 preservation, US-26 deployment, US-27 retries, or frontend changes are
   included. Existing lint/CI and Node deployment-version concerns remain separate.
+
+## US-28 dashboard figures
+
+`writePublicDataset` also writes `dashboard.json`, built by `generateDashboardDataset`
+(`src/pipeline/generateDashboardDataset.js`) from the same public projection plus each
+tunnel's `coarseWoodyDebrisType` (the cavity level). It has the same `generatedAt` as
+`dataset-status.json` and contains only aggregates, never observer names, emails or notes.
+
+Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every row carries
+its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
+exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, `sealed-nest-rate-by-level`.
+
+The metric rules (occupied, excluded, occupant run, sealed nest) each live in one helper in
+that module. Year-level occupancy is confirmed against Circle Ecology's deck; occupant runs
+and the sealed nest rate are still assumptions pending a deck check.
