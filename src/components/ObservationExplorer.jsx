@@ -7,11 +7,11 @@ function ObservationExplorer({
   markerSelectionCount = 0,
   onCloseDetails,
 }) {
-  const [closed, setClosed] = useState(false)
-  const [closedSelectionCount, setClosedSelectionCount] = useState(null)
+  // The selection count at which the user closed the panel. Selecting a marker
+  // bumps the count, which reopens the panel (even for the same site).
+  const [closedAtSelection, setClosedAtSelection] = useState(null)
 
-  const isClosed =
-    closed && closedSelectionCount === markerSelectionCount
+  const isClosed = closedAtSelection === markerSelectionCount
 
   useEffect(() => {
     if (!site || isClosed) return
@@ -19,8 +19,7 @@ function ObservationExplorer({
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        setClosed(true)
-        setClosedSelectionCount(markerSelectionCount)
+        setClosedAtSelection(markerSelectionCount)
         onCloseDetails?.()
       }
     }
@@ -37,8 +36,7 @@ function ObservationExplorer({
   }
 
   const handleClose = () => {
-    setClosed(true)
-    setClosedSelectionCount(markerSelectionCount)
+    setClosedAtSelection(markerSelectionCount)
     onCloseDetails?.()
   }
 

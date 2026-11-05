@@ -1,4 +1,3 @@
-
 import { Circle, CircleMarker, Popup } from 'react-leaflet'
 import { computeMarkerRadiusMeters, computeMarkerSizePx } from '../utils/markerSize'
 

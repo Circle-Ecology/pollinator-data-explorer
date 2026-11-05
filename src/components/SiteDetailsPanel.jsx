@@ -1,5 +1,5 @@
-
 import { formatSurveyDate } from '../utils/formatSurveyDate'
+import { formatOccupancyRate } from '../utils/formatOccupancyRate'
 import SiteStatRow from './SiteStatRow'
 import './SiteDetailsPanel.css'
 
@@ -37,16 +37,6 @@ function formatActivityDuration(firstDate, lastDate) {
 }
 
 function SiteDetailsPanel({ site }) {
-  const total = site.tunnelCount
-  const occupied = site.occupiedTunnelCount
-
-  const occupancyRate =
-    Number.isFinite(total) &&
-    Number.isFinite(occupied) &&
-    total > 0
-      ? `${Math.round((occupied / total) * 100)}% (${occupied} of ${total})`
-      : 'Not recorded'
-
   const surveyDates =
     site.firstSurveyDate && site.lastSurveyDate
       ? `${formatSurveyDate(site.firstSurveyDate)} - ${formatSurveyDate(site.lastSurveyDate)}`
@@ -100,7 +90,10 @@ function SiteDetailsPanel({ site }) {
 
         <SiteStatRow
           label="Occupancy rate"
-          value={occupancyRate}
+          value={formatOccupancyRate(
+            site.occupiedTunnelCount,
+            site.tunnelCount
+          )}
         />
       </div>
 

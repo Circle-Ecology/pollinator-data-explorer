@@ -1,4 +1,3 @@
-
 export function formatSurveyDate(date) {
   if (typeof date !== 'string') {
     return 'Not recorded'
@@ -29,8 +28,4 @@ export function formatSurveyDate(date) {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-export function formatObservationDate(observationDate) {
-  return formatSurveyDate(observationDate)
 }

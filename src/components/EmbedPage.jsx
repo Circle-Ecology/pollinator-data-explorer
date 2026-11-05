@@ -1,9 +1,8 @@
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import './EmbedPage.css'
 import MapView from './MapView'
 import ObservationExplorer from './ObservationExplorer'
-import { getPublicObservations } from '../api/getPublicObservations'
 
 // The embed is a scrollable dashboard page, not a map-only viewport: the map is
 // a bounded section at the top (see MapView), and the data-visualization
@@ -15,28 +14,10 @@ import { getPublicObservations } from '../api/getPublicObservations'
 function EmbedPage() {
   const [selectedSite, setSelectedSite] = useState(null)
   const [markerSelectionCount, setMarkerSelectionCount] = useState(0)
-  const [observations, setObservations] = useState([])
-  const [observationsError, setObservationsError] = useState(false)
 
   const selectedMarkerRef = useRef(null)
   const selectedSiteRef = useRef(null)
   const mapContainerRef = useRef(null)
-
-  useEffect(() => {
-    let active = true
-
-    getPublicObservations()
-      .then((data) => {
-        if (active) setObservations(data)
-      })
-      .catch(() => {
-        if (active) setObservationsError(true)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [])
 
   const handleSelectSite = (site, markerElement) => {
     selectedMarkerRef.current = markerElement
@@ -46,7 +27,9 @@ function EmbedPage() {
     setMarkerSelectionCount((count) => count + 1)
   }
 
-  const handleCloseDetails = () => {
+  // Stable identity: ObservationExplorer re-subscribes its Escape listener
+  // whenever this changes.
+  const handleCloseDetails = useCallback(() => {
     const previousMarker = selectedMarkerRef.current
 
     if (
@@ -74,7 +57,7 @@ function EmbedPage() {
       replacementMarker.focus()
       selectedMarkerRef.current = replacementMarker
     }
-  }
+  }, [])
 
   return (
     <div
@@ -84,20 +67,11 @@ function EmbedPage() {
     >
       <MapView onSelectSite={handleSelectSite} />
 
-      {observationsError && (
-        <p role="status">
-          Observation details are temporarily unavailable.
-        </p>
-      )}
-
-      {!observationsError && (
-        <ObservationExplorer
-          site={selectedSite}
-          observations={observations}
-          markerSelectionCount={markerSelectionCount}
-          onCloseDetails={handleCloseDetails}
-        />
-      )}
+      <ObservationExplorer
+        site={selectedSite}
+        markerSelectionCount={markerSelectionCount}
+        onCloseDetails={handleCloseDetails}
+      />
 
       {/* Data visualization dashboard mounts here, below the map, once that story lands */}
     </div>
