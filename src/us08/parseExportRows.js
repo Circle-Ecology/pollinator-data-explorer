@@ -102,7 +102,30 @@ function resolveCoordinates(row, errors) {
   }
 }
 
+// A site is identified by its Property Name, except when one Property Name
+// spans several site blocks ("Block # (site)"): those are separate sites with
+// their own coordinates, so each becomes "<name> (Site <block>)". Decided over
+// the whole batch so it does not depend on row order. A row with no block in
+// such a property keeps the bare name.
+function blocksByProperty(rows) {
+  const blocks = new Map()
+  for (const row of rows) {
+    const name = normalizeNaValue(row['Property Name'])
+    const block = normalizeNaValue(row['Block # (site)'])
+    if (name === null || block === null) continue
+    if (!blocks.has(name)) blocks.set(name, new Set())
+    blocks.get(name).add(String(block))
+  }
+  return blocks
+}
+
+function siteIdFor(name, block, blocks) {
+  if (name === null || block === null || (blocks.get(name)?.size ?? 0) < 2) return name
+  return `${name} (Site ${block})`
+}
+
 export function parseExportRows(rows, importBatchId) {
+  const blocks = blocksByProperty(rows)
   const sitesByName = new Map()
   const tunnelsById = new Map()
   const surveysByKey = new Map()
@@ -115,7 +138,11 @@ export function parseExportRows(rows, importBatchId) {
     // Skip malformed coordinates without crashing.
     if (coordinates === null) continue
 
-    const propertyName = normalizeNaValue(row['Property Name'])
+    const propertyName = siteIdFor(
+      normalizeNaValue(row['Property Name']),
+      normalizeNaValue(row['Block # (site)']),
+      blocks
+    )
     const city = normalizeNaValue(row['City'])
     const state = normalizeNaValue(row['State'])
     const tunnelId = normalizeNaValue(row['Unique ID'])
