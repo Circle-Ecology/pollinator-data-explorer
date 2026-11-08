@@ -15,6 +15,10 @@
 //    observation and a new one starts on Reopened -> Active or Complete, or when
 //    a recorded Plug Composition changes. Its type is the first one recorded.
 //  - Runs with no recorded type are not counted.
+// CONFIRMED against the deck's occupants by General ID (2023, 2025, 2026): the
+// genus label is the run's General ID, except that Spider/Ant(s)/Pill Bug/Other
+// occupants are all "Other", a Bee or Wasp whose General ID is "Other" is
+// "Other (Bee)"/"Other (Wasp)", and runs with no General ID are not counted.
 //  Matches the deck on 65 of 76 site/year/type cells; the rest are 2025 Other
 //  (tracked outside the sheet export) and small 2023 differences. See
 //  docs/public-dataset.md.
@@ -38,8 +42,8 @@ export function classifyCavityOccupancy(observations) {
   return 'empty'
 }
 
-// The occupant runs in one cavity's observations, each { occupantType } (null when
-// no type was ever recorded in the run).
+// The occupant runs in one cavity's observations, each { occupantType, generalId }
+// (null when none was ever recorded in the run; both are the first recorded).
 export function listOccupantRuns(observations) {
   const runs = []
   let previousStatus = null
@@ -56,13 +60,14 @@ export function listOccupantRuns(observations) {
     const plugChanged = o.plugComposition != null && plug != null && o.plugComposition !== plug
     const resealed = previousStatus === 'Reopened' && (status === 'Active' || status === 'Complete')
     if (!open || resealed || plugChanged) {
-      runs.push({ occupantType: null })
+      runs.push({ occupantType: null, generalId: null })
       plug = null
       open = true
     }
     const run = runs[runs.length - 1]
     if (o.plugComposition != null) plug = o.plugComposition
     if (run.occupantType === null && o.occupantType != null) run.occupantType = o.occupantType
+    if (run.generalId === null && o.generalId != null) run.generalId = o.generalId
     previousStatus = status
   }
   return runs
@@ -118,6 +123,9 @@ export const CHART_IDS = {
   occupantsBySite: 'occupants-by-site',
   occupantsBySiteType: 'occupants-by-site-type',
   otherBySiteType: 'other-by-site-type',
+  occupantsByTypeGenus: 'occupants-by-type-genus',
+  occupantsByGenus: 'occupants-by-genus',
+  multiGenusCavitiesBySite: 'multi-genus-cavities-by-site',
   sealedRateByCwd: 'sealed-rate-by-cwd',
   sealedRateBySubstrate: 'sealed-rate-by-substrate',
   sealedRateByDirection: 'sealed-rate-by-direction',
@@ -159,6 +167,16 @@ export const OCCUPANT_TYPES = ['Bee', 'Wasp', 'Unknown', 'Other']
 export const OTHER_OCCUPANT_TYPES = ['Spider', 'Ant(s)', 'Pill Bug', 'Other']
 const occupantCategory = type => (['Bee', 'Wasp', 'Unknown'].includes(type) ? type : 'Other')
 const otherCategory = type => (['Spider', 'Ant(s)', 'Pill Bug'].includes(type) ? type : 'Other')
+
+// The deck's General ID label for an occupant run, or null when it has none.
+function genusLabel({ occupantType, generalId }) {
+  if (occupantType === null) return null
+  if (occupantCategory(occupantType) === 'Other') return 'Other'
+  if (generalId === null) return null
+  return generalId === 'Other' ? `Other (${occupantType})` : generalId
+}
+
+const byCountThenName = (a, b) => b.total - a.total || compareGroups(a.generalId, b.generalId)
 
 function zeroCounts(keys) {
   return Object.fromEntries(keys.map(key => [key, 0]))
@@ -205,6 +223,9 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     [CHART_IDS.occupantsBySite]: {},
     [CHART_IDS.occupantsBySiteType]: {},
     [CHART_IDS.otherBySiteType]: {},
+    [CHART_IDS.occupantsByTypeGenus]: {},
+    [CHART_IDS.occupantsByGenus]: {},
+    [CHART_IDS.multiGenusCavitiesBySite]: {},
     ...Object.fromEntries(Object.keys(SEALED_RATE_FACTORS).map(id => [id, {}])),
   }
   for (const year of years) {
@@ -243,6 +264,38 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
         for (const runs of others) for (const run of runs) { counts[otherCategory(run.occupantType)] += 1; counts.total += 1 }
         return { siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...counts }
       })
+
+    // Genus charts: every occupant run with a General ID label, by type and overall.
+    const byGenus = new Map()
+    for (const observations of allObservations) {
+      for (const run of listOccupantRuns(observations)) {
+        const generalId = genusLabel(run)
+        if (generalId === null) continue
+        const entry = byGenus.get(generalId) ?? { generalId, ...zeroCounts(OCCUPANT_TYPES), total: 0 }
+        entry[occupantCategory(run.occupantType)] += 1
+        entry.total += 1
+        byGenus.set(generalId, entry)
+      }
+    }
+    const genera = [...byGenus.values()].sort(byCountThenName)
+    charts[CHART_IDS.occupantsByGenus][year] = genera
+    charts[CHART_IDS.occupantsByTypeGenus][year] = OCCUPANT_TYPES.flatMap(occupantType => {
+      const inType = genera.filter(row => row[occupantType] > 0)
+        .map(row => ({ generalId: row.generalId, occupants: row[occupantType] }))
+        .sort((a, b) => b.occupants - a.occupants || compareGroups(a.generalId, b.generalId))
+      const typeTotal = inType.reduce((sum, row) => sum + row.occupants, 0)
+      return inType.map(row => ({ occupantType, ...row, typeTotal }))
+    })
+    // Occupied cavities holding more than one General ID in the year, by site.
+    charts[CHART_IDS.multiGenusCavitiesBySite][year] = [...bySite]
+      .sort(([a], [b]) => byText(a, b))
+      .map(([siteId, group]) => ({
+        siteId,
+        propertyName: siteById.get(siteId)?.propertyName ?? null,
+        multiGenus: group.filter(observations =>
+          new Set(listOccupantRuns(observations).map(run => run.generalId).filter(id => id !== null)).size > 1).length,
+        occupied: group.filter(observations => classifyCavityOccupancy(observations) === 'occupied').length,
+      }))
 
     for (const [chartId, factor] of Object.entries(SEALED_RATE_FACTORS)) {
       const grouped = cavities

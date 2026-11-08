@@ -63,11 +63,11 @@ describe('US-28 listOccupantRuns', () => {
       typed('Active', '2025-07-01', 'Bee'),
       typed('Empty', '2025-08-01', null),
       typed('Complete', '2025-09-01', 'Wasp'),
-    ])).toEqual([{ occupantType: 'Bee' }, { occupantType: 'Wasp' }])
+    ])).toEqual([{ occupantType: 'Bee', generalId: null }, { occupantType: 'Wasp', generalId: null }])
   })
 
   it('reports a run with no recorded type as null', () => {
-    expect(listOccupantRuns([typed('Complete', '2025-06-01', null)])).toEqual([{ occupantType: null }])
+    expect(listOccupantRuns([typed('Complete', '2025-06-01', null)])).toEqual([{ occupantType: null, generalId: null }])
   })
 
   it('is empty for a cavity that is never occupied', () => {
@@ -79,6 +79,14 @@ describe('US-28 listOccupantRuns', () => {
       typed('Complete', '2025-08-01', 'Wasp'),
       typed('Empty', '2025-07-01', null),
       typed('Complete', '2025-06-01', 'Bee'),
-    ])).toEqual([{ occupantType: 'Bee' }, { occupantType: 'Wasp' }])
+    ])).toEqual([{ occupantType: 'Bee', generalId: null }, { occupantType: 'Wasp', generalId: null }])
+  })
+
+  it('gives each run the first General ID recorded in it', () => {
+    expect(listOccupantRuns([
+      obs('Active', '2025-06-01', { occupantType: 'Bee' }),
+      obs('Complete', '2025-07-01', { occupantType: 'Bee', generalId: 'Hylaeus' }),
+      obs('Complete', '2025-08-01', { occupantType: 'Bee', generalId: 'Anthidium' }),
+    ])).toEqual([{ occupantType: 'Bee', generalId: 'Hylaeus' }])
   })
 })

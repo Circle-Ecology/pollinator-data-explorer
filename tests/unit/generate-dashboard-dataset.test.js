@@ -73,6 +73,16 @@ describe('US-28 generateDashboardDataset', () => {
             { siteId: 'S2', propertyName: 'Creek', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 },
           ],
         },
+        // Fixture occupants have no General ID, so no genus rows; occupied cavities per site still count.
+        [CHART_IDS.occupantsByGenus]: { 2023: [], 2025: [] },
+        [CHART_IDS.occupantsByTypeGenus]: { 2023: [], 2025: [] },
+        [CHART_IDS.multiGenusCavitiesBySite]: {
+          2023: [{ siteId: 'S1', propertyName: 'Meadow', multiGenus: 0, occupied: 0 }],
+          2025: [
+            { siteId: 'S1', propertyName: 'Meadow', multiGenus: 0, occupied: 1 },
+            { siteId: 'S2', propertyName: 'Creek', multiGenus: 0, occupied: 1 },
+          ],
+        },
         [CHART_IDS.sealedRateByCwd]: {
           2023: [row('Log', 1, 0, 0)],
           2025: [row('Log', 1, 1, 0), row('Snag', 2, 0, 0)],
@@ -111,7 +121,7 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(11)
+    expect(Object.keys(empty.charts)).toHaveLength(14)
   })
 })
 
@@ -178,5 +188,55 @@ describe('US-28 occupant charts', () => {
         site('S2', 'Creek', { Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 }),
       ],
     })
+  })
+})
+
+
+describe('US-28 genus charts', () => {
+  const siteList = [{ siteId: 'S1', propertyName: 'Meadow' }, { siteId: 'S2', propertyName: 'Creek' }]
+  const place = { A: 'S1', B: 'S1', E: 'S1', C: 'S2', F: 'S2', G: 'S2' }
+  const tunnelList = Object.entries(place).map(([tunnelId, siteId]) => ({ tunnelId, siteId }))
+  const g = (tunnelId, surveyDate, observationStatus, occupantType = null, generalId = null) =>
+    ({ tunnelId, siteId: place[tunnelId], surveyDate, observationStatus, occupantType, generalId, plugComposition: null, wholeOrHole: null })
+  const data = [
+    // A holds two genera in two occupant runs; E has no General ID so it is left out of the genus charts;
+    // F is a wasp whose General ID is "Other"; G is a spider, which rolls up to "Other".
+    g('A', '2025-06-01', 'Complete', 'Bee', 'Megachile (Eutricharaea)'),
+    g('A', '2025-07-01', 'Empty'),
+    g('A', '2025-08-01', 'Complete', 'Bee', 'Hylaeus'),
+    g('B', '2025-06-01', 'Complete', 'Bee', 'Hylaeus'),
+    g('E', '2025-06-01', 'Complete', 'Bee'),
+    g('C', '2025-06-01', 'Complete', 'Wasp', 'Isodontia'),
+    g('F', '2025-06-01', 'Complete', 'Wasp', 'Other'),
+    g('G', '2025-06-01', 'Complete', 'Spider', 'Spider'),
+  ]
+  const { charts } = generateDashboardDataset({ sites: siteList, observations: data }, tunnelList, generatedAt)
+
+  it('ranks occupants by General ID, biggest first, with the type breakdown', () => {
+    const r = (generalId, counts) => ({ generalId, Bee: 0, Wasp: 0, Unknown: 0, Other: 0, ...counts })
+    expect(charts[CHART_IDS.occupantsByGenus][2025]).toEqual([
+      { ...r('Hylaeus', { Bee: 2 }), total: 2 },
+      { ...r('Isodontia', { Wasp: 1 }), total: 1 },
+      { ...r('Megachile (Eutricharaea)', { Bee: 1 }), total: 1 },
+      { ...r('Other', { Other: 1 }), total: 1 },
+      { ...r('Other (Wasp)', { Wasp: 1 }), total: 1 },
+    ])
+  })
+
+  it('groups General IDs under their occupant type with the type total as the denominator', () => {
+    expect(charts[CHART_IDS.occupantsByTypeGenus][2025]).toEqual([
+      { occupantType: 'Bee', generalId: 'Hylaeus', occupants: 2, typeTotal: 3 },
+      { occupantType: 'Bee', generalId: 'Megachile (Eutricharaea)', occupants: 1, typeTotal: 3 },
+      { occupantType: 'Wasp', generalId: 'Isodontia', occupants: 1, typeTotal: 2 },
+      { occupantType: 'Wasp', generalId: 'Other (Wasp)', occupants: 1, typeTotal: 2 },
+      { occupantType: 'Other', generalId: 'Other', occupants: 1, typeTotal: 1 },
+    ])
+  })
+
+  it('counts a cavity with two General IDs once for its site', () => {
+    expect(charts[CHART_IDS.multiGenusCavitiesBySite][2025]).toEqual([
+      { siteId: 'S1', propertyName: 'Meadow', multiGenus: 1, occupied: 3 },
+      { siteId: 'S2', propertyName: 'Creek', multiGenus: 0, occupied: 3 },
+    ])
   })
 })

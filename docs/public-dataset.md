@@ -224,7 +224,8 @@ tunnel's `coarseWoodyDebrisType` (the cavity level). It has the same `generatedA
 Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every row carries
 its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
 exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occupant charts
-`occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, and the five sealed
+`occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, the three genus charts
+`occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, and the five sealed
 nest rate charts `sealed-rate-by-cwd`, `-by-substrate`, `-by-direction`, `-by-install-year`
 (grouped like the deck, e.g. "2025 Log") and `-by-diameter`. Sealed rows look like
 `{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
@@ -247,3 +248,15 @@ zero for the year. Against the deck's occupants by site and type this matches 65
 site/year/type cells exactly. Known differences: 2025 Other (the deck took it from a separate
 tally tracker that is not in the sheet export), 2023 Other at two sites (-7 and -2), and a few
 off-by-one cells, partly from the two duplicate surveys the pipeline drops.
+
+Genus charts use the deck's General ID labels. An occupant's label is its run's first recorded
+General ID, except that Spider, Ant(s), Pill Bug and Other occupants are all "Other", a Bee or Wasp
+whose General ID is "Other" is "Other (Bee)" or "Other (Wasp)", and runs with no General ID are not
+counted. `occupants-by-genus` rows are `{ generalId, Bee, Wasp, Unknown, Other, total }`, biggest
+first. `occupants-by-type-genus` rows are `{ occupantType, generalId, occupants, typeTotal }`, so a
+percentage within a type is `occupants / typeTotal`. `multi-genus-cavities-by-site` rows are
+`{ siteId, propertyName, multiGenus, occupied }`: cavities with more than one General ID in the year,
+out of the cavities occupied that year. Against the deck's table, 2026 matches on every row; 2025
+matches on all but Other (the missing tracker), one Isodontia (a dropped duplicate survey) and
+Osmia (mud); 2023 matches on 8 of 11 rows. Species-level figures are not possible: the sheet has no
+species column, only General ID, family and common name.
