@@ -119,6 +119,22 @@ describe('US-28 generateDashboardDataset', () => {
             { diameter: '0.375', siteId: 'S1', propertyName: 'Meadow', Bee: 0, Wasp: 0 },
           ],
         },
+        // Hand-checked: A (Active, Sealed) is sealed but has no Plug Depth; D (Complete, Not Sealed) is Complete.
+        [CHART_IDS.nestStatusByType]: {
+          2023: [
+            { occupantType: 'Bee', Active: 0, Complete: 0, Emerged: 0, Parasitized: 0, Chalkbrood: 0, sealed: 0, parasitizedRate: null },
+            { occupantType: 'Wasp', Active: 0, Complete: 0, Emerged: 0, Parasitized: 0, Chalkbrood: 0, sealed: 0, parasitizedRate: null },
+          ],
+          2025: [
+            { occupantType: 'Bee', Active: 0, Complete: 1, Emerged: 0, Parasitized: 0, Chalkbrood: 0, sealed: 1, parasitizedRate: 0 },
+            { occupantType: 'Wasp', Active: 0, Complete: 0, Emerged: 0, Parasitized: 0, Chalkbrood: 0, sealed: 0, parasitizedRate: null },
+          ],
+        },
+        // No Plug Depth in this fixture, so every level is 0.
+        [CHART_IDS.plugDepthByYear]: {
+          2023: [{ total: 0, unrecognized: 0, rows: [{ level: '1.1 inches', nests: 0 }, { level: '1 inch', nests: 0 }, { level: '1/2 inch', nests: 0 }, { level: '1/16 inch', nests: 0 }, { level: 'flush', nests: 0 }, { level: 'protruding', nests: 0 }] }],
+          2025: [{ total: 0, unrecognized: 0, rows: [{ level: '1.1 inches', nests: 0 }, { level: '1 inch', nests: 0 }, { level: '1/2 inch', nests: 0 }, { level: '1/16 inch', nests: 0 }, { level: 'flush', nests: 0 }, { level: 'protruding', nests: 0 }] }],
+        },
         [CHART_IDS.sealedRateByCwd]: {
           2023: [row('Log', 1, 0, 0)],
           2025: [row('Log', 1, 1, 0), row('Snag', 2, 0, 0)],
@@ -158,7 +174,7 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(21)
+    expect(Object.keys(empty.charts)).toHaveLength(23)
   })
 })
 

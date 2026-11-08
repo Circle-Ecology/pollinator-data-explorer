@@ -268,7 +268,9 @@ species column, only General ID, family and common name.
 
 `genus-profile` is keyed by General ID rather than by year (all years combined) and has one entry
 per bee or wasp General ID (not Other or Unknown), 18 in the current data. Each entry has `nests`
-(occupant runs), `years`, `sites`, `sealedNests`, `parasitized` (parasitism % is
+(occupant runs, but a cavity that is Reopened and comes back Active stays the same nest; only coming
+back Complete starts a new one, `NEST_RESEAL_STATUSES`; the occupant charts keep splitting on both),
+`years`, `sites`, `sealedNests`, `parasitized` (parasitism % is
 `parasitized / sealedNests`), `competition` (`cavities` that held the genus, how many `shared` a
 cavity-year with another General ID, and `sharedWith` counts) and `panels`. Panels `direction`, `age`,
 `cwd`, `substrate` and `diameter` have `{ nests, availableTotal, rows: [{ level, nests, available }] }`,
@@ -276,8 +278,9 @@ where `available / availableTotal` is the availability tick; levels with cavitie
 kept. Age is seasons since installation (the installation year is the 1st season). `plugDepth` has
 `{ nests, rows: [{ level, nests }] }`, leaves out 2023, has no availability, and uses the last plug
 depth recorded in each nest's run. Checked against the deck's Hylaeus page: every count and every
-availability tick matches. The deck's "Number of Nests by Plug Depth (2026)" chart is not
-reproduced yet (same 694 nests, different split), so no chart for it is precomputed.
+availability tick matches. With the profile nest rule above, 14 of the deck's 18 per-genus nest
+counts match exactly (12 with the occupant-run rule); still off are Megachile (Eutricharaea) 919 vs
+917, Isodontia 304 vs 300, Anthidium 24 vs 22 and Osmia (mud) 5 vs 4.
 
 Plug Depth is kept as the export's text (`1.1 inches`, `1 inch`, `1/2 inch`, `1/16 inch`, `flush`,
 `protruding`); it was previously parsed as a number, which dropped every value.
@@ -286,6 +289,21 @@ Plug Depth is kept as the export's text (`1.1 inches`, `1 inch`, `1/2 inch`, `1/
 distinct General IDs among that type's nests in cavities of that diameter at that site, one row for
 every diameter and site that had cavities that year. It matches the deck's 2026 richness chart on
 all 36 cells.
+
+`nest-status-by-type` is the deck's "Number of Nests by Observation Status": per year, one row each for
+Bee and Wasp with `Active`, `Complete`, `Emerged`, `Parasitized`, `Chalkbrood`, `sealed` and
+`parasitizedRate` (parasitized / sealed, a percentage to one decimal). Nests use the genus-profile rule,
+and a nest counts under every condition it has a record for, so the bars overlap (2025 Bee bars add up
+to far more than its nests). Active is an Active observation that has a Plug Depth. Against the deck,
+Complete, Emerged, Parasitized and Chalkbrood match exactly in 2023 and 2026, and Parasitized and
+Chalkbrood in 2025; Active matches 2023 and 2025 (Wasp 87 vs 88) but is 8 (Bee) and 10 (Wasp) high in
+2026; Complete in 2025 is 1 to 2 off; 2026 Bee `parasitizedRate` is 6.4 vs 6.5.
+
+`plug-depth-by-year` is the deck's "Number of Nests by Plug Depth": per year, one row `{ total, unrecognized,
+rows: [{ level, nests }] }`. The unit is the cavity: each cavity with a Bee, Wasp or Unknown occupant counts
+once, at the last Plug Depth on one of those occupied observations. 2023 matches the deck exactly, 2025 is
+within one cavity per level, and 2026 matches except 1/2 inch (7 short). Those 7 are the cavities whose
+depth is garbled in the export (`unrecognized`), probably "1/2 inch", so 2026 totals 687 vs the deck's 694.
 
 `occupants-by-period-type` and `other-by-period-type` follow the deck's fixed two-week calendar:
 period 0 starts on 11 March and every period is 14 days, in every year. Each year lists periods

@@ -38,6 +38,13 @@ export const OCCUPIED_STATUSES = ['Active', 'Complete', 'Reopened']
 export const RETIRED_STATUS = 'Retired hole'
 export const NEST_OCCUPANT_TYPES = ['Bee', 'Wasp']
 export const SEALED_VALUE = 'Sealed'
+// Statuses that start a new occupant run after Reopened (occupant charts, scorecards, sealed rates).
+export const RUN_RESEAL_STATUSES = ['Active', 'Complete']
+// Genus profile pages: a cavity that is reopened and comes back Active is still the same nest; only
+// coming back Complete (resealed) starts a new one. With this rule 14 of the deck's 18 per-genus nest
+// counts match exactly (12 with RUN_RESEAL_STATUSES); the deck's own occupant-by-General-ID chart
+// still agrees with RUN_RESEAL_STATUSES, so the two figures are deliberately not the same count.
+export const NEST_RESEAL_STATUSES = ['Complete']
 
 const isOccupiedStatus = status => OCCUPIED_STATUSES.includes(status)
 const byDate = (a, b) => (a.surveyDate < b.surveyDate ? -1 : a.surveyDate > b.surveyDate ? 1 : 0)
@@ -56,7 +63,11 @@ export function classifyCavityOccupancy(observations) {
 // The occupant runs in one cavity's observations, each { occupantType, generalId,
 // observations } (type and General ID are null when none was ever recorded in the
 // run; both are the first recorded).
-function splitOccupantRuns(observations) {
+//
+// `resealStatuses` is the set of statuses that start a new run straight after a Reopened
+// observation. Occupant counts use RUN_RESEAL_STATUSES; the genus profile pages count
+// "nests" and use NEST_RESEAL_STATUSES (see there).
+function splitOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
   const runs = []
   let previousStatus = null
   let plug = null
@@ -70,7 +81,7 @@ function splitOccupantRuns(observations) {
       continue
     }
     const plugChanged = o.plugComposition != null && plug != null && o.plugComposition !== plug
-    const resealed = previousStatus === 'Reopened' && (status === 'Active' || status === 'Complete')
+    const resealed = previousStatus === 'Reopened' && resealStatuses.includes(status)
     if (!open || resealed || plugChanged) {
       runs.push({ occupantType: null, generalId: null, observations: [] })
       plug = null
@@ -87,8 +98,8 @@ function splitOccupantRuns(observations) {
 }
 
 // The same runs as { occupantType, generalId } only.
-export function listOccupantRuns(observations) {
-  return splitOccupantRuns(observations).map(({ occupantType, generalId }) => ({ occupantType, generalId }))
+export function listOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
+  return splitOccupantRuns(observations, resealStatuses).map(({ occupantType, generalId }) => ({ occupantType, generalId }))
 }
 
 export function countOccupantRuns(observations) {
@@ -128,6 +139,59 @@ export function computeSealedNestRate(cavities, year) {
   return result
 }
 
+// Nest conditions (deck: "Number of Nests by Observation Status"). Nests use the genus-profile
+// rule (NEST_RESEAL_STATUSES). A nest is counted under every condition it has a record for, so
+// the bars overlap and can add up to more than the nests: Active = an Active observation that
+// has a Plug Depth; Complete = a Complete observation; Emerged, Parasitized and Chalkbrood =
+// an Emergence, Parasitism or Chalkbrood Characteristics "Whole or hole" record. `sealed` is
+// nests with a Sealed record and `parasitizedRate` is parasitized / sealed as a percentage to
+// one decimal (null when nothing is sealed). Against the deck this matches Complete, Emerged,
+// Parasitized and Chalkbrood in 2023 and 2026 and Parasitized and Chalkbrood in 2025; Active
+// matches 2023 and 2025 (Wasp 87 vs 88) but is 8 (Bee) and 10 (Wasp) high in 2026, and Complete in
+// 2025 is 1 to 2 off.
+export const NEST_STATUS_TYPES = ['Bee', 'Wasp']
+export function countNestStatuses(cavityObservations, occupantType) {
+  const counts = { Active: 0, Complete: 0, Emerged: 0, Parasitized: 0, Chalkbrood: 0, sealed: 0 }
+  for (const observations of cavityObservations) {
+    for (const run of splitOccupantRuns(observations, NEST_RESEAL_STATUSES)) {
+      if (run.occupantType !== occupantType) continue
+      const records = run.observations
+      if (records.some(o => o.observationStatus === 'Active' && o.plugDepth != null)) counts.Active += 1
+      if (records.some(o => o.observationStatus === 'Complete')) counts.Complete += 1
+      if (records.some(o => o.wholeOrHole === 'Emergence')) counts.Emerged += 1
+      if (records.some(o => o.wholeOrHole === 'Parasitism')) counts.Parasitized += 1
+      if (records.some(o => o.wholeOrHole === 'Chalkbrood Characteristics')) counts.Chalkbrood += 1
+      if (records.some(o => o.wholeOrHole === SEALED_VALUE)) counts.sealed += 1
+    }
+  }
+  return {
+    occupantType, ...counts,
+    parasitizedRate: counts.sealed === 0 ? null : Math.round((counts.Parasitized / counts.sealed) * 1000) / 10,
+  }
+}
+
+// Plug depth by year (deck: "Number of Nests by Plug Depth"). The unit is the cavity, not the nest:
+// every cavity that held a Bee, Wasp or Unknown occupant in the year counts once, at the last Plug
+// Depth recorded on one of its occupied observations of those types ("end of season"). Cavities
+// with no depth are left out, and so are depths that are not one of the six levels (the garbled
+// export values; `unrecognized` counts them). Against the deck: 2023 matches exactly (28 and 10),
+// 2025 is within 1 per level (764 vs 765), and 2026 matches except 1/2 inch, which is 7 short:
+// those are the 7 cavities whose depth is garbled in the export (probably "1/2 inch").
+export const PLUG_DEPTH_TYPES = ['Bee', 'Wasp', 'Unknown']
+export function countPlugDepths(cavityObservations) {
+  const counts = new Map()
+  let unrecognized = 0
+  for (const observations of cavityObservations) {
+    const depth = [...observations].sort(byDate).reverse().find(o =>
+      isOccupiedStatus(o.observationStatus) && PLUG_DEPTH_TYPES.includes(o.occupantType) && o.plugDepth != null)?.plugDepth
+    if (depth === undefined) continue
+    if (PLUG_DEPTH_LEVELS.includes(depth)) counts.set(depth, (counts.get(depth) ?? 0) + 1)
+    else unrecognized += 1
+  }
+  const rows = PLUG_DEPTH_LEVELS.map(level => ({ level, nests: counts.get(level) ?? 0 }))
+  return { total: rows.reduce((sum, row) => sum + row.nests, 0), unrecognized, rows }
+}
+
 // Chart ids. The dashboard config (US-29) must use these exact `id` values.
 export const CHART_IDS = {
   occupancyByYear: 'occupancy-by-year',
@@ -141,6 +205,8 @@ export const CHART_IDS = {
   multiGenusCavitiesBySite: 'multi-genus-cavities-by-site',
   genusProfile: 'genus-profile',
   richnessByDiameterSite: 'richness-by-diameter-site',
+  nestStatusByType: 'nest-status-by-type',
+  plugDepthByYear: 'plug-depth-by-year',
   occupantsByPeriodType: 'occupants-by-period-type',
   otherByPeriodType: 'other-by-period-type',
   scorecardGenera: 'scorecard-genera',
@@ -239,10 +305,11 @@ function lastPlugDepth(observations) {
 
 // cavityYears: [{ year, siteId, tunnel, observations }] (every cavity observed in a year).
 function buildGenusProfiles(cavityYears) {
+  const splitNests = observations => splitOccupantRuns(observations, NEST_RESEAL_STATUSES)
   const available = cavityYears.filter(c => !isExcludedCavity(c.observations))
   const nestsByGenus = new Map()
   for (const cavity of cavityYears) {
-    for (const run of splitOccupantRuns(cavity.observations)) {
+    for (const run of splitNests(cavity.observations)) {
       const label = genusLabel(run)
       if (label === null || label === 'Unknown' || label.startsWith('Other')) continue
       if (!nestsByGenus.has(label)) nestsByGenus.set(label, [])
@@ -257,7 +324,7 @@ function buildGenusProfiles(cavityYears) {
     const sharedWith = new Map()
     let shared = 0
     for (const cavity of cavities) {
-      const others = new Set(splitOccupantRuns(cavity.observations).map(r => r.generalId)
+      const others = new Set(splitNests(cavity.observations).map(r => r.generalId)
         .filter(id => id !== null && id !== generalId))
       if (others.size > 0) shared += 1
       for (const id of others) sharedWith.set(id, (sharedWith.get(id) ?? 0) + 1)
@@ -526,6 +593,8 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     [CHART_IDS.occupantsByGenus]: {},
     [CHART_IDS.multiGenusCavitiesBySite]: {},
     [CHART_IDS.richnessByDiameterSite]: {},
+    [CHART_IDS.nestStatusByType]: {},
+    [CHART_IDS.plugDepthByYear]: {},
     [CHART_IDS.occupantsByPeriodType]: {},
     [CHART_IDS.otherByPeriodType]: {},
     ...Object.fromEntries(Object.keys(SEALED_RATE_FACTORS).map(id => [id, {}])),
@@ -601,6 +670,10 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
           new Set(listOccupantRuns(observations).map(run => run.generalId).filter(id => id !== null)).size > 1).length,
         occupied: group.filter(observations => classifyCavityOccupancy(observations) === 'occupied').length,
       }))
+
+    charts[CHART_IDS.nestStatusByType][year] = NEST_STATUS_TYPES.map(type => countNestStatuses(allObservations, type))
+
+    charts[CHART_IDS.plugDepthByYear][year] = [countPlugDepths(allObservations)]
 
     // Seasonal occupancy by two-week observation period.
     const periods = observations.filter(o => yearOf(o) === year).map(o => periodIndex(o.surveyDate)).filter(p => p !== null)
