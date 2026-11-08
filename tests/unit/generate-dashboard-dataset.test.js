@@ -29,6 +29,17 @@ const row = (group, available, bee, wasp) => ({
   Bee: { sealed: bee, rate: Math.round((bee / available) * 100) },
   Wasp: { sealed: wasp, rate: Math.round((wasp / available) * 100) },
 })
+// The deck's fixed two-week calendar: 14-day periods starting 11 March, in every year.
+const PERIOD_STARTS = ['03-11', '03-25', '04-08', '04-22', '05-06', '05-20', '06-03', '06-17', '07-01',
+  '07-15', '07-29', '08-12', '08-26', '09-09', '09-23', '10-07', '10-21']
+const PERIOD_ENDS = ['03-24', '04-07', '04-21', '05-05', '05-19', '06-02', '06-16', '06-30', '07-14',
+  '07-28', '08-11', '08-25', '09-08', '09-22', '10-06', '10-20', '11-03']
+// Rows for periods 0..last (one period past the last survey), with counts for the given periods.
+const periodRows = (year, last, zeros, counts = {}) => Array.from({ length: last + 1 }, (_, i) => ({
+  period: i, start: `${year}-${PERIOD_STARTS[i]}`, end: `${year}-${PERIOD_ENDS[i]}`, ...zeros, ...counts[i],
+}))
+const TYPES0 = { Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 }
+const OTHERS0 = { Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 }
 const generatedAt = '2026-10-17T12:00:00.000Z'
 
 describe('US-28 generateDashboardDataset', () => {
@@ -84,6 +95,15 @@ describe('US-28 generateDashboardDataset', () => {
           ],
         },
         [CHART_IDS.genusProfile]: {},
+        // Surveys fall in period 8 (1-14 July) in both years, so periods 0-9 are shown; only 2025 has occupants (A and D, Bee).
+        [CHART_IDS.occupantsByPeriodType]: {
+          2023: periodRows(2023, 9, TYPES0),
+          2025: periodRows(2025, 9, TYPES0, { 8: { Bee: 2, total: 2 } }),
+        },
+        [CHART_IDS.otherByPeriodType]: {
+          2023: periodRows(2023, 9, OTHERS0),
+          2025: periodRows(2025, 9, OTHERS0),
+        },
         // No General IDs in this fixture, so no genera; a row per diameter and site that had cavities.
         [CHART_IDS.richnessByDiameterSite]: {
           2023: [{ diameter: '0.25', siteId: 'S1', propertyName: 'Meadow', Bee: 0, Wasp: 0 }],
@@ -132,7 +152,7 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(16)
+    expect(Object.keys(empty.charts)).toHaveLength(18)
   })
 })
 
@@ -349,5 +369,40 @@ describe('US-28 genus profiles', () => {
       rowOf('0.125', 'S1', 'Meadow', 1), rowOf('0.125', 'S2', 'Creek', 2),
       rowOf('0.25', 'S1', 'Meadow', 1), rowOf('0.25', 'S2', 'Creek', 0),
     ])
+  })
+})
+
+
+describe('US-28 period charts', () => {
+  const place = { A: 'S1', B: 'S1', C: 'S1', D: 'S1', E: 'S1' }
+  const tunnelList = Object.entries(place).map(([tunnelId, siteId]) => ({ tunnelId, siteId }))
+  const q = (tunnelId, surveyDate, observationStatus, occupantType = null) => ({
+    tunnelId, siteId: place[tunnelId], surveyDate, observationStatus, occupantType,
+    generalId: null, plugComposition: null, wholeOrHole: null,
+  })
+  const data = [
+    q('A', '2025-03-14', 'Complete', 'Bee'),   // period 0
+    q('A', '2025-04-10', 'Active', 'Bee'),     // period 2 (8-21 April)
+    q('B', '2025-04-12', 'Active', 'Wasp'),
+    q('B', '2025-04-13', 'Active', 'Wasp'),    // same cavity, same period: counts once
+    q('C', '2025-04-12', 'Complete', 'Spider'),
+    q('D', '2025-04-12', 'Empty'),
+    q('E', '2025-04-12', 'Complete'),          // occupied but no type: not counted
+    q('D', '2025-05-10', 'Empty'),             // last survey, period 4
+  ]
+  const { charts } = generateDashboardDataset({ sites: [{ siteId: 'S1', propertyName: 'Meadow' }], observations: data }, tunnelList, generatedAt)
+
+  it('counts each cavity once per period it is occupied, by occupant type, and keeps empty periods', () => {
+    // Periods 0-5: the season starts 11 March and runs one period past the last survey (period 4).
+    expect(charts[CHART_IDS.occupantsByPeriodType][2025]).toEqual(periodRows(2025, 5, TYPES0, {
+      0: { Bee: 1, total: 1 },
+      2: { Bee: 1, Wasp: 1, Other: 1, total: 3 },
+    }))
+  })
+
+  it('splits the Other occupants by period and Other type', () => {
+    expect(charts[CHART_IDS.otherByPeriodType][2025]).toEqual(periodRows(2025, 5, OTHERS0, {
+      2: { Spider: 1, total: 1 },
+    }))
   })
 })

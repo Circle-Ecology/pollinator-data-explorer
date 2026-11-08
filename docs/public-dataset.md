@@ -226,7 +226,8 @@ its counts and denominator (`available`) so percentages can be recomputed. Chart
 exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occupant charts
 `occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, the three genus charts
 `occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, `genus-profile`,
-`richness-by-diameter-site`, and the five sealed nest rate charts `sealed-rate-by-cwd`,
+`richness-by-diameter-site`, the two period charts `occupants-by-period-type` and
+`other-by-period-type`, and the five sealed nest rate charts `sealed-rate-by-cwd`,
 `-by-substrate`, `-by-direction`, `-by-install-year` and `-by-diameter`. Direction and installation
 year are grouped with Log/Snag like the deck ("N Log", "2025 Snag"). Sealed rows look like
 `{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
@@ -284,3 +285,16 @@ Plug Depth is kept as the export's text (`1.1 inches`, `1 inch`, `1/2 inch`, `1/
 distinct General IDs among that type's nests in cavities of that diameter at that site, one row for
 every diameter and site that had cavities that year. It matches the deck's 2026 richness chart on
 all 36 cells.
+
+`occupants-by-period-type` and `other-by-period-type` follow the deck's fixed two-week calendar:
+period 0 starts on 11 March and every period is 14 days, in every year. Each year lists periods
+from period 0 through one period past the last survey, and empty periods are kept (with zero
+counts) so the season's shape is honest. Rows are `{ period, start, end, Bee, Wasp, Unknown, Other,
+total }` (`start` and `end` are ISO dates; the website formats them as "Jul 1-Jul 14"), and for
+`other-by-period-type` `{ period, start, end, Spider, 'Ant(s)', 'Pill Bug', Other, total }`. A cavity
+counts once per occupant type in every period in which it has an occupied observation with a
+recorded type, so a cavity occupied across several periods counts in each. This matches the deck's
+percentage charts to within one point on every cell (2023: 65 of 68 cells exact; 2026: 59 of 64;
+2025's Bee:Wasp split within one point in all 14 periods). 2025's Other share is much lower than
+the deck's because of the missing tally tracker. The Other-occupants version uses the same rule but
+has not been compared to the deck.

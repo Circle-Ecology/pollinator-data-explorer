@@ -21,6 +21,10 @@
 // "Other (Bee)"/"Other (Wasp)", and runs with no General ID are not counted.
 // Occupant figures match the deck apart from 2025 Other (tracked outside the
 // sheet export) and small 2023 differences; see docs/public-dataset.md.
+// CONFIRMED against the deck's occupants by observation period (2023 and 2026 within
+// a point on 68 of 76 cells; 2025 Bee:Wasp split within a point): periods are 14-day
+// blocks from 11 March, and a cavity counts in every period it has an occupied,
+// typed observation, once per occupant type.
 // CONFIRMED against the deck's richness (2026, 36 of 36 cells): distinct General IDs
 // among Bee and Wasp nests, by diameter, site and type.
 
@@ -131,6 +135,8 @@ export const CHART_IDS = {
   multiGenusCavitiesBySite: 'multi-genus-cavities-by-site',
   genusProfile: 'genus-profile',
   richnessByDiameterSite: 'richness-by-diameter-site',
+  occupantsByPeriodType: 'occupants-by-period-type',
+  otherByPeriodType: 'other-by-period-type',
   sealedRateByCwd: 'sealed-rate-by-cwd',
   sealedRateBySubstrate: 'sealed-rate-by-substrate',
   sealedRateByDirection: 'sealed-rate-by-direction',
@@ -303,6 +309,53 @@ function buildGenusProfiles(cavityYears) {
   return profiles
 }
 
+// ---- Observation periods (US-31): the deck's fixed two-week calendar. ----
+
+const DAY_MS = 86400000
+const PERIOD_DAYS = 14
+const seasonStart = year => Date.UTC(year, 2, 11)
+const isoDate = ms => new Date(ms).toISOString().slice(0, 10)
+
+// Index of the 14-day period (0 = starting 11 March) a survey date falls in, or null before the season.
+function periodIndex(surveyDate) {
+  const days = Math.floor((Date.parse(surveyDate) - seasonStart(Number(surveyDate.slice(0, 4)))) / DAY_MS)
+  return days < 0 ? null : Math.floor(days / PERIOD_DAYS)
+}
+
+// Per period, how many cavities were occupied by each category: a cavity counts once per
+// category in every period it has an occupied observation with a recorded type.
+function periodCounts(cavities, keys, categorize, include) {
+  const byPeriod = new Map()
+  for (const { observations } of cavities) {
+    const seen = new Set()
+    for (const o of observations) {
+      if (!isOccupiedStatus(o.observationStatus) || o.occupantType == null || !include(o.occupantType)) continue
+      const period = periodIndex(o.surveyDate)
+      if (period === null) continue
+      seen.add(`${period}|${categorize(o.occupantType)}`)
+    }
+    for (const entry of seen) {
+      const [period, category] = entry.split('|')
+      const counts = byPeriod.get(Number(period)) ?? { ...zeroCounts(keys), total: 0 }
+      counts[category] += 1
+      counts.total += 1
+      byPeriod.set(Number(period), counts)
+    }
+  }
+  return byPeriod
+}
+
+// Rows for every period from the start of the season through one period past the last
+// survey (empty periods are kept so the season's shape is honest).
+function periodRows(year, lastSurveyPeriod, keys, byPeriod) {
+  return Array.from({ length: lastSurveyPeriod + 2 }, (_, period) => ({
+    period,
+    start: isoDate(seasonStart(year) + period * PERIOD_DAYS * DAY_MS),
+    end: isoDate(seasonStart(year) + (period * PERIOD_DAYS + PERIOD_DAYS - 1) * DAY_MS),
+    ...(byPeriod.get(period) ?? { ...zeroCounts(keys), total: 0 }),
+  }))
+}
+
 /**
  * Pure: precompute every dashboard figure from the PUBLIC dataset.
  * `publicDataset` is { sites, observations } from generatePublicDataset;
@@ -336,6 +389,8 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     [CHART_IDS.occupantsByGenus]: {},
     [CHART_IDS.multiGenusCavitiesBySite]: {},
     [CHART_IDS.richnessByDiameterSite]: {},
+    [CHART_IDS.occupantsByPeriodType]: {},
+    [CHART_IDS.otherByPeriodType]: {},
     ...Object.fromEntries(Object.keys(SEALED_RATE_FACTORS).map(id => [id, {}])),
   }
   for (const year of years) {
@@ -409,6 +464,15 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
           new Set(listOccupantRuns(observations).map(run => run.generalId).filter(id => id !== null)).size > 1).length,
         occupied: group.filter(observations => classifyCavityOccupancy(observations) === 'occupied').length,
       }))
+
+    // Seasonal occupancy by two-week observation period.
+    const periods = observations.filter(o => yearOf(o) === year).map(o => periodIndex(o.surveyDate)).filter(p => p !== null)
+    const lastPeriod = periods.length ? Math.max(...periods) : -1
+    charts[CHART_IDS.occupantsByPeriodType][year] = periodRows(
+      Number(year), lastPeriod, OCCUPANT_TYPES, periodCounts(cavities, OCCUPANT_TYPES, occupantCategory, () => true))
+    charts[CHART_IDS.otherByPeriodType][year] = periodRows(
+      Number(year), lastPeriod, OTHER_OCCUPANT_TYPES,
+      periodCounts(cavities, OTHER_OCCUPANT_TYPES, otherCategory, type => occupantCategory(type) === 'Other'))
 
     // Richness: distinct General IDs among bee and wasp nests, by diameter and site.
     const richness = new Map()
