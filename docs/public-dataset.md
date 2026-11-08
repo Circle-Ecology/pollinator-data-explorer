@@ -225,7 +225,7 @@ Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every 
 its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
 exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occupant charts
 `occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, the three genus charts
-`occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, and the five sealed
+`occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, `genus-profile`, and the five sealed
 nest rate charts `sealed-rate-by-cwd`, `-by-substrate`, `-by-direction`, `-by-install-year`
 (grouped like the deck, e.g. "2025 Log") and `-by-diameter`. Sealed rows look like
 `{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
@@ -260,3 +260,19 @@ out of the cavities occupied that year. Against the deck's table, 2026 matches o
 matches on all but Other (the missing tracker), one Isodontia (a dropped duplicate survey) and
 Osmia (mud); 2023 matches on 8 of 11 rows. Species-level figures are not possible: the sheet has no
 species column, only General ID, family and common name.
+
+`genus-profile` is keyed by General ID rather than by year (all years combined) and has one entry
+per bee or wasp General ID (not Other or Unknown), 18 in the current data. Each entry has `nests`
+(occupant runs), `years`, `sites`, `sealedNests`, `parasitized` (parasitism % is
+`parasitized / sealedNests`), `competition` (`cavities` that held the genus, how many `shared` a
+cavity-year with another General ID, and `sharedWith` counts) and `panels`. Panels `direction`, `age`,
+`cwd`, `substrate` and `diameter` have `{ nests, availableTotal, rows: [{ level, nests, available }] }`,
+where `available / availableTotal` is the availability tick; levels with cavities but no nests are
+kept. Age is seasons since installation (the installation year is the 1st season). `plugDepth` has
+`{ nests, rows: [{ level, nests }] }`, leaves out 2023, has no availability, and uses the last plug
+depth recorded in each nest's run. Checked against the deck's Hylaeus page: every count and every
+availability tick matches. The deck's "Number of Nests by Plug Depth (2026)" chart is not
+reproduced yet (same 694 nests, different split), so no chart for it is precomputed.
+
+Plug Depth is kept as the export's text (`1.1 inches`, `1 inch`, `1/2 inch`, `1/16 inch`, `flush`,
+`protruding`); it was previously parsed as a number, which dropped every value.

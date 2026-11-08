@@ -42,9 +42,10 @@ export function classifyCavityOccupancy(observations) {
   return 'empty'
 }
 
-// The occupant runs in one cavity's observations, each { occupantType, generalId }
-// (null when none was ever recorded in the run; both are the first recorded).
-export function listOccupantRuns(observations) {
+// The occupant runs in one cavity's observations, each { occupantType, generalId,
+// observations } (type and General ID are null when none was ever recorded in the
+// run; both are the first recorded).
+function splitOccupantRuns(observations) {
   const runs = []
   let previousStatus = null
   let plug = null
@@ -60,17 +61,23 @@ export function listOccupantRuns(observations) {
     const plugChanged = o.plugComposition != null && plug != null && o.plugComposition !== plug
     const resealed = previousStatus === 'Reopened' && (status === 'Active' || status === 'Complete')
     if (!open || resealed || plugChanged) {
-      runs.push({ occupantType: null, generalId: null })
+      runs.push({ occupantType: null, generalId: null, observations: [] })
       plug = null
       open = true
     }
     const run = runs[runs.length - 1]
+    run.observations.push(o)
     if (o.plugComposition != null) plug = o.plugComposition
     if (run.occupantType === null && o.occupantType != null) run.occupantType = o.occupantType
     if (run.generalId === null && o.generalId != null) run.generalId = o.generalId
     previousStatus = status
   }
   return runs
+}
+
+// The same runs as { occupantType, generalId } only.
+export function listOccupantRuns(observations) {
+  return splitOccupantRuns(observations).map(({ occupantType, generalId }) => ({ occupantType, generalId }))
 }
 
 export function countOccupantRuns(observations) {
@@ -126,6 +133,7 @@ export const CHART_IDS = {
   occupantsByTypeGenus: 'occupants-by-type-genus',
   occupantsByGenus: 'occupants-by-genus',
   multiGenusCavitiesBySite: 'multi-genus-cavities-by-site',
+  genusProfile: 'genus-profile',
   sealedRateByCwd: 'sealed-rate-by-cwd',
   sealedRateBySubstrate: 'sealed-rate-by-substrate',
   sealedRateByDirection: 'sealed-rate-by-direction',
@@ -195,6 +203,108 @@ function occupantCounts(cavityObservations, keys, categorize) {
   return counts
 }
 
+// ---- Genus profiles (US-36). One profile per bee/wasp General ID, all years combined. ----
+
+const PLUG_DEPTH_LEVELS = ['1.1 inches', '1 inch', '1/2 inch', '1/16 inch', 'flush', 'protruding']
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+const ordinal = n => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0]} season`
+
+// Panels with an availability tick: where a nest sits vs. where cavities exist.
+// `level` is a function of a cavity-year (its tunnel and year), or null to skip it.
+const PROFILE_PANELS = {
+  direction: { level: c => c.tunnel.direction ?? null, order: level => COMPASS.indexOf(level) },
+  age: { level: c => (c.tunnel.installationYear != null ? c.year - c.tunnel.installationYear + 1 : null) },
+  cwd: { level: c => c.tunnel.coarseWoodyDebrisType ?? null },
+  substrate: { level: c => c.tunnel.substrateType ?? null },
+  diameter: { level: c => (c.tunnel.tunnelDiameterInches != null ? String(c.tunnel.tunnelDiameterInches) : null) },
+}
+
+// A nest's plug depth is the last one recorded during its run.
+function lastPlugDepth(observations) {
+  return [...observations].reverse().find(o => o.plugDepth != null)?.plugDepth ?? null
+}
+
+// cavityYears: [{ year, siteId, tunnel, observations }] (every cavity observed in a year).
+function buildGenusProfiles(cavityYears) {
+  const available = cavityYears.filter(c => !isExcludedCavity(c.observations))
+  const nestsByGenus = new Map()
+  for (const cavity of cavityYears) {
+    for (const run of splitOccupantRuns(cavity.observations)) {
+      const label = genusLabel(run)
+      if (label === null || label === 'Unknown' || label.startsWith('Other')) continue
+      if (!nestsByGenus.has(label)) nestsByGenus.set(label, [])
+      nestsByGenus.get(label).push({ cavity, run })
+    }
+  }
+
+  const profiles = {}
+  for (const generalId of [...nestsByGenus.keys()].sort(compareGroups)) {
+    const nests = nestsByGenus.get(generalId)
+    const cavities = [...new Set(nests.map(n => n.cavity))]
+    const sharedWith = new Map()
+    let shared = 0
+    for (const cavity of cavities) {
+      const others = new Set(splitOccupantRuns(cavity.observations).map(r => r.generalId)
+        .filter(id => id !== null && id !== generalId))
+      if (others.size > 0) shared += 1
+      for (const id of others) sharedWith.set(id, (sharedWith.get(id) ?? 0) + 1)
+    }
+
+    const panels = {}
+    for (const [name, { level, order }] of Object.entries(PROFILE_PANELS)) {
+      const availableBy = new Map()
+      for (const cavity of available) {
+        const key = level(cavity)
+        if (key !== null) availableBy.set(key, (availableBy.get(key) ?? 0) + 1)
+      }
+      const nestsBy = new Map()
+      for (const { cavity } of nests) {
+        const key = level(cavity)
+        if (key !== null) nestsBy.set(key, (nestsBy.get(key) ?? 0) + 1)
+      }
+      const keys = [...availableBy.keys()].sort(name === 'age'
+        ? (a, b) => a - b
+        : (a, b) => (order ? order(a) - order(b) : compareGroups(String(a), String(b))))
+      panels[name] = {
+        nests: [...nestsBy.values()].reduce((sum, count) => sum + count, 0),
+        availableTotal: [...availableBy.values()].reduce((sum, count) => sum + count, 0),
+        rows: keys.map(key => ({
+          level: name === 'age' ? ordinal(key) : key,
+          nests: nestsBy.get(key) ?? 0,
+          available: availableBy.get(key),
+        })),
+      }
+    }
+    // Plug depth leaves out 2023 and has no availability tick.
+    const depthCounts = new Map()
+    for (const { cavity, run } of nests) {
+      const depth = cavity.year === 2023 ? null : lastPlugDepth(run.observations)
+      if (PLUG_DEPTH_LEVELS.includes(depth)) depthCounts.set(depth, (depthCounts.get(depth) ?? 0) + 1)
+    }
+    panels.plugDepth = {
+      nests: [...depthCounts.values()].reduce((sum, count) => sum + count, 0),
+      rows: PLUG_DEPTH_LEVELS.map(level => ({ level, nests: depthCounts.get(level) ?? 0 })),
+    }
+
+    profiles[generalId] = {
+      generalId,
+      nests: nests.length,
+      years: [...new Set(nests.map(n => n.cavity.year))].sort((a, b) => a - b),
+      sites: new Set(nests.map(n => n.cavity.siteId)).size,
+      sealedNests: nests.filter(n => n.run.observations.some(o => o.wholeOrHole === SEALED_VALUE)).length,
+      parasitized: nests.filter(n => n.run.observations.some(o => o.wholeOrHole === 'Parasitism')).length,
+      competition: {
+        cavities: cavities.length,
+        shared,
+        sharedWith: [...sharedWith].map(([id, count]) => ({ generalId: id, cavities: count }))
+          .sort((a, b) => b.cavities - a.cavities || compareGroups(a.generalId, b.generalId)),
+      },
+      panels,
+    }
+  }
+  return profiles
+}
+
 /**
  * Pure: precompute every dashboard figure from the PUBLIC dataset.
  * `publicDataset` is { sites, observations } from generatePublicDataset;
@@ -216,6 +326,7 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     cavities.get(o.tunnelId).observations.push(o)
   }
 
+  const cavityYears = []
   const charts = {
     [CHART_IDS.occupancyByYear]: {},
     [CHART_IDS.occupancyBySite]: {},
@@ -244,6 +355,9 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
       .sort(([a], [b]) => byText(a, b))
       .map(([siteId, group]) => ({ siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...tally(group) }))
 
+    for (const c of cavities) {
+      cavityYears.push({ year: Number(year), siteId: c.siteId, tunnel: c.tunnel, observations: c.observations })
+    }
     const allObservations = cavities.map(c => c.observations)
     charts[CHART_IDS.occupantsByYearType][year] = [occupantCounts(allObservations, OCCUPANT_TYPES, occupantCategory)]
     const siteRows = (keys, categorize) => [...bySite]
@@ -307,5 +421,6 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
         .map(group => ({ group, ...rates[group] }))
     }
   }
+  charts[CHART_IDS.genusProfile] = buildGenusProfiles(cavityYears)
   return { generatedAt, years: years.map(Number), charts }
 }
