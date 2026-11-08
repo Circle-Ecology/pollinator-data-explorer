@@ -84,6 +84,15 @@ describe('US-28 generateDashboardDataset', () => {
           ],
         },
         [CHART_IDS.genusProfile]: {},
+        // No General IDs in this fixture, so no genera; a row per diameter and site that had cavities.
+        [CHART_IDS.richnessByDiameterSite]: {
+          2023: [{ diameter: '0.25', siteId: 'S1', propertyName: 'Meadow', Bee: 0, Wasp: 0 }],
+          2025: [
+            { diameter: '0.125', siteId: 'S2', propertyName: 'Creek', Bee: 0, Wasp: 0 },
+            { diameter: '0.25', siteId: 'S1', propertyName: 'Meadow', Bee: 0, Wasp: 0 },
+            { diameter: '0.375', siteId: 'S1', propertyName: 'Meadow', Bee: 0, Wasp: 0 },
+          ],
+        },
         [CHART_IDS.sealedRateByCwd]: {
           2023: [row('Log', 1, 0, 0)],
           2025: [row('Log', 1, 1, 0), row('Snag', 2, 0, 0)],
@@ -92,9 +101,10 @@ describe('US-28 generateDashboardDataset', () => {
           2023: [row('Pine', 1, 0, 0)],
           2025: [row('Cottonwood', 2, 0, 0), row('Pine', 1, 1, 0)],
         },
+        // Grouped by direction and Log/Snag, like the deck ("N Log", "S Snag").
         [CHART_IDS.sealedRateByDirection]: {
-          2023: [row('N', 1, 0, 0)],
-          2025: [row('N', 1, 1, 0), row('S', 2, 0, 0)],
+          2023: [row('N Log', 1, 0, 0)],
+          2025: [row('N Log', 1, 1, 0), row('S Snag', 2, 0, 0)],
         },
         // Grouped by installation year and Log/Snag, like the deck. C is retired, so no "2025 Log".
         [CHART_IDS.sealedRateByInstallYear]: {
@@ -122,7 +132,7 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(15)
+    expect(Object.keys(empty.charts)).toHaveLength(16)
   })
 })
 
@@ -328,5 +338,16 @@ describe('US-28 genus profiles', () => {
     expect(panels.cwd.rows).toEqual([{ level: 'Log', nests: 4, available: 5 }, { level: 'Snag', nests: 1, available: 1 }])
     expect(panels.substrate.rows).toEqual([{ level: 'Cottonwood', nests: 4, available: 4 }, { level: 'Pine', nests: 1, available: 2 }])
     expect(panels.diameter.rows).toEqual([{ level: '0.125', nests: 4, available: 4 }, { level: '0.25', nests: 1, available: 2 }])
+  })
+
+  it('counts distinct bee and wasp genera by diameter and site', () => {
+    const richness = charts[CHART_IDS.richnessByDiameterSite]
+    const rowOf = (diameter, siteId, propertyName, Bee, Wasp = 0) => ({ diameter, siteId, propertyName, Bee, Wasp })
+    // C holds Anthidium and Hylaeus (two genera); D holds only a spider, which is not a bee or wasp genus.
+    expect(richness[2023]).toEqual([rowOf('0.125', 'S1', 'Meadow', 1), rowOf('0.125', 'S2', 'Creek', 0)])
+    expect(richness[2025]).toEqual([
+      rowOf('0.125', 'S1', 'Meadow', 1), rowOf('0.125', 'S2', 'Creek', 2),
+      rowOf('0.25', 'S1', 'Meadow', 1), rowOf('0.25', 'S2', 'Creek', 0),
+    ])
   })
 })

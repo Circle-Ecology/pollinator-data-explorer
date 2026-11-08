@@ -225,18 +225,21 @@ Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every 
 its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
 exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occupant charts
 `occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, the three genus charts
-`occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, `genus-profile`, and the five sealed
-nest rate charts `sealed-rate-by-cwd`, `-by-substrate`, `-by-direction`, `-by-install-year`
-(grouped like the deck, e.g. "2025 Log") and `-by-diameter`. Sealed rows look like
+`occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, `genus-profile`,
+`richness-by-diameter-site`, and the five sealed nest rate charts `sealed-rate-by-cwd`,
+`-by-substrate`, `-by-direction`, `-by-install-year` and `-by-diameter`. Direction and installation
+year are grouped with Log/Snag like the deck ("N Log", "2025 Snag"). Sealed rows look like
 `{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
 
 The metric rules (occupied, excluded, occupant run, sealed nest) each live in one helper in
 that module. Year-level occupancy is confirmed against Circle Ecology's deck. A sealed nest is an
-unbroken run of `Sealed` records for one occupant type in a cavity; the rate counts nests, not
-cavities, over the non-excluded cavities observed that year. Against the deck's 2025
-installation-year chart this lands within about one percentage point (Bee 20/39/34/15 vs deck
-19/38/33/15, Wasp 4/18/17/4 vs 4/18/17/5); the small remaining gap is unexplained and may be
-the deck using an older export. 
+occupant run (defined below) with at least one `Sealed` record, counted per occupant type; the rate
+counts nests, not cavities, over the non-excluded cavities observed that year. Against the deck's
+2026 sealed nest rates by every structural factor this matches 32 of 34 cells exactly: all 17 Wasp
+rates, and every Bee rate except two that are one point off (S Log 28 vs 27, NE Snag 9 vs 8). The
+deck's 2025 installation-year chart is within one point on Bee (20/39/34/15 vs 19/38/33/15); the
+cause is unexplained and may be the deck using an older export.
+
 An occupant is one run in a cavity: it ends at any non-occupied observation, and a new run starts
 on Reopened -> Active/Complete or when a recorded Plug Composition changes. Its type is the first
 one recorded, and runs with no recorded type are not counted. Occupant rows are
@@ -276,3 +279,8 @@ reproduced yet (same 694 nests, different split), so no chart for it is precompu
 
 Plug Depth is kept as the export's text (`1.1 inches`, `1 inch`, `1/2 inch`, `1/16 inch`, `flush`,
 `protruding`); it was previously parsed as a number, which dropped every value.
+
+`richness-by-diameter-site` rows are `{ diameter, siteId, propertyName, Bee, Wasp }`: the number of
+distinct General IDs among that type's nests in cavities of that diameter at that site, one row for
+every diameter and site that had cavities that year. It matches the deck's 2026 richness chart on
+all 36 cells.

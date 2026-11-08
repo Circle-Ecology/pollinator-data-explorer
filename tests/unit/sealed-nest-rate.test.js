@@ -29,10 +29,28 @@ describe('US-28 countSealedNests', () => {
   })
 
   it('counts only the requested occupant type', () => {
-    const observations = [sealedBee('2025-06-01'), sealed('Wasp', '2025-07-01')]
-    expect(countSealedNests(observations, 'Bee')).toBe(1)
-    expect(countSealedNests(observations, 'Wasp')).toBe(1)
+    expect(countSealedNests([sealedBee('2025-06-01')], 'Bee')).toBe(1)
+    expect(countSealedNests([sealedBee('2025-06-01')], 'Wasp')).toBe(0)
+    expect(countSealedNests([sealed('Wasp', '2025-06-01')], 'Wasp')).toBe(1)
     expect(countSealedNests([sealed('Spider', '2025-06-01')], 'Bee')).toBe(0)
+  })
+
+  it('counts a nest once even if it was Not Sealed before it was sealed', () => {
+    expect(countSealedNests([
+      obs('Active', '2025-06-01', { occupantType: 'Bee', wholeOrHole: 'Not Sealed' }),
+      sealedBee('2025-07-01'),
+    ], 'Bee')).toBe(1)
+  })
+
+  it('counts a nest that was never sealed as zero', () => {
+    expect(countSealedNests([obs('Active', '2025-06-01', { occupantType: 'Bee', wholeOrHole: 'Not Sealed' })], 'Bee')).toBe(0)
+  })
+
+  it('counts a second nest when the Plug Composition changes between sealed records', () => {
+    expect(countSealedNests([
+      obs('Complete', '2025-06-01', { occupantType: 'Bee', wholeOrHole: 'Sealed', plugComposition: 'mud' }),
+      obs('Complete', '2025-07-01', { occupantType: 'Bee', wholeOrHole: 'Sealed', plugComposition: 'leaf pieces' }),
+    ], 'Bee')).toBe(2)
   })
 
   it('does not depend on the order observations are given in', () => {

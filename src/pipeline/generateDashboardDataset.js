@@ -6,10 +6,10 @@
 // 2025: 33%, 2026: 35%):
 //  - Occupied = Active, Complete or Reopened.
 //  - Excluded = never occupied and at least one "Retired hole" observation.
-// CONFIRMED against the deck's sealed nest rate by installation year (2025):
-//  - A sealed nest is a run of consecutive "Sealed" records for one occupant type
-//    in a cavity; the rate counts nests (not cavities) over available cavities.
-//    Bee matches within ~1.5 points and Wasp within 1; see docs/public-dataset.md.
+// CONFIRMED against the deck's sealed nest rates by structural factor (2026, 32 of
+// 34 cells exact; 2025 installation-year chart within a point):
+//  - A sealed nest is an occupant run (see below) with at least one "Sealed" record,
+//    counted per occupant type; the rate is nests over available cavities.
 // CONFIRMED against the deck's occupants by site and type (2023, 2025, 2026):
 //  - An occupant is one run in a cavity. A run ends at any non-occupied
 //    observation and a new one starts on Reopened -> Active or Complete, or when
@@ -19,9 +19,10 @@
 // genus label is the run's General ID, except that Spider/Ant(s)/Pill Bug/Other
 // occupants are all "Other", a Bee or Wasp whose General ID is "Other" is
 // "Other (Bee)"/"Other (Wasp)", and runs with no General ID are not counted.
-//  Matches the deck on 65 of 76 site/year/type cells; the rest are 2025 Other
-//  (tracked outside the sheet export) and small 2023 differences. See
-//  docs/public-dataset.md.
+// Occupant figures match the deck apart from 2025 Other (tracked outside the
+// sheet export) and small 2023 differences; see docs/public-dataset.md.
+// CONFIRMED against the deck's richness (2026, 36 of 36 cells): distinct General IDs
+// among Bee and Wasp nests, by diameter, site and type.
 
 export const OCCUPIED_STATUSES = ['Active', 'Complete', 'Reopened']
 export const RETIRED_STATUS = 'Retired hole'
@@ -84,18 +85,13 @@ export function countOccupantRuns(observations) {
   return listOccupantRuns(observations).length
 }
 
-// Nests of one occupant type in a cavity's observations: each unbroken run of
-// "Sealed" records counts once, and any other record (Reopened, Emergence, Empty,
-// another occupant...) ends it, so a nest sealed again after reopening is a new one.
+// Sealed nests of one occupant type in a cavity's observations: each occupant run of
+// that type that has at least one "Sealed" record counts once. A nest sealed again
+// after being reopened, or after its Plug Composition changed, is a new run.
 export function countSealedNests(observations, occupantType) {
-  let nests = 0
-  let inNest = false
-  for (const o of [...observations].sort(byDate)) {
-    const sealed = o.occupantType === occupantType && o.wholeOrHole === SEALED_VALUE
-    if (sealed && !inNest) nests += 1
-    inNest = sealed
-  }
-  return nests
+  return splitOccupantRuns(observations)
+    .filter(run => run.occupantType === occupantType && run.observations.some(o => o.wholeOrHole === SEALED_VALUE))
+    .length
 }
 
 // cavities: [{ group, observations }] (group = the factor value, e.g. 'Log').
@@ -134,6 +130,7 @@ export const CHART_IDS = {
   occupantsByGenus: 'occupants-by-genus',
   multiGenusCavitiesBySite: 'multi-genus-cavities-by-site',
   genusProfile: 'genus-profile',
+  richnessByDiameterSite: 'richness-by-diameter-site',
   sealedRateByCwd: 'sealed-rate-by-cwd',
   sealedRateBySubstrate: 'sealed-rate-by-substrate',
   sealedRateByDirection: 'sealed-rate-by-direction',
@@ -143,11 +140,12 @@ export const CHART_IDS = {
 
 // Nest-site factors for the sealed nest rate charts: chart id -> the group a
 // tunnel falls in (null = leave the cavity out of that chart). Installation year
-// is split by Log/Snag as in the deck ("2025 Log", "2025 Snag").
+// and direction are split by Log/Snag as in the deck ("2025 Log", "N Log").
 const SEALED_RATE_FACTORS = {
   [CHART_IDS.sealedRateByCwd]: t => t.coarseWoodyDebrisType,
   [CHART_IDS.sealedRateBySubstrate]: t => t.substrateType,
-  [CHART_IDS.sealedRateByDirection]: t => t.direction,
+  [CHART_IDS.sealedRateByDirection]: t =>
+    (t.direction != null && t.coarseWoodyDebrisType != null ? `${t.direction} ${t.coarseWoodyDebrisType}` : null),
   [CHART_IDS.sealedRateByInstallYear]: t =>
     (t.installationYear != null && t.coarseWoodyDebrisType != null ? `${t.installationYear} ${t.coarseWoodyDebrisType}` : null),
   [CHART_IDS.sealedRateByDiameter]: t => (t.tunnelDiameterInches != null ? String(t.tunnelDiameterInches) : null),
@@ -337,6 +335,7 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     [CHART_IDS.occupantsByTypeGenus]: {},
     [CHART_IDS.occupantsByGenus]: {},
     [CHART_IDS.multiGenusCavitiesBySite]: {},
+    [CHART_IDS.richnessByDiameterSite]: {},
     ...Object.fromEntries(Object.keys(SEALED_RATE_FACTORS).map(id => [id, {}])),
   }
   for (const year of years) {
@@ -409,6 +408,25 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
         multiGenus: group.filter(observations =>
           new Set(listOccupantRuns(observations).map(run => run.generalId).filter(id => id !== null)).size > 1).length,
         occupied: group.filter(observations => classifyCavityOccupancy(observations) === 'occupied').length,
+      }))
+
+    // Richness: distinct General IDs among bee and wasp nests, by diameter and site.
+    const richness = new Map()
+    for (const c of cavities) {
+      if (c.tunnel.tunnelDiameterInches == null) continue
+      const diameter = String(c.tunnel.tunnelDiameterInches)
+      const key = `${diameter}|${c.siteId}`
+      const entry = richness.get(key) ?? { diameter, siteId: c.siteId, genera: { Bee: new Set(), Wasp: new Set() } }
+      for (const run of listOccupantRuns(c.observations)) {
+        if (entry.genera[run.occupantType] && run.generalId !== null) entry.genera[run.occupantType].add(run.generalId)
+      }
+      richness.set(key, entry)
+    }
+    charts[CHART_IDS.richnessByDiameterSite][year] = [...richness.values()]
+      .sort((a, b) => Number(a.diameter) - Number(b.diameter) || byText(a.siteId, b.siteId))
+      .map(({ diameter, siteId, genera }) => ({
+        diameter, siteId, propertyName: siteById.get(siteId)?.propertyName ?? null,
+        Bee: genera.Bee.size, Wasp: genera.Wasp.size,
       }))
 
     for (const [chartId, factor] of Object.entries(SEALED_RATE_FACTORS)) {
