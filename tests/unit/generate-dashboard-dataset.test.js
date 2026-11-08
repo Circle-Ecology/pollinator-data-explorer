@@ -6,10 +6,10 @@ const sites = [
   { siteId: 'S2', propertyName: 'Creek' },
 ]
 const tunnels = [
-  { tunnelId: 'A', siteId: 'S1', coarseWoodyDebrisType: 'Log', observerNotes: 'secret' },
-  { tunnelId: 'B', siteId: 'S1', coarseWoodyDebrisType: 'Snag' },
-  { tunnelId: 'C', siteId: 'S1', coarseWoodyDebrisType: 'Log' },
-  { tunnelId: 'D', siteId: 'S2', coarseWoodyDebrisType: 'Snag' },
+  { tunnelId: 'A', siteId: 'S1', coarseWoodyDebrisType: 'Log', substrateType: 'Pine', direction: 'N', installationYear: 2023, tunnelDiameterInches: 0.25, observerNotes: 'secret' },
+  { tunnelId: 'B', siteId: 'S1', coarseWoodyDebrisType: 'Snag', substrateType: 'Cottonwood', direction: 'S', installationYear: 2025, tunnelDiameterInches: 0.375 },
+  { tunnelId: 'C', siteId: 'S1', coarseWoodyDebrisType: 'Log', substrateType: 'Pine', direction: 'N', installationYear: 2025, tunnelDiameterInches: 0.25 },
+  { tunnelId: 'D', siteId: 'S2', coarseWoodyDebrisType: 'Snag', substrateType: 'Cottonwood', direction: 'S', installationYear: 2025, tunnelDiameterInches: 0.125 },
 ]
 const o = (tunnelId, siteId, surveyDate, observationStatus, extra = {}) =>
   ({ tunnelId, siteId, surveyDate, observationStatus, occupantType: null, wholeOrHole: null, ...extra })
@@ -24,6 +24,11 @@ const observations = [
   o('C', 'S1', '2025-07-01', 'Retired hole'),
   o('D', 'S2', '2025-07-01', 'Complete', { occupantType: 'Bee', wholeOrHole: 'Not Sealed' }),
 ]
+const row = (group, available, bee, wasp) => ({
+  group, available,
+  Bee: { sealed: bee, rate: Math.round((bee / available) * 100) },
+  Wasp: { sealed: wasp, rate: Math.round((wasp / available) * 100) },
+})
 const generatedAt = '2026-10-17T12:00:00.000Z'
 
 describe('US-28 generateDashboardDataset', () => {
@@ -45,12 +50,26 @@ describe('US-28 generateDashboardDataset', () => {
             { siteId: 'S2', propertyName: 'Creek', occupied: 1, empty: 0, excluded: 0, available: 1 },
           ],
         },
-        [CHART_IDS.sealedNestRateByLevel]: {
-          2023: [{ level: 'Log', sealed: 0, available: 1, rate: 0 }],
-          2025: [
-            { level: 'Log', sealed: 1, available: 1, rate: 100 },
-            { level: 'Snag', sealed: 0, available: 2, rate: 0 },
-          ],
+        [CHART_IDS.sealedRateByCwd]: {
+          2023: [row('Log', 1, 0, 0)],
+          2025: [row('Log', 1, 1, 0), row('Snag', 2, 0, 0)],
+        },
+        [CHART_IDS.sealedRateBySubstrate]: {
+          2023: [row('Pine', 1, 0, 0)],
+          2025: [row('Cottonwood', 2, 0, 0), row('Pine', 1, 1, 0)],
+        },
+        [CHART_IDS.sealedRateByDirection]: {
+          2023: [row('N', 1, 0, 0)],
+          2025: [row('N', 1, 1, 0), row('S', 2, 0, 0)],
+        },
+        // Grouped by installation year and Log/Snag, like the deck. C is retired, so no "2025 Log".
+        [CHART_IDS.sealedRateByInstallYear]: {
+          2023: [row('2023 Log', 1, 0, 0)],
+          2025: [row('2023 Log', 1, 1, 0), row('2025 Snag', 2, 0, 0)],
+        },
+        [CHART_IDS.sealedRateByDiameter]: {
+          2023: [row('0.25', 1, 0, 0)],
+          2025: [row('0.125', 1, 0, 0), row('0.25', 1, 1, 0), row('0.375', 1, 0, 0)],
         },
       },
     })
@@ -69,6 +88,6 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(3)
+    expect(Object.keys(empty.charts)).toHaveLength(7)
   })
 })

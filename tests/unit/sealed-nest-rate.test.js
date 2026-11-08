@@ -1,30 +1,67 @@
 import { describe, expect, it } from 'vitest'
-import { computeSealedNestRate } from '../../src/pipeline/generateDashboardDataset.js'
+import { computeSealedNestRate, countSealedNests } from '../../src/pipeline/generateDashboardDataset.js'
 import { obs } from '../fixtures/cavityObservations.js'
 
-const sealedBee = date => obs('Active', date, { occupantType: 'Bee', wholeOrHole: 'Sealed' })
-const cavity = (level, ...observations) => ({ level, observations })
+const sealed = (type, date, status = 'Complete') => obs(status, date, { occupantType: type, wholeOrHole: 'Sealed' })
+const sealedBee = date => sealed('Bee', date)
+const cavity = (group, ...observations) => ({ group, observations })
+
+describe('US-28 countSealedNests', () => {
+  it('counts one nest for a run of consecutive Sealed records', () => {
+    expect(countSealedNests([sealedBee('2025-06-01'), sealedBee('2025-07-01'), sealedBee('2025-08-01')], 'Bee')).toBe(1)
+  })
+
+  it('counts a plug recorded Sealed while status is Active as a sealed nest', () => {
+    expect(countSealedNests([sealed('Bee', '2025-07-01', 'Active')], 'Bee')).toBe(1)
+  })
+
+  it('counts a second nest when a Sealed nest is reopened and sealed again', () => {
+    expect(countSealedNests([
+      sealedBee('2025-06-01'),
+      obs('Reopened', '2025-07-01', { occupantType: 'Bee', wholeOrHole: 'Emergence' }),
+      sealedBee('2025-08-01'),
+    ], 'Bee')).toBe(2)
+  })
+
+  it('does not count Not Sealed, Emergence, Parasitism or Chalkbrood records', () => {
+    expect(countSealedNests(['Not Sealed', 'Emergence', 'Parasitism', 'Chalkbrood Characteristics']
+      .map((value, i) => obs('Reopened', `2025-0${i + 5}-01`, { occupantType: 'Bee', wholeOrHole: value })), 'Bee')).toBe(0)
+  })
+
+  it('counts only the requested occupant type', () => {
+    const observations = [sealedBee('2025-06-01'), sealed('Wasp', '2025-07-01')]
+    expect(countSealedNests(observations, 'Bee')).toBe(1)
+    expect(countSealedNests(observations, 'Wasp')).toBe(1)
+    expect(countSealedNests([sealed('Spider', '2025-06-01')], 'Bee')).toBe(0)
+  })
+
+  it('does not depend on the order observations are given in', () => {
+    expect(countSealedNests([sealedBee('2025-08-01'), obs('Empty', '2025-07-01'), sealedBee('2025-06-01')], 'Bee')).toBe(2)
+  })
+})
 
 describe('US-28 computeSealedNestRate', () => {
-  it('counts a plug recorded Sealed while status is Active as a sealed nest', () => {
-    const result = computeSealedNestRate([cavity('Log', sealedBee('2025-07-01'))], 2025)
-    expect(result.Log).toEqual({ sealed: 1, available: 1, rate: 100 })
-  })
-
-  it('counts sealed Wasp nests but not other occupant types', () => {
-    const result = computeSealedNestRate([
-      cavity('Log', obs('Complete', '2025-07-01', { occupantType: 'Wasp', wholeOrHole: 'Sealed' })),
-      cavity('Log', obs('Complete', '2025-07-01', { occupantType: 'Spider', wholeOrHole: 'Sealed' })),
-    ], 2025)
-    expect(result.Log).toEqual({ sealed: 1, available: 2, rate: 50 })
-  })
-
-  it('includes Empty cavities in the denominator', () => {
+  it('reports Bee and Wasp rates separately against the same available cavities', () => {
     const result = computeSealedNestRate([
       cavity('Log', sealedBee('2025-07-01')),
+      cavity('Log', sealed('Wasp', '2025-07-01')),
+      cavity('Log', obs('Empty', '2025-07-01')),
       cavity('Log', obs('Empty', '2025-07-01')),
     ], 2025)
-    expect(result.Log).toEqual({ sealed: 1, available: 2, rate: 50 })
+    expect(result.Log).toEqual({ available: 4, Bee: { sealed: 1, rate: 25 }, Wasp: { sealed: 1, rate: 25 } })
+  })
+
+  it('ignores occupant types other than Bee and Wasp', () => {
+    const result = computeSealedNestRate([cavity('Log', sealed('Spider', '2025-07-01'))], 2025)
+    expect(result.Log).toEqual({ available: 1, Bee: { sealed: 0, rate: 0 }, Wasp: { sealed: 0, rate: 0 } })
+  })
+
+  it('counts every nest, so a cavity can contribute more than one', () => {
+    const result = computeSealedNestRate([
+      cavity('Log', sealedBee('2025-06-01'), obs('Empty', '2025-07-01'), sealedBee('2025-08-01')),
+      cavity('Log', obs('Empty', '2025-07-01')),
+    ], 2025)
+    expect(result.Log.Bee).toEqual({ sealed: 2, rate: 100 })
   })
 
   it('excludes retired cavities from the denominator', () => {
@@ -32,19 +69,24 @@ describe('US-28 computeSealedNestRate', () => {
       cavity('Log', sealedBee('2025-07-01')),
       cavity('Log', obs('Empty', '2025-06-01'), obs('Retired hole', '2025-07-01')),
     ], 2025)
-    expect(result.Log).toEqual({ sealed: 1, available: 1, rate: 100 })
+    expect(result.Log.available).toBe(1)
+    expect(result.Log.Bee).toEqual({ sealed: 1, rate: 100 })
   })
 
-  it('reports 0% for a level with available cavities but no sealed nests', () => {
+  it('reports 0% for a group with available cavities but no sealed nests', () => {
     const result = computeSealedNestRate([
       cavity('Snag', obs('Empty', '2025-07-01')),
       cavity('Snag', obs('Active', '2025-07-01', { occupantType: 'Bee', wholeOrHole: 'Not Sealed' })),
     ], 2025)
-    expect(result.Snag).toEqual({ sealed: 0, available: 2, rate: 0 })
+    expect(result.Snag).toEqual({ available: 2, Bee: { sealed: 0, rate: 0 }, Wasp: { sealed: 0, rate: 0 } })
   })
 
   it('only considers observations from the requested year', () => {
     const result = computeSealedNestRate([cavity('Log', sealedBee('2024-07-01'), obs('Empty', '2025-07-01'))], 2025)
-    expect(result.Log).toEqual({ sealed: 0, available: 1, rate: 0 })
+    expect(result.Log).toEqual({ available: 1, Bee: { sealed: 0, rate: 0 }, Wasp: { sealed: 0, rate: 0 } })
+  })
+
+  it('omits a group with no cavities observed that year', () => {
+    expect(computeSealedNestRate([cavity('Snag', obs('Empty', '2024-07-01'))], 2025)).toEqual({})
   })
 })

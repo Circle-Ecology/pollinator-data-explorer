@@ -223,8 +223,15 @@ tunnel's `coarseWoodyDebrisType` (the cavity level). It has the same `generatedA
 
 Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every row carries
 its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
-exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, `sealed-nest-rate-by-level`.
+exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, and the five sealed
+nest rate charts `sealed-rate-by-cwd`, `-by-substrate`, `-by-direction`, `-by-install-year`
+(grouped like the deck, e.g. "2025 Log") and `-by-diameter`. Sealed rows look like
+`{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
 
 The metric rules (occupied, excluded, occupant run, sealed nest) each live in one helper in
-that module. Year-level occupancy is confirmed against Circle Ecology's deck; occupant runs
-and the sealed nest rate are still assumptions pending a deck check.
+that module. Year-level occupancy is confirmed against Circle Ecology's deck. A sealed nest is an
+unbroken run of `Sealed` records for one occupant type in a cavity; the rate counts nests, not
+cavities, over the non-excluded cavities observed that year. Against the deck's 2025
+installation-year chart this lands within about one percentage point (Bee 20/39/34/15 vs deck
+19/38/33/15, Wasp 4/18/17/4 vs 4/18/17/5); the small remaining gap is unexplained and may be
+the deck using an older export. Occupant runs are still an assumption pending a deck check.

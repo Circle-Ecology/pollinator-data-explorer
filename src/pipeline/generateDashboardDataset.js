@@ -6,15 +6,17 @@
 // 2025: 33%, 2026: 35%):
 //  - Occupied = Active, Complete or Reopened.
 //  - Excluded = never occupied and at least one "Retired hole" observation.
+// CONFIRMED against the deck's sealed nest rate by installation year (2025):
+//  - A sealed nest is a run of consecutive "Sealed" records for one occupant type
+//    in a cavity; the rate counts nests (not cavities) over available cavities.
+//    Bee matches within ~1.5 points and Wasp within 1; see docs/public-dataset.md.
 // STILL ASSUMED, pending confirmation against the deck:
 //  - A new occupant run starts after any non-occupied observation, on
 //    Reopened -> Active, or when a recorded Plug Composition changes.
-//  - Sealed nest = Bee or Wasp with Whole/Hole "Sealed"; rate denominator is
-//    non-excluded cavities observed in the year.
 
 export const OCCUPIED_STATUSES = ['Active', 'Complete', 'Reopened']
 export const RETIRED_STATUS = 'Retired hole'
-export const SEALED_OCCUPANT_TYPES = ['Bee', 'Wasp']
+export const NEST_OCCUPANT_TYPES = ['Bee', 'Wasp']
 export const SEALED_VALUE = 'Sealed'
 
 const isOccupiedStatus = status => OCCUPIED_STATUSES.includes(status)
@@ -56,23 +58,40 @@ export function countOccupantRuns(observations) {
   return runs
 }
 
-function isSealedNest(o) {
-  return SEALED_OCCUPANT_TYPES.includes(o.occupantType) && o.wholeOrHole === SEALED_VALUE
+// Nests of one occupant type in a cavity's observations: each unbroken run of
+// "Sealed" records counts once, and any other record (Reopened, Emergence, Empty,
+// another occupant...) ends it, so a nest sealed again after reopening is a new one.
+export function countSealedNests(observations, occupantType) {
+  let nests = 0
+  let inNest = false
+  for (const o of [...observations].sort(byDate)) {
+    const sealed = o.occupantType === occupantType && o.wholeOrHole === SEALED_VALUE
+    if (sealed && !inNest) nests += 1
+    inNest = sealed
+  }
+  return nests
 }
 
-// cavities: [{ level, observations }]. Returns { [level]: { sealed, available, rate } }.
+// cavities: [{ group, observations }] (group = the factor value, e.g. 'Log').
+// Returns { [group]: { available, Bee: { sealed, rate }, Wasp: { sealed, rate } } },
+// where `available` is the non-excluded cavities observed that year.
 export function computeSealedNestRate(cavities, year) {
   const prefix = `${year}-`
   const result = {}
-  for (const { level, observations } of cavities) {
+  for (const { group, observations } of cavities) {
     const inYear = observations.filter(o => o.surveyDate.startsWith(prefix))
     if (inYear.length === 0 || isExcludedCavity(inYear)) continue
-    const entry = (result[level] ??= { sealed: 0, available: 0, rate: 0 })
+    const entry = (result[group] ??= {
+      available: 0,
+      ...Object.fromEntries(NEST_OCCUPANT_TYPES.map(type => [type, { sealed: 0, rate: 0 }])),
+    })
     entry.available += 1
-    if (inYear.some(isSealedNest)) entry.sealed += 1
+    for (const type of NEST_OCCUPANT_TYPES) entry[type].sealed += countSealedNests(inYear, type)
   }
   for (const entry of Object.values(result)) {
-    entry.rate = Math.round((entry.sealed / entry.available) * 100)
+    for (const type of NEST_OCCUPANT_TYPES) {
+      entry[type].rate = Math.round((entry[type].sealed / entry.available) * 100)
+    }
   }
   return result
 }
@@ -81,10 +100,32 @@ export function computeSealedNestRate(cavities, year) {
 export const CHART_IDS = {
   occupancyByYear: 'occupancy-by-year',
   occupancyBySite: 'occupancy-by-site',
-  sealedNestRateByLevel: 'sealed-nest-rate-by-level',
+  sealedRateByCwd: 'sealed-rate-by-cwd',
+  sealedRateBySubstrate: 'sealed-rate-by-substrate',
+  sealedRateByDirection: 'sealed-rate-by-direction',
+  sealedRateByInstallYear: 'sealed-rate-by-install-year',
+  sealedRateByDiameter: 'sealed-rate-by-diameter',
+}
+
+// Nest-site factors for the sealed nest rate charts: chart id -> the group a
+// tunnel falls in (null = leave the cavity out of that chart). Installation year
+// is split by Log/Snag as in the deck ("2025 Log", "2025 Snag").
+const SEALED_RATE_FACTORS = {
+  [CHART_IDS.sealedRateByCwd]: t => t.coarseWoodyDebrisType,
+  [CHART_IDS.sealedRateBySubstrate]: t => t.substrateType,
+  [CHART_IDS.sealedRateByDirection]: t => t.direction,
+  [CHART_IDS.sealedRateByInstallYear]: t =>
+    (t.installationYear != null && t.coarseWoodyDebrisType != null ? `${t.installationYear} ${t.coarseWoodyDebrisType}` : null),
+  [CHART_IDS.sealedRateByDiameter]: t => (t.tunnelDiameterInches != null ? String(t.tunnelDiameterInches) : null),
 }
 
 const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+// Plain numbers (diameters) sort by value; labels like "2025 Log" sort as text with
+// embedded numbers in order. localeCompare's numeric mode alone would put 0.25 before 0.125.
+function compareGroups(a, b) {
+  const [x, y] = [Number(a), Number(b)]
+  return Number.isFinite(x) && Number.isFinite(y) ? x - y : a.localeCompare(b, 'en', { numeric: true })
+}
 const yearOf = observation => observation.surveyDate.slice(0, 4)
 
 function tally(cavityObservations) {
@@ -97,13 +138,13 @@ function tally(cavityObservations) {
 /**
  * Pure: precompute every dashboard figure from the PUBLIC dataset.
  * `publicDataset` is { sites, observations } from generatePublicDataset;
- * `tunnels` supplies each cavity's level (coarseWoodyDebrisType). Only those
+ * `tunnels` supplies the nest-site factors (see SEALED_RATE_FACTORS). Only those
  * fields are read, and only aggregates are emitted, so no staff-only data can
  * reach the output. Every aggregate carries its counts and denominator.
  * Shape: { generatedAt, years, charts: { [chartId]: { [year]: rows } } }.
  */
 export function generateDashboardDataset({ sites, observations }, tunnels, generatedAt) {
-  const levelByTunnel = new Map(tunnels.map(t => [t.tunnelId, t.coarseWoodyDebrisType ?? null]))
+  const tunnelById = new Map(tunnels.map(t => [t.tunnelId, t]))
   const siteById = new Map(sites.map(s => [s.siteId, s]))
   const years = [...new Set(observations.map(yearOf))].sort(byText)
 
@@ -118,12 +159,12 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
   const charts = {
     [CHART_IDS.occupancyByYear]: {},
     [CHART_IDS.occupancyBySite]: {},
-    [CHART_IDS.sealedNestRateByLevel]: {},
+    ...Object.fromEntries(Object.keys(SEALED_RATE_FACTORS).map(id => [id, {}])),
   }
   for (const year of years) {
     const cavities = [...cavitiesByYear.get(year)]
       .sort(([a], [b]) => byText(a, b))
-      .map(([tunnelId, cavity]) => ({ tunnelId, ...cavity, level: levelByTunnel.get(tunnelId) ?? null }))
+      .map(([tunnelId, cavity]) => ({ tunnelId, ...cavity, tunnel: tunnelById.get(tunnelId) ?? {} }))
 
     charts[CHART_IDS.occupancyByYear][year] = [tally(cavities.map(c => c.observations))]
 
@@ -136,9 +177,15 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
       .sort(([a], [b]) => byText(a, b))
       .map(([siteId, group]) => ({ siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...tally(group) }))
 
-    const sealed = computeSealedNestRate(cavities.filter(c => c.level !== null), Number(year))
-    charts[CHART_IDS.sealedNestRateByLevel][year] = Object.keys(sealed).sort(byText)
-      .map(level => ({ level, ...sealed[level] }))
+    for (const [chartId, factor] of Object.entries(SEALED_RATE_FACTORS)) {
+      const grouped = cavities
+        .map(c => ({ group: factor(c.tunnel) ?? null, observations: c.observations }))
+        .filter(c => c.group !== null)
+      const rates = computeSealedNestRate(grouped, Number(year))
+      charts[chartId][year] = Object.keys(rates)
+        .sort(compareGroups)
+        .map(group => ({ group, ...rates[group] }))
+    }
   }
   return { generatedAt, years: years.map(Number), charts }
 }
