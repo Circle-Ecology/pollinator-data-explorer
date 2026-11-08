@@ -293,7 +293,8 @@ export function parseExportRows(rows, importBatchId) {
         nesterFamily: normalizeNaValue(row['Nester of family']),
         generalId: normalizeNaValue(row['General ID']),
         commonName: normalizeNaValue(row['Common Name']),
-        plugDepth: normalizeNumber(row['Plug Depth']),
+        // Text in the real export ("1 inch", "flush", "protruding"), not a number.
+        plugDepth: normalizeNaValue(row['Plug Depth']),
         plugComposition: normalizeNaValue(
           row['Plug Composition']
         ),
