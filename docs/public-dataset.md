@@ -227,7 +227,8 @@ exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occu
 `occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, the three genus charts
 `occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, `genus-profile`,
 `richness-by-diameter-site`, the two period charts `occupants-by-period-type` and
-`other-by-period-type`, and the five sealed nest rate charts `sealed-rate-by-cwd`,
+`other-by-period-type`, the scorecard charts `scorecard-genera`, `scorecard-all-sites` and
+`scorecard-site-over-years`, and the five sealed nest rate charts `sealed-rate-by-cwd`,
 `-by-substrate`, `-by-direction`, `-by-install-year` and `-by-diameter`. Direction and installation
 year are grouped with Log/Snag like the deck ("N Log", "2025 Snag"). Sealed rows look like
 `{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
@@ -298,3 +299,28 @@ percentage charts to within one point on every cell (2023: 65 of 68 cells exact;
 2025's Bee:Wasp split within one point in all 14 periods). 2025's Other share is much lower than
 the deck's because of the missing tally tracker. The Other-occupants version uses the same rule but
 has not been compared to the deck.
+
+Site scorecards (`scorecard-*`) are scored by `scoreSite` in the same module with the ticket's rules:
++1 per genus present; +1 for each of Parasitism, Competition and Other Occupants that is above 0% and
+at most 30%; +1 if Emergence is recorded; +1 (once) if any genus was found only at that site that
+year; and any of Parasitism, Chalkbrood, Competition, Other Occupants, Megachile (Eutricharaea) or
+Osmia (mud) above 30% flags the site (score 0, "Flagged for Evaluation"); exactly 30% is not flagged.
+`SCORE_MAX` is 24 (19 genera + 4 bonuses + the one only-at-this-site bonus). `scorecard-genera`
+lists the genus rows with their Bee, Wasp or Unknown group; `scorecard-all-sites` is keyed by year
+with one entry per site (`siteId`, `siteNumber`, `presentGenera`, `uniqueGenera`, `conditions`,
+`score`, `max`, `category`, `flagged`, `flags`); `scorecard-site-over-years` is keyed by site then
+year, and only has sites with more than one year (not Site 2, which is 2023 only). Each condition has
+`numerator`, `denominator`, `rate` and `state` (`bonus`, `flag` or `none`); Emergence has `recorded`
+instead of a state (recorded means a Bee or Wasp nest with an Emergence record).
+Definitions: Parasitism = nests with a Parasitism record / sealed nests; Chalkbrood = nests with a
+Chalkbrood record / nests; Competition = cavities with more than one General ID / occupied cavities;
+Other = Other-occupant nests / nests; Megachile (Eutricharaea) and Osmia (mud) = their nests / nests;
+Emergence = nests with an Emergence record / sealed nests.
+
+Checked against the deck's scorecards: the genus cells match 133 of 133 (2023), 114 of 114 (2026) and
+113 of 114 (2025); every 2023 score matches and 5 of 6 in 2026. Not matched: Site 7 in 2026 (our
+Megachile (Eutricharaea) share is 32%, the deck's 26%, so we flag a site the deck scores 17/24 "Very
+High"; no simple definition of that share fits the deck), the 2025 sites that depend on the missing
+Other tracker, and Competition at four sites in 2023 (e.g. Site 5: 5% vs 21%). The category cut-offs
+(Low below 8, High 8-15, Very High 16+) are inferred from the few scores the deck shows, and whether
+the only-at-this-site bonus is a single point is unconfirmed.

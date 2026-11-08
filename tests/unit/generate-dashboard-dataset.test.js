@@ -40,13 +40,19 @@ const periodRows = (year, last, zeros, counts = {}) => Array.from({ length: last
 }))
 const TYPES0 = { Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 }
 const OTHERS0 = { Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 }
+const SCORECARD_IDS = [CHART_IDS.scorecardGenera, CHART_IDS.scorecardAllSites, CHART_IDS.scorecardSiteOverYears]
+// The scorecards have their own tests below; leave them out of the whole-output comparison.
+const withoutScorecards = result => ({
+  ...result,
+  charts: Object.fromEntries(Object.entries(result.charts).filter(([id]) => !SCORECARD_IDS.includes(id))),
+})
 const generatedAt = '2026-10-17T12:00:00.000Z'
 
 describe('US-28 generateDashboardDataset', () => {
   const result = generateDashboardDataset({ sites, observations }, tunnels, generatedAt)
 
   it('matches the hand-checked figures', () => {
-    expect(result).toEqual({
+    expect(withoutScorecards(result)).toEqual({
       generatedAt,
       years: [2023, 2025],
       charts: {
@@ -152,7 +158,7 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(18)
+    expect(Object.keys(empty.charts)).toHaveLength(21)
   })
 })
 
@@ -404,5 +410,84 @@ describe('US-28 period charts', () => {
     expect(charts[CHART_IDS.otherByPeriodType][2025]).toEqual(periodRows(2025, 5, OTHERS0, {
       2: { Spider: 1, total: 1 },
     }))
+  })
+})
+
+
+describe('US-35 site scorecards', () => {
+  const siteList = [{ siteId: 'S1', propertyName: 'Meadow' }, { siteId: 'S2', propertyName: 'Creek' }]
+  const place = { A: 'S1', B: 'S1', C: 'S1', D: 'S2', E: 'S2', G: 'S2', I: 'S2', F: 'S2' }
+  const block = { S1: '1', S2: '2' }
+  const tunnelList = Object.entries(place).map(([tunnelId, siteId]) => ({ tunnelId, siteId, blockNumber: block[siteId] }))
+  const w = (tunnelId, surveyDate, observationStatus, occupantType, generalId, wholeOrHole = null) => ({
+    tunnelId, siteId: place[tunnelId], surveyDate, observationStatus, occupantType, generalId,
+    plugComposition: null, plugDepth: null, wholeOrHole,
+  })
+  const data = [
+    // Site 1: a bee (Hylaeus), a wasp (Isodontia) that later emerged, and a spider (1 of 3 nests is Other: 33%).
+    w('A', '2025-06-01', 'Complete', 'Bee', 'Hylaeus', 'Sealed'),
+    w('B', '2025-06-01', 'Complete', 'Wasp', 'Isodontia', 'Sealed'),
+    w('B', '2025-07-01', 'Reopened', 'Wasp', 'Isodontia', 'Emergence'),
+    w('C', '2025-06-01', 'Complete', 'Spider', 'Spider'),
+    // Site 2: three Hylaeus; E holds Anthidium (parasitized) then Hylaeus (two genera in one cavity).
+    w('D', '2025-06-01', 'Complete', 'Bee', 'Hylaeus', 'Sealed'),
+    w('G', '2025-06-01', 'Complete', 'Bee', 'Hylaeus', 'Sealed'),
+    w('I', '2025-06-01', 'Complete', 'Bee', 'Hylaeus', 'Sealed'),
+    w('E', '2025-06-01', 'Complete', 'Bee', 'Anthidium', 'Sealed'),
+    w('E', '2025-06-15', 'Reopened', 'Bee', 'Anthidium', 'Parasitism'),
+    w('E', '2025-07-01', 'Empty', null, null),
+    w('E', '2025-08-01', 'Complete', 'Bee', 'Hylaeus', 'Sealed'),
+    w('F', '2025-06-01', 'Empty', null, null),
+    // 2026: Site 1 again (so it has two years), Site 2 has none.
+    w('A', '2026-06-01', 'Complete', 'Bee', 'Hylaeus', 'Sealed'),
+  ]
+  const { charts } = generateDashboardDataset({ sites: siteList, observations: data }, tunnelList, generatedAt)
+  const entries = Object.fromEntries(charts[CHART_IDS.scorecardAllSites][2025].map(e => [e.siteId, e]))
+
+  it('lists the genera with their Bee, Wasp or Unknown group', () => {
+    expect(charts[CHART_IDS.scorecardGenera].all).toEqual([
+      { genus: 'Anthidium', group: 'Bee' }, { genus: 'Hylaeus', group: 'Bee' },
+      { genus: 'Isodontia', group: 'Wasp' }, { genus: 'Unknown', group: 'Unknown' },
+    ])
+  })
+
+  it('has one entry per site that year, in site-number order, with the site number', () => {
+    expect(charts[CHART_IDS.scorecardAllSites][2025].map(e => [e.siteId, e.siteNumber])).toEqual([['S1', '1'], ['S2', '2']])
+    expect(charts[CHART_IDS.scorecardAllSites][2026].map(e => e.siteId)).toEqual(['S1'])
+  })
+
+  it('records which genera are present and which are found only at that site', () => {
+    expect(entries.S1).toMatchObject({ presentGenera: ['Hylaeus', 'Isodontia'], uniqueGenera: ['Isodontia'] })
+    expect(entries.S2).toMatchObject({ presentGenera: ['Anthidium', 'Hylaeus'], uniqueGenera: ['Anthidium'] })
+  })
+
+  it('flags Site 1 because Other Occupants is 1 of 3 nests, and scores it 0', () => {
+    expect(entries.S1.conditions.other).toMatchObject({ numerator: 1, denominator: 3, rate: 33, state: 'flag' })
+    expect(entries.S1).toMatchObject({ score: 0, max: 24, category: 'Flagged for Evaluation', flagged: true, flags: ['other'] })
+  })
+
+  it('measures each condition against its denominator', () => {
+    expect(entries.S1.conditions).toMatchObject({
+      parasitism: { numerator: 0, denominator: 2, rate: 0, state: 'none' },        // sealed nests: A and B
+      competition: { numerator: 0, denominator: 3, rate: 0, state: 'none' },        // occupied cavities
+      emergence: { numerator: 1, denominator: 2, rate: 50, recorded: true },        // B emerged
+    })
+    expect(entries.S2.conditions).toMatchObject({
+      parasitism: { numerator: 1, denominator: 5, rate: 20, state: 'bonus' },       // E's Anthidium nest
+      competition: { numerator: 1, denominator: 4, rate: 25, state: 'bonus' },      // E holds two genera
+      other: { numerator: 0, denominator: 5, rate: 0, state: 'none' },
+      emergence: { numerator: 0, denominator: 5, rate: 0, recorded: false },
+    })
+  })
+
+  it('scores Site 2 as 2 genera + 2 bonuses + the only-at-this-site bonus = 5, "Low"', () => {
+    expect(entries.S2).toMatchObject({ score: 5, category: 'Low', flagged: false, flags: [] })
+  })
+
+  it('offers a site over years only for sites with more than one year of data', () => {
+    const overYears = charts[CHART_IDS.scorecardSiteOverYears]
+    expect(Object.keys(overYears)).toEqual(['S1'])
+    expect(Object.keys(overYears.S1)).toEqual(['2025', '2026'])
+    expect(overYears.S1[2025]).toEqual(entries.S1)
   })
 })

@@ -25,6 +25,12 @@
 // a point on 68 of 76 cells; 2025 Bee:Wasp split within a point): periods are 14-day
 // blocks from 11 March, and a cavity counts in every period it has an occupied,
 // typed observation, once per occupant type.
+// SITE SCORECARD (US-35), scoring rules from the ticket and checked against the deck's
+// 2023/2025/2026 scorecards: scores match for every site in 2023 and for 5 of 6 sites
+// in 2026. NOT matched: Site 7 in 2026 (the Megachile (Eutricharaea) share comes out
+// at 32%, the deck shows 26%), and the 2025 sites that the missing Other tracker
+// affects. Category cut-offs are inferred (the deck gives only 5=Low, 11-15=High,
+// 16-17=Very High); the only-at-this-site bonus is a single +1 (it makes 24 the max).
 // CONFIRMED against the deck's richness (2026, 36 of 36 cells): distinct General IDs
 // among Bee and Wasp nests, by diameter, site and type.
 
@@ -137,6 +143,9 @@ export const CHART_IDS = {
   richnessByDiameterSite: 'richness-by-diameter-site',
   occupantsByPeriodType: 'occupants-by-period-type',
   otherByPeriodType: 'other-by-period-type',
+  scorecardGenera: 'scorecard-genera',
+  scorecardAllSites: 'scorecard-all-sites',
+  scorecardSiteOverYears: 'scorecard-site-over-years',
   sealedRateByCwd: 'sealed-rate-by-cwd',
   sealedRateBySubstrate: 'sealed-rate-by-substrate',
   sealedRateByDirection: 'sealed-rate-by-direction',
@@ -356,6 +365,134 @@ function periodRows(year, lastSurveyPeriod, keys, byPeriod) {
   }))
 }
 
+// ---- Site scorecards (US-35) ----
+
+export const SCORE_THRESHOLD = 0.30
+export const SCORE_MAX = 24
+export const FLAGGED_CATEGORY = 'Flagged for Evaluation'
+// Inferred boundaries (to confirm with Circle Ecology): the deck shows 5 = Low, 11-15 = High, 16-17 = Very High.
+const SCORE_CATEGORIES = [{ min: 16, name: 'Very High' }, { min: 8, name: 'High' }, { min: 0, name: 'Low' }]
+const FLAG_CONDITIONS = ['parasitism', 'chalkbrood', 'competition', 'other', 'megachile', 'osmiaMud']
+const BONUS_CONDITIONS = ['parasitism', 'competition', 'other']
+const SCORE_THRESHOLD_PERCENT = Math.round(SCORE_THRESHOLD * 100)
+
+// Integer arithmetic so that exactly 30% is never flagged by a rounding error.
+const exceedsThreshold = ({ numerator, denominator }) => numerator * 100 > SCORE_THRESHOLD_PERCENT * denominator
+const withinThreshold = ({ numerator, denominator }) => numerator > 0 && numerator * 100 <= SCORE_THRESHOLD_PERCENT * denominator
+
+/**
+ * Pure: score one site in one year. `summary` is
+ * { presentGenera, uniqueGenera, emergenceRecorded, conditions: { [id]: { numerator, denominator } } }.
+ * +1 per genus present; +1 for each of Parasitism, Competition and Other Occupants that is above 0% and
+ * at most 30%; +1 if Emergence is recorded; +1 (once) if any genus was found only at this site. Any
+ * flag condition above 30% sets the score to 0 and the category to "Flagged for Evaluation".
+ */
+export function scoreSite({ presentGenera, uniqueGenera, emergenceRecorded, conditions }) {
+  const flags = FLAG_CONDITIONS.filter(id => exceedsThreshold(conditions[id]))
+  if (flags.length > 0) {
+    return { score: 0, max: SCORE_MAX, category: FLAGGED_CATEGORY, flagged: true, flags, bonuses: [] }
+  }
+  const bonuses = BONUS_CONDITIONS.filter(id => withinThreshold(conditions[id]))
+  if (emergenceRecorded) bonuses.push('emergence')
+  if (uniqueGenera.length > 0) bonuses.push('uniqueGenus')
+  const score = presentGenera.length + bonuses.length
+  const category = SCORE_CATEGORIES.find(({ min }) => score >= min).name
+  return { score, max: SCORE_MAX, category, flagged: false, flags: [], bonuses }
+}
+
+const ratePercent = ({ numerator, denominator }) => (denominator > 0 ? Math.round((numerator / denominator) * 100) : null)
+
+function conditionState(id, condition) {
+  if (FLAG_CONDITIONS.includes(id) && exceedsThreshold(condition)) return 'flag'
+  if (BONUS_CONDITIONS.includes(id) && withinThreshold(condition)) return 'bonus'
+  return 'none'
+}
+
+// Genus a nest counts under on the scorecard: bees, wasps and Unknown only, not the Other occupants.
+function scorecardGenus({ occupantType, generalId }) {
+  if (occupantType === null || generalId === null || generalId === 'Other') return null
+  return occupantCategory(occupantType) === 'Other' ? null : generalId
+}
+
+// cavityYears: [{ year, siteId, tunnel, observations }].
+function buildScorecards(cavityYears) {
+  // Which genera exist (and whether each is a bee or a wasp genus), over all years.
+  const votes = new Map()
+  for (const { observations } of cavityYears) {
+    for (const run of splitOccupantRuns(observations)) {
+      const genus = scorecardGenus(run)
+      if (genus === null) continue
+      const tally = votes.get(genus) ?? { Bee: 0, Wasp: 0 }
+      if (run.occupantType === 'Bee' || run.occupantType === 'Wasp') tally[run.occupantType] += 1
+      votes.set(genus, tally)
+    }
+  }
+  const groupOf = genus => (genus === 'Unknown' ? 'Unknown' : votes.get(genus).Wasp > votes.get(genus).Bee ? 'Wasp' : 'Bee')
+  const groupOrder = { Bee: 0, Wasp: 1, Unknown: 2 }
+  const genera = [...new Set([...votes.keys(), 'Unknown'])].map(genus => ({ genus, group: groupOf(genus) }))
+    .sort((a, b) => groupOrder[a.group] - groupOrder[b.group] || compareGroups(a.genus, b.genus))
+
+  // Group cavities by year and site.
+  const bySiteYear = new Map()
+  for (const cavity of cavityYears) {
+    const key = `${cavity.year}|${cavity.siteId}`
+    if (!bySiteYear.has(key)) bySiteYear.set(key, { year: cavity.year, siteId: cavity.siteId, cavities: [] })
+    bySiteYear.get(key).cavities.push(cavity)
+  }
+
+  const summaries = [...bySiteYear.values()].map(({ year, siteId, cavities }) => {
+    const nests = cavities.flatMap(c => splitOccupantRuns(c.observations)).filter(run => run.occupantType !== null)
+    const sealed = nests.filter(run => run.observations.some(o => o.wholeOrHole === SEALED_VALUE))
+    const count = (list, test) => list.filter(test).length
+    const occupied = cavities.filter(c => classifyCavityOccupancy(c.observations) === 'occupied')
+    const multiGenus = occupied.filter(c => new Set(c.observations
+      .filter(o => isOccupiedStatus(o.observationStatus)).map(o => o.generalId).filter(id => id != null)).size > 1)
+    const hasRecord = value => run => run.observations.some(o => o.wholeOrHole === value)
+    const conditions = {
+      parasitism: { numerator: count(nests, hasRecord('Parasitism')), denominator: sealed.length },
+      chalkbrood: { numerator: count(nests, hasRecord('Chalkbrood Characteristics')), denominator: nests.length },
+      competition: { numerator: multiGenus.length, denominator: occupied.length },
+      other: { numerator: count(nests, run => occupantCategory(run.occupantType) === 'Other'), denominator: nests.length },
+      megachile: { numerator: count(nests, run => run.generalId === 'Megachile (Eutricharaea)'), denominator: nests.length },
+      osmiaMud: { numerator: count(nests, run => run.generalId === 'Osmia (mud)'), denominator: nests.length },
+    }
+    const emergence = { numerator: count(nests, hasRecord('Emergence')), denominator: sealed.length }
+    return {
+      year, siteId, conditions, emergence,
+      siteNumber: cavities.map(c => c.tunnel.blockNumber).find(n => n != null) ?? null,
+      presentGenera: [...new Set(nests.map(scorecardGenus).filter(g => g !== null))].sort(compareGroups),
+      emergenceRecorded: nests.some(run => (run.occupantType === 'Bee' || run.occupantType === 'Wasp') && hasRecord('Emergence')(run)),
+    }
+  })
+
+  const entries = summaries.map(summary => {
+    const others = summaries.filter(o => o.year === summary.year && o.siteId !== summary.siteId)
+    const uniqueGenera = summary.presentGenera.filter(g => !others.some(o => o.presentGenera.includes(g)))
+    const scored = scoreSite({ ...summary, uniqueGenera, emergenceRecorded: summary.emergenceRecorded })
+    const conditions = Object.fromEntries(Object.entries(summary.conditions).map(([id, c]) =>
+      [id, { ...c, rate: ratePercent(c), state: conditionState(id, c) }]))
+    conditions.emergence = { ...summary.emergence, rate: ratePercent(summary.emergence), recorded: summary.emergenceRecorded }
+    return { year: summary.year, entry: {
+      siteId: summary.siteId, siteNumber: summary.siteNumber,
+      presentGenera: summary.presentGenera, uniqueGenera, conditions, ...scored,
+    } }
+  })
+
+  const allSites = {}
+  for (const { year, entry } of entries) (allSites[year] ??= []).push(entry)
+  const siteLabel = entry => Number(entry.siteNumber ?? Infinity)
+  for (const list of Object.values(allSites)) {
+    list.sort((a, b) => siteLabel(a) - siteLabel(b) || compareGroups(a.siteId, b.siteId))
+  }
+  // A site across years: only sites with more than one year of data (the deck leaves out Site 2, 2023 only).
+  const siteOverYears = {}
+  for (const { year, entry } of entries) (siteOverYears[entry.siteId] ??= {})[year] = entry
+  for (const siteId of Object.keys(siteOverYears)) {
+    if (Object.keys(siteOverYears[siteId]).length < 2) delete siteOverYears[siteId]
+  }
+  return { genera, allSites, siteOverYears }
+}
+
 /**
  * Pure: precompute every dashboard figure from the PUBLIC dataset.
  * `publicDataset` is { sites, observations } from generatePublicDataset;
@@ -504,5 +641,9 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     }
   }
   charts[CHART_IDS.genusProfile] = buildGenusProfiles(cavityYears)
+  const scorecards = buildScorecards(cavityYears)
+  charts[CHART_IDS.scorecardGenera] = { all: scorecards.genera }
+  charts[CHART_IDS.scorecardAllSites] = scorecards.allSites
+  charts[CHART_IDS.scorecardSiteOverYears] = scorecards.siteOverYears
   return { generatedAt, years: years.map(Number), charts }
 }
