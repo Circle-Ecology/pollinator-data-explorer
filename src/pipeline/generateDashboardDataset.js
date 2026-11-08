@@ -10,9 +10,14 @@
 //  - A sealed nest is a run of consecutive "Sealed" records for one occupant type
 //    in a cavity; the rate counts nests (not cavities) over available cavities.
 //    Bee matches within ~1.5 points and Wasp within 1; see docs/public-dataset.md.
-// STILL ASSUMED, pending confirmation against the deck:
-//  - A new occupant run starts after any non-occupied observation, on
-//    Reopened -> Active, or when a recorded Plug Composition changes.
+// CONFIRMED against the deck's occupants by site and type (2023, 2025, 2026):
+//  - An occupant is one run in a cavity. A run ends at any non-occupied
+//    observation and a new one starts on Reopened -> Active or Complete, or when
+//    a recorded Plug Composition changes. Its type is the first one recorded.
+//  - Runs with no recorded type are not counted.
+//  Matches the deck on 65 of 76 site/year/type cells; the rest are 2025 Other
+//  (tracked outside the sheet export) and small 2023 differences. See
+//  docs/public-dataset.md.
 
 export const OCCUPIED_STATUSES = ['Active', 'Complete', 'Reopened']
 export const RETIRED_STATUS = 'Retired hole'
@@ -33,29 +38,38 @@ export function classifyCavityOccupancy(observations) {
   return 'empty'
 }
 
-export function countOccupantRuns(observations) {
-  let runs = 0
+// The occupant runs in one cavity's observations, each { occupantType } (null when
+// no type was ever recorded in the run).
+export function listOccupantRuns(observations) {
+  const runs = []
   let previousStatus = null
   let plug = null
+  let open = false
   for (const o of [...observations].sort(byDate)) {
     const status = o.observationStatus
     if (!isOccupiedStatus(status)) {
       previousStatus = status
+      open = false
       plug = null
       continue
     }
     const plugChanged = o.plugComposition != null && plug != null && o.plugComposition !== plug
-    const startsRun = !isOccupiedStatus(previousStatus) ||
-      (previousStatus === 'Reopened' && status === 'Active') ||
-      plugChanged
-    if (startsRun) {
-      runs += 1
+    const resealed = previousStatus === 'Reopened' && (status === 'Active' || status === 'Complete')
+    if (!open || resealed || plugChanged) {
+      runs.push({ occupantType: null })
       plug = null
+      open = true
     }
+    const run = runs[runs.length - 1]
     if (o.plugComposition != null) plug = o.plugComposition
+    if (run.occupantType === null && o.occupantType != null) run.occupantType = o.occupantType
     previousStatus = status
   }
   return runs
+}
+
+export function countOccupantRuns(observations) {
+  return listOccupantRuns(observations).length
 }
 
 // Nests of one occupant type in a cavity's observations: each unbroken run of
@@ -100,6 +114,10 @@ export function computeSealedNestRate(cavities, year) {
 export const CHART_IDS = {
   occupancyByYear: 'occupancy-by-year',
   occupancyBySite: 'occupancy-by-site',
+  occupantsByYearType: 'occupants-by-year-type',
+  occupantsBySite: 'occupants-by-site',
+  occupantsBySiteType: 'occupants-by-site-type',
+  otherBySiteType: 'other-by-site-type',
   sealedRateByCwd: 'sealed-rate-by-cwd',
   sealedRateBySubstrate: 'sealed-rate-by-substrate',
   sealedRateByDirection: 'sealed-rate-by-direction',
@@ -135,6 +153,30 @@ function tally(cavityObservations) {
   return { ...counts, available: counts.occupied + counts.empty }
 }
 
+// Occupant chart categories. Anything that is not Bee, Wasp or Unknown is "Other";
+// the Other-occupants chart then splits that by its own type.
+export const OCCUPANT_TYPES = ['Bee', 'Wasp', 'Unknown', 'Other']
+export const OTHER_OCCUPANT_TYPES = ['Spider', 'Ant(s)', 'Pill Bug', 'Other']
+const occupantCategory = type => (['Bee', 'Wasp', 'Unknown'].includes(type) ? type : 'Other')
+const otherCategory = type => (['Spider', 'Ant(s)', 'Pill Bug'].includes(type) ? type : 'Other')
+
+function zeroCounts(keys) {
+  return Object.fromEntries(keys.map(key => [key, 0]))
+}
+
+// Typed occupant runs of a group of cavities -> counts per category plus a total.
+function occupantCounts(cavityObservations, keys, categorize) {
+  const counts = { ...zeroCounts(keys), total: 0 }
+  for (const observations of cavityObservations) {
+    for (const { occupantType } of listOccupantRuns(observations)) {
+      if (occupantType === null) continue
+      counts[categorize(occupantType)] += 1
+      counts.total += 1
+    }
+  }
+  return counts
+}
+
 /**
  * Pure: precompute every dashboard figure from the PUBLIC dataset.
  * `publicDataset` is { sites, observations } from generatePublicDataset;
@@ -159,6 +201,10 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
   const charts = {
     [CHART_IDS.occupancyByYear]: {},
     [CHART_IDS.occupancyBySite]: {},
+    [CHART_IDS.occupantsByYearType]: {},
+    [CHART_IDS.occupantsBySite]: {},
+    [CHART_IDS.occupantsBySiteType]: {},
+    [CHART_IDS.otherBySiteType]: {},
     ...Object.fromEntries(Object.keys(SEALED_RATE_FACTORS).map(id => [id, {}])),
   }
   for (const year of years) {
@@ -176,6 +222,27 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     charts[CHART_IDS.occupancyBySite][year] = [...bySite]
       .sort(([a], [b]) => byText(a, b))
       .map(([siteId, group]) => ({ siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...tally(group) }))
+
+    const allObservations = cavities.map(c => c.observations)
+    charts[CHART_IDS.occupantsByYearType][year] = [occupantCounts(allObservations, OCCUPANT_TYPES, occupantCategory)]
+    const siteRows = (keys, categorize) => [...bySite]
+      .sort(([a], [b]) => byText(a, b))
+      .map(([siteId, group]) => ({
+        siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...occupantCounts(group, keys, categorize),
+      }))
+    charts[CHART_IDS.occupantsBySite][year] = siteRows(OCCUPANT_TYPES, occupantCategory)
+      .map(({ siteId, propertyName, total }) => ({ siteId, propertyName, total }))
+    charts[CHART_IDS.occupantsBySiteType][year] = siteRows(OCCUPANT_TYPES, occupantCategory)
+    // Only the Other occupants: total counts just Spider, Ant(s), Pill Bug and Other.
+    charts[CHART_IDS.otherBySiteType][year] = [...bySite]
+      .sort(([a], [b]) => byText(a, b))
+      .map(([siteId, group]) => {
+        const others = group.map(observations => listOccupantRuns(observations)
+          .filter(run => run.occupantType !== null && occupantCategory(run.occupantType) === 'Other'))
+        const counts = { ...zeroCounts(OTHER_OCCUPANT_TYPES), total: 0 }
+        for (const runs of others) for (const run of runs) { counts[otherCategory(run.occupantType)] += 1; counts.total += 1 }
+        return { siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...counts }
+      })
 
     for (const [chartId, factor] of Object.entries(SEALED_RATE_FACTORS)) {
       const grouped = cavities

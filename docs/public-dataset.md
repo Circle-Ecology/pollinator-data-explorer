@@ -223,7 +223,8 @@ tunnel's `coarseWoodyDebrisType` (the cavity level). It has the same `generatedA
 
 Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every row carries
 its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
-exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, and the five sealed
+exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occupant charts
+`occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, and the five sealed
 nest rate charts `sealed-rate-by-cwd`, `-by-substrate`, `-by-direction`, `-by-install-year`
 (grouped like the deck, e.g. "2025 Log") and `-by-diameter`. Sealed rows look like
 `{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
@@ -234,4 +235,15 @@ unbroken run of `Sealed` records for one occupant type in a cavity; the rate cou
 cavities, over the non-excluded cavities observed that year. Against the deck's 2025
 installation-year chart this lands within about one percentage point (Bee 20/39/34/15 vs deck
 19/38/33/15, Wasp 4/18/17/4 vs 4/18/17/5); the small remaining gap is unexplained and may be
-the deck using an older export. Occupant runs are still an assumption pending a deck check.
+the deck using an older export. 
+An occupant is one run in a cavity: it ends at any non-occupied observation, and a new run starts
+on Reopened -> Active/Complete or when a recorded Plug Composition changes. Its type is the first
+one recorded, and runs with no recorded type are not counted. Occupant rows are
+`{ siteId, propertyName, Bee, Wasp, Unknown, Other, total }`, where Other is everything that is not
+Bee, Wasp or Unknown, and `other-by-site-type` splits it into `Spider`, `Ant(s)`, `Pill Bug`, `Other`
+(its `total` counts only those). All type keys are always present, so a zero can mean "none" or
+"not tracked that year" (Unknown only exists from 2026); a chart should omit a type whose total is
+zero for the year. Against the deck's occupants by site and type this matches 65 of 76
+site/year/type cells exactly. Known differences: 2025 Other (the deck took it from a separate
+tally tracker that is not in the sheet export), 2023 Other at two sites (-7 and -2), and a few
+off-by-one cells, partly from the two duplicate surveys the pipeline drops.

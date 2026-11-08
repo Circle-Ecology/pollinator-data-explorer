@@ -50,6 +50,29 @@ describe('US-28 generateDashboardDataset', () => {
             { siteId: 'S2', propertyName: 'Creek', occupied: 1, empty: 0, excluded: 0, available: 1 },
           ],
         },
+        // Hand-checked: only A (S1) and D (S2) are occupied in 2025, both by Bee.
+        [CHART_IDS.occupantsByYearType]: {
+          2023: [{ Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 }],
+          2025: [{ Bee: 2, Wasp: 0, Unknown: 0, Other: 0, total: 2 }],
+        },
+        [CHART_IDS.occupantsBySite]: {
+          2023: [{ siteId: 'S1', propertyName: 'Meadow', total: 0 }],
+          2025: [{ siteId: 'S1', propertyName: 'Meadow', total: 1 }, { siteId: 'S2', propertyName: 'Creek', total: 1 }],
+        },
+        [CHART_IDS.occupantsBySiteType]: {
+          2023: [{ siteId: 'S1', propertyName: 'Meadow', Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 }],
+          2025: [
+            { siteId: 'S1', propertyName: 'Meadow', Bee: 1, Wasp: 0, Unknown: 0, Other: 0, total: 1 },
+            { siteId: 'S2', propertyName: 'Creek', Bee: 1, Wasp: 0, Unknown: 0, Other: 0, total: 1 },
+          ],
+        },
+        [CHART_IDS.otherBySiteType]: {
+          2023: [{ siteId: 'S1', propertyName: 'Meadow', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 }],
+          2025: [
+            { siteId: 'S1', propertyName: 'Meadow', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 },
+            { siteId: 'S2', propertyName: 'Creek', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 },
+          ],
+        },
         [CHART_IDS.sealedRateByCwd]: {
           2023: [row('Log', 1, 0, 0)],
           2025: [row('Log', 1, 1, 0), row('Snag', 2, 0, 0)],
@@ -88,6 +111,72 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(7)
+    expect(Object.keys(empty.charts)).toHaveLength(11)
+  })
+})
+
+describe('US-28 occupant charts', () => {
+  const siteList = [{ siteId: 'S1', propertyName: 'Meadow' }, { siteId: 'S2', propertyName: 'Creek' }]
+  const tunnelList = ['A', 'B', 'C', 'E'].map(tunnelId => ({ tunnelId, siteId: 'S1' }))
+    .concat([{ tunnelId: 'D', siteId: 'S2' }])
+  const t = (tunnelId, siteId, surveyDate, observationStatus, occupantType = null, plugComposition = null) =>
+    ({ tunnelId, siteId, surveyDate, observationStatus, occupantType, plugComposition, wholeOrHole: null })
+  const data = [
+    // A: Complete -> Reopened -> Complete is two Bee occupants. B: one Wasp. C: one Spider.
+    // E: an occupied cavity with no recorded type is not counted. D (S2) is empty in 2025.
+    t('A', 'S1', '2025-06-01', 'Complete', 'Bee', 'mud'),
+    t('A', 'S1', '2025-07-01', 'Reopened', 'Bee', 'mud'),
+    t('A', 'S1', '2025-08-01', 'Complete', 'Bee', 'mud'),
+    t('B', 'S1', '2025-06-01', 'Active', 'Wasp'),
+    t('B', 'S1', '2025-07-01', 'Active', 'Wasp'),
+    t('C', 'S1', '2025-06-01', 'Complete', 'Spider'),
+    t('E', 'S1', '2025-06-01', 'Complete'),
+    t('D', 'S2', '2025-06-01', 'Empty'),
+    // 2026: Ant(s) counts as Other; Unknown only exists this year.
+    t('A', 'S1', '2026-06-01', 'Complete', 'Ant(s)'),
+    t('D', 'S2', '2026-06-01', 'Active', 'Unknown'),
+    t('D', 'S2', '2026-07-01', 'Active'),
+  ]
+  const { charts } = generateDashboardDataset({ sites: siteList, observations: data }, tunnelList, generatedAt)
+  const site = (siteId, propertyName, counts) => ({ siteId, propertyName, ...counts })
+
+  it('counts occupants by year and type, with the total as the denominator', () => {
+    expect(charts[CHART_IDS.occupantsByYearType]).toEqual({
+      2025: [{ Bee: 2, Wasp: 1, Unknown: 0, Other: 1, total: 4 }],
+      2026: [{ Bee: 0, Wasp: 0, Unknown: 1, Other: 1, total: 2 }],
+    })
+  })
+
+  it('counts total occupants by site', () => {
+    expect(charts[CHART_IDS.occupantsBySite]).toEqual({
+      2025: [site('S1', 'Meadow', { total: 4 }), site('S2', 'Creek', { total: 0 })],
+      2026: [site('S1', 'Meadow', { total: 1 }), site('S2', 'Creek', { total: 1 })],
+    })
+  })
+
+  it('counts occupants by site and type', () => {
+    expect(charts[CHART_IDS.occupantsBySiteType]).toEqual({
+      2025: [
+        site('S1', 'Meadow', { Bee: 2, Wasp: 1, Unknown: 0, Other: 1, total: 4 }),
+        site('S2', 'Creek', { Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 }),
+      ],
+      2026: [
+        site('S1', 'Meadow', { Bee: 0, Wasp: 0, Unknown: 0, Other: 1, total: 1 }),
+        site('S2', 'Creek', { Bee: 0, Wasp: 0, Unknown: 1, Other: 0, total: 1 }),
+      ],
+    })
+  })
+
+  it('breaks the Other occupants down by site and Other type', () => {
+    expect(charts[CHART_IDS.otherBySiteType]).toEqual({
+      2025: [
+        site('S1', 'Meadow', { Spider: 1, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 1 }),
+        site('S2', 'Creek', { Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 }),
+      ],
+      2026: [
+        site('S1', 'Meadow', { Spider: 0, 'Ant(s)': 1, 'Pill Bug': 0, Other: 0, total: 1 }),
+        site('S2', 'Creek', { Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 }),
+      ],
+    })
   })
 })
