@@ -8,7 +8,7 @@ const SITE_FIELDS = {
 const SURVEY_FIELDS = {
   tunnelId: 'string', surveyDate: 'string', observationStatus: 'string',
   occupantType: 'string', nesterFamily: 'string', generalId: 'string', commonName: 'string',
-  plugDepth: 'number', plugComposition: 'string', plugColor: 'string', plugConfidence: 'string',
+  plugDepth: 'string', plugComposition: 'string', plugColor: 'string', plugConfidence: 'string',
   wholeOrHole: 'string', emergenceYear: 'number', manufacturedEmpty: 'boolean', recordStatus: 'string',
 }
 

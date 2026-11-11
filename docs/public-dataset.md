@@ -213,3 +213,132 @@ $env:TMP = $auditTemp
   demonstration is synthetic, not evidence of current production authorization.
 - No US-25 preservation, US-26 deployment, US-27 retries, or frontend changes are
   included. Existing lint/CI and Node deployment-version concerns remain separate.
+
+## US-28 dashboard figures
+
+`writePublicDataset` also writes `dashboard.json`, built by `generateDashboardDataset`
+(`src/pipeline/generateDashboardDataset.js`) from the same public projection plus each
+tunnel's `coarseWoodyDebrisType` (the cavity level). It has the same `generatedAt` as
+`dataset-status.json` and contains only aggregates, never observer names, emails or notes.
+
+Shape: `{ generatedAt, years, charts: { [chartId]: { [year]: rows } } }`. Every row carries
+its counts and denominator (`available`) so percentages can be recomputed. Chart ids are
+exported as `CHART_IDS`: `occupancy-by-year`, `occupancy-by-site`, the four occupant charts
+`occupants-by-year-type`, `occupants-by-site`, `occupants-by-site-type` and `other-by-site-type`, the three genus charts
+`occupants-by-genus`, `occupants-by-type-genus` and `multi-genus-cavities-by-site`, `genus-profile`,
+`richness-by-diameter-site`, the two period charts `occupants-by-period-type` and
+`other-by-period-type`, the scorecard charts `scorecard-genera`, `scorecard-all-sites` and
+`scorecard-site-over-years`, and the five sealed nest rate charts `sealed-rate-by-cwd`,
+`-by-substrate`, `-by-direction`, `-by-install-year` and `-by-diameter`. Direction and installation
+year are grouped with Log/Snag like the deck ("N Log", "2025 Snag"). Sealed rows look like
+`{ group, available, Bee: { sealed, rate }, Wasp: { sealed, rate } }`.
+
+The metric rules (occupied, excluded, occupant run, sealed nest) each live in one helper in
+that module. Year-level occupancy is confirmed against Circle Ecology's deck. A sealed nest is an
+occupant run (defined below) with at least one `Sealed` record, counted per occupant type; the rate
+counts nests, not cavities, over the non-excluded cavities observed that year. Against the deck's
+2026 sealed nest rates by every structural factor this matches 32 of 34 cells exactly: all 17 Wasp
+rates, and every Bee rate except two that are one point off (S Log 28 vs 27, NE Snag 9 vs 8). The
+deck's 2025 installation-year chart is within one point on Bee (20/39/34/15 vs 19/38/33/15); the
+cause is unexplained and may be the deck using an older export.
+
+An occupant is one run in a cavity: it ends at any non-occupied observation, and a new run starts
+on Reopened -> Active/Complete or when a recorded Plug Composition changes. Its type is the first
+one recorded, and runs with no recorded type are not counted. Occupant rows are
+`{ siteId, propertyName, Bee, Wasp, Unknown, Other, total }`, where Other is everything that is not
+Bee, Wasp or Unknown, and `other-by-site-type` splits it into `Spider`, `Ant(s)`, `Pill Bug`, `Other`
+(its `total` counts only those). All type keys are always present, so a zero can mean "none" or
+"not tracked that year" (Unknown only exists from 2026); a chart should omit a type whose total is
+zero for the year. Against the deck's occupants by site and type this matches 65 of 76
+site/year/type cells exactly. Known differences: 2025 Other (the deck took it from a separate
+tally tracker that is not in the sheet export), 2023 Other at two sites (-7 and -2), and a few
+off-by-one cells, partly from the two duplicate surveys the pipeline drops.
+
+Genus charts use the deck's General ID labels. An occupant's label is its run's first recorded
+General ID, except that Spider, Ant(s), Pill Bug and Other occupants are all "Other", a Bee or Wasp
+whose General ID is "Other" is "Other (Bee)" or "Other (Wasp)", and runs with no General ID are not
+counted. `occupants-by-genus` rows are `{ generalId, Bee, Wasp, Unknown, Other, total }`, biggest
+first. `occupants-by-type-genus` rows are `{ occupantType, generalId, occupants, typeTotal }`, so a
+percentage within a type is `occupants / typeTotal`. `multi-genus-cavities-by-site` rows are
+`{ siteId, propertyName, multiGenus, occupied }`: cavities with more than one General ID in the year,
+out of the cavities occupied that year. Against the deck's table, 2026 matches on every row; 2025
+matches on all but Other (the missing tracker), one Isodontia (a dropped duplicate survey) and
+Osmia (mud); 2023 matches on 8 of 11 rows. Species-level figures are not possible: the sheet has no
+species column, only General ID, family and common name.
+
+`genus-profile` is keyed by General ID rather than by year (all years combined) and has one entry
+per bee or wasp General ID (not Other or Unknown), 18 in the current data. Each entry has `nests`
+(occupant runs, but a cavity that is Reopened and comes back Active stays the same nest; only coming
+back Complete starts a new one, `NEST_RESEAL_STATUSES`; the occupant charts keep splitting on both),
+`years`, `sites`, `sealedNests`, `parasitized` (parasitism % is
+`parasitized / sealedNests`), `competition` (`cavities` that held the genus, how many `shared` a
+cavity-year with another General ID, and `sharedWith` counts) and `panels`. Panels `direction`, `age`,
+`cwd`, `substrate` and `diameter` have `{ nests, availableTotal, rows: [{ level, nests, available }] }`,
+where `available / availableTotal` is the availability tick; levels with cavities but no nests are
+kept. Age is seasons since installation (the installation year is the 1st season). `plugDepth` has
+`{ nests, rows: [{ level, nests }] }`, leaves out 2023, has no availability, and uses the last plug
+depth recorded in each nest's run. Checked against the deck's Hylaeus page: every count and every
+availability tick matches. With the profile nest rule above, 14 of the deck's 18 per-genus nest
+counts match exactly (12 with the occupant-run rule); still off are Megachile (Eutricharaea) 919 vs
+917, Isodontia 304 vs 300, Anthidium 24 vs 22 and Osmia (mud) 5 vs 4.
+
+Plug Depth is kept as the export's text (`1.1 inches`, `1 inch`, `1/2 inch`, `1/16 inch`, `flush`,
+`protruding`); it was previously parsed as a number, which dropped every value.
+
+`richness-by-diameter-site` rows are `{ diameter, siteId, propertyName, Bee, Wasp }`: the number of
+distinct General IDs among that type's nests in cavities of that diameter at that site, one row for
+every diameter and site that had cavities that year. It matches the deck's 2026 richness chart on
+all 36 cells.
+
+`nest-status-by-type` is the deck's "Number of Nests by Observation Status": per year, one row each for
+Bee and Wasp with `Active`, `Complete`, `Emerged`, `Parasitized`, `Chalkbrood`, `sealed` and
+`parasitizedRate` (parasitized / sealed, a percentage to one decimal). Nests use the genus-profile rule,
+and a nest counts under every condition it has a record for, so the bars overlap (2025 Bee bars add up
+to far more than its nests). Active is an Active observation that has a Plug Depth. Against the deck,
+Complete, Emerged, Parasitized and Chalkbrood match exactly in 2023 and 2026, and Parasitized and
+Chalkbrood in 2025; Active matches 2023 and 2025 (Wasp 87 vs 88) but is 8 (Bee) and 10 (Wasp) high in
+2026; Complete in 2025 is 1 to 2 off; 2026 Bee `parasitizedRate` is 6.4 vs 6.5.
+
+`plug-depth-by-year` is the deck's "Number of Nests by Plug Depth": per year, one row `{ total, unrecognized,
+rows: [{ level, nests }] }`. The unit is the cavity: each cavity with a Bee, Wasp or Unknown occupant counts
+once, at the last Plug Depth on one of those occupied observations. 2023 matches the deck exactly, 2025 is
+within one cavity per level, and 2026 matches except 1/2 inch (7 short). Those 7 are the cavities whose
+depth is garbled in the export (`unrecognized`), probably "1/2 inch", so 2026 totals 687 vs the deck's 694.
+
+`occupants-by-period-type` and `other-by-period-type` follow the deck's fixed two-week calendar:
+period 0 starts on 11 March and every period is 14 days, in every year. Each year lists periods
+from period 0 through one period past the last survey, and empty periods are kept (with zero
+counts) so the season's shape is honest. Rows are `{ period, start, end, Bee, Wasp, Unknown, Other,
+total }` (`start` and `end` are ISO dates; the website formats them as "Jul 1-Jul 14"), and for
+`other-by-period-type` `{ period, start, end, Spider, 'Ant(s)', 'Pill Bug', Other, total }`. A cavity
+counts once per occupant type in every period in which it has an occupied observation with a
+recorded type, so a cavity occupied across several periods counts in each. This matches the deck's
+percentage charts to within one point on every cell (2023: 65 of 68 cells exact; 2026: 59 of 64;
+2025's Bee:Wasp split within one point in all 14 periods). 2025's Other share is much lower than
+the deck's because of the missing tally tracker. The Other-occupants version uses the same rule but
+has not been compared to the deck.
+
+Site scorecards (`scorecard-*`) are scored by `scoreSite` in the same module with the ticket's rules:
++1 per genus present; +1 for each of Parasitism, Competition and Other Occupants that is above 0% and
+at most 30%; +1 if Emergence is recorded; +1 (once) if any genus was found only at that site that
+year; and any of Parasitism, Chalkbrood, Competition, Other Occupants, Megachile (Eutricharaea) or
+Osmia (mud) above 30% flags the site (score 0, "Flagged for Evaluation"); exactly 30% is not flagged.
+`SCORE_MAX` is 24 (19 genera + 4 bonuses + the one only-at-this-site bonus). `scorecard-genera`
+lists the genus rows with their Bee, Wasp or Unknown group; `scorecard-all-sites` is keyed by year
+with one entry per site (`siteId`, `siteNumber`, `presentGenera`, `uniqueGenera`, `conditions`,
+`score`, `max`, `category`, `flagged`, `flags`); `scorecard-site-over-years` is keyed by site then
+year, and only has sites with more than one year (not Site 2, which is 2023 only). Each condition has
+`numerator`, `denominator`, `rate` and `state` (`bonus`, `flag` or `none`); Emergence has `recorded`
+instead of a state (recorded means a Bee or Wasp nest with an Emergence record).
+Definitions: Parasitism = nests with a Parasitism record / sealed nests; Chalkbrood = nests with a
+Chalkbrood record / nests; Competition = cavities with more than one General ID / occupied cavities;
+Other = Other-occupant nests / nests; Megachile (Eutricharaea) and Osmia (mud) = their nests / nests;
+Emergence = nests with an Emergence record / sealed nests.
+
+Checked against the deck's scorecards: the genus cells match 133 of 133 (2023), 114 of 114 (2026) and
+113 of 114 (2025); every 2023 score matches and 5 of 6 in 2026. Not matched: Site 7 in 2026 (our
+Megachile (Eutricharaea) share is 32%, the deck's 26%, so we flag a site the deck scores 17/24 "Very
+High"; no simple definition of that share fits the deck), the 2025 sites that depend on the missing
+Other tracker, and Competition at four sites in 2023 (e.g. Site 5: 5% vs 21%). The category cut-offs
+(Low below 8, High 8-15, Very High 16+) are inferred from the few scores the deck shows, and whether
+the only-at-this-site bonus is a single point is unconfirmed.

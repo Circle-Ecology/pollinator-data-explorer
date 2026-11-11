@@ -38,22 +38,28 @@ describe('US-08: Data conflict detection', () => {
     expect(result.sites[0].elevationMeters).toBe(1500)
   })
 
-  it('detects conflicting tunnel sun exposure', () => {
+  it('does not treat a changed sun exposure as a conflict, so the tunnel is kept', () => {
     const result = parseExportRows([
       makeRow(),
       makeRow({ 'Sun Exposure': 'full sun' }),
     ], 'test-batch')
 
+    expect(result.errors).toEqual([])
+    expect(result.tunnels).toHaveLength(1)
+    expect(result.tunnels[0].sunExposure).toBe('partial sun')
+  })
+
+  it('still detects a conflicting tunnel attribute that identifies the tunnel', () => {
+    const result = parseExportRows([
+      makeRow(),
+      makeRow({ Direction: 'S' }),
+    ], 'test-batch')
+
     expect(result.errors).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          code: 'TUNNEL_ATTRIBUTE_CONFLICT',
-          field: 'sunExposure',
-        }),
+        expect.objectContaining({ code: 'TUNNEL_ATTRIBUTE_CONFLICT', field: 'direction' }),
       ])
     )
-
-    expect(result.tunnels[0].sunExposure).toBe('partial sun')
   })
 
   it('detects conflicting public visibility', () => {

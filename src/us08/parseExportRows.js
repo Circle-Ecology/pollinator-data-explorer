@@ -255,6 +255,10 @@ export function parseExportRows(rows, importBatchId) {
           }
         }
 
+        // sunExposure is deliberately not compared: it can legitimately change
+        // over a tunnel's life (e.g. tree growth), and treating it as a conflict
+        // dropped the whole tunnel - and every survey of it - from the counts.
+        // The first-seen value is kept.
         reportFieldConflicts(
           existingTunnel,
           tunnel,
@@ -265,7 +269,6 @@ export function parseExportRows(rows, importBatchId) {
             'tunnelDiameterInches',
             'coarseWoodyDebrisType',
             'substrateType',
-            'sunExposure',
             'gridRow',
             'gridColumn',
           ],
@@ -290,7 +293,8 @@ export function parseExportRows(rows, importBatchId) {
         nesterFamily: normalizeNaValue(row['Nester of family']),
         generalId: normalizeNaValue(row['General ID']),
         commonName: normalizeNaValue(row['Common Name']),
-        plugDepth: normalizeNumber(row['Plug Depth']),
+        // Text in the real export ("1 inch", "flush", "protruding"), not a number.
+        plugDepth: normalizeNaValue(row['Plug Depth']),
         plugComposition: normalizeNaValue(
           row['Plug Composition']
         ),

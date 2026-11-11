@@ -62,7 +62,7 @@ The constants in `src/validation/csvSchema.js` must match this document.
 
 ### Notes on individual columns
 
-- **`Plug Depth`** is listed as a number in the Data Contract, but the export stores text with units (`1 inch`, `flush`, `protruding`). It is not checked for `INVALID_NUMBER`. Converting it to a number is out of scope for US-07.
+- **`Plug Depth`** is listed as a number in the Data Contract, but the export stores text with units (`1 inch`, `flush`, `protruding`). It is not checked for `INVALID_NUMBER`, and the pipeline now keeps it as text (the Data Contract says `string`).
 - **`Coordinates`** are per site, not per row: the export has only 7 distinct values. In v02, every `Rogers Grove OS` row carries the corrupted value `40.15140.16231, -105.123483, -105.0403`. That gives `MALFORMED_COORDINATES`, and the site is listed in `sitesFlaggedForReview`. v02-2 has the corrected value `40.16231, -105.1234`.
 - **Enum values** are the values observed in production data. An unseen value is reported as `UNEXPECTED_ENUM_VALUE` naming the column and value. The value is kept, not discarded.
 

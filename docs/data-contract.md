@@ -48,7 +48,7 @@ The `TunnelSurvey` type stores information collected during a tunnel survey.
 | `nesterFamily` | string | Yes | Family of the nesting species |
 | `generalId` | string | Yes | General identification |
 | `commonName` | string | Yes | Common name of the species |
-| `plugDepth` | number | Yes | Depth of the tunnel plug |
+| `plugDepth` | string | Yes | Depth of the tunnel plug, as text from the export (`1.1 inches`, `1 inch`, `1/2 inch`, `1/16 inch`, `flush`, `protruding`) |
 | `plugComposition` | string | Yes | Material or composition of the plug |
 | `plugColor` | string | Yes | Color of the plug |
 | `plugConfidence` | string | Yes | Confidence in the plug identification |
