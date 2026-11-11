@@ -15,32 +15,11 @@ function formatLocation(city, state) {
   ).join(', ') || 'Not recorded'
 }
 
-function formatActivityDuration(firstDate, lastDate) {
-  if (!firstDate || !lastDate) return 'Not recorded'
-
-  const start = new Date(`${firstDate}T00:00:00Z`)
-  const end = new Date(`${lastDate}T00:00:00Z`)
-
-  if (
-    !Number.isFinite(start.getTime()) ||
-    !Number.isFinite(end.getTime()) ||
-    end < start
-  ) {
-    return 'Not recorded'
-  }
-
-  const days = Math.round(
-    (end.getTime() - start.getTime()) / 86400000
-  )
-
-  return `${days + 1} calendar days`
-}
-
 function SiteDetailsPanel({ site }) {
-  const surveyDates =
-    site.firstSurveyDate && site.lastSurveyDate
-      ? `${formatSurveyDate(site.firstSurveyDate)} - ${formatSurveyDate(site.lastSurveyDate)}`
-      : 'Not recorded'
+  // Monitoring is ongoing, so the range runs from the first survey to now.
+  const surveyDates = site.firstSurveyDate
+    ? `${formatSurveyDate(site.firstSurveyDate)} - Current`
+    : 'Not recorded'
 
   return (
     <section
@@ -103,14 +82,6 @@ function SiteDetailsPanel({ site }) {
         <SiteStatRow
           label="Survey dates"
           value={surveyDates}
-        />
-
-        <SiteStatRow
-          label="Site activity duration (survey period)"
-          value={formatActivityDuration(
-            site.firstSurveyDate,
-            site.lastSurveyDate
-          )}
         />
       </div>
     </section>
