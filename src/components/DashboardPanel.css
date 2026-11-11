@@ -1,14 +1,14 @@
-/* US-29 dashboard box below the map, in the Circle Ecology brand palette
-   (same tokens as the map legend's dark theme in MapView.css). */
+/* US-29 dashboard box below the map, in the Circle Ecology brand palette.
+   Light mode to match the Circle Ecology website. */
 .dashboard-panel {
-  --dash-surface: #222f47; /* Dark Blue */
-  --dash-surface-raised: rgba(255, 255, 255, 0.06);
-  --dash-border: #3d4d68;
-  --dash-text: #ffffff; /* White */
-  --dash-text-muted: #e0e0dc; /* Light Gray */
-  --dash-text-subtle: #8b9190; /* Dark Gray */
-  --dash-accent: #b7ccb3; /* Light Green */
-  --dash-focus: #ffbf47;
+  --dash-surface: #ffffff; /* White */
+  --dash-surface-raised: #f3f3f0; /* Light Gray, lightened */
+  --dash-border: #e0e0dc; /* Light Gray */
+  --dash-text: #222f47; /* Dark Blue */
+  --dash-text-muted: #4a5466; /* Dark Blue, softened for body text */
+  --dash-text-subtle: #8b9190; /* Dark Gray: borders only, too light for text */
+  --dash-accent: #577253; /* Dark Green */
+  --dash-focus: #222f47; /* Dark Blue */
 
   box-sizing: border-box;
   width: 100%;
@@ -216,7 +216,7 @@
 
 .chart-caveat {
   padding: 8px 12px;
-  border-left: 3px solid var(--dash-text-muted);
+  border-left: 3px solid var(--dash-text-subtle);
   background: var(--dash-surface-raised);
 }
 

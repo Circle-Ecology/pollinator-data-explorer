@@ -21,10 +21,11 @@ import { brandColors } from './brandColors'
 
 export const SNIPPET_MAX_LENGTH = 300
 
-// Brand colors that stay readable on the panel's Dark Blue background.
+// Brand colors on the panel's white background, like Circle Ecology's
+// chart deck: a strong color for occupied, light gray for empty.
 const OCCUPANCY_SERIES = [
-  { key: 'occupied', label: 'Occupied', color: brandColors.lightGreen },
-  { key: 'empty', label: 'Empty', color: brandColors.darkGray },
+  { key: 'occupied', label: 'Occupied', color: brandColors.darkGreen },
+  { key: 'empty', label: 'Empty', color: brandColors.lightGray },
 ]
 
 const OCCUPANCY_2025_CAVEAT =

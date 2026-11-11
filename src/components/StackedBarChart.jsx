@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import { brandColors } from '../content/brandColors'
 
-const AXIS_TICK = { fill: brandColors.lightGray, fontSize: 12 }
+const AXIS_TICK = { fill: brandColors.darkBlue, fontSize: 12 }
 
 // Long site names are angled once there are more bars than fit side by side.
 const ANGLE_LABELS_ABOVE = 4
@@ -42,7 +42,7 @@ function StackedBarChart({ chart, rows, measure }) {
           // Angled labels hang left of their bar, so leave room for the first.
           margin={{ top: 8, right: 8, bottom: angled ? 24 : 0, left: angled ? 72 : 0 }}
         >
-          <CartesianGrid vertical={false} stroke="rgba(224, 224, 220, 0.15)" />
+          <CartesianGrid vertical={false} stroke={brandColors.lightGray} />
           <XAxis
             dataKey="category"
             tick={AXIS_TICK}
@@ -59,15 +59,20 @@ function StackedBarChart({ chart, rows, measure }) {
           />
           <Tooltip
             formatter={(value) => formatValue(value)}
-            cursor={{ fill: 'rgba(255, 255, 255, 0.06)' }}
+            cursor={{ fill: 'rgba(34, 47, 71, 0.06)' }}
             contentStyle={{
-              background: brandColors.darkBlue,
-              border: `1px solid ${brandColors.darkGray}`,
-              color: brandColors.white,
+              background: brandColors.white,
+              border: `1px solid ${brandColors.lightGray}`,
+              color: brandColors.darkBlue,
             }}
-            labelStyle={{ color: brandColors.white, fontWeight: 600 }}
+            labelStyle={{ color: brandColors.darkBlue, fontWeight: 600 }}
           />
-          <Legend wrapperStyle={{ color: brandColors.lightGray }} />
+          {/* Recharts colors legend text like its bar; keep it readable. */}
+          <Legend
+            formatter={(value) => (
+              <span style={{ color: brandColors.darkBlue }}>{value}</span>
+            )}
+          />
           {chart.series.map((series) => (
             <Bar
               key={series.key}
@@ -75,8 +80,8 @@ function StackedBarChart({ chart, rows, measure }) {
               name={series.label}
               stackId="stack"
               fill={series.color}
-              // A thin background-colored edge keeps stacked segments apart.
-              stroke={brandColors.darkBlue}
+              // A thin outline keeps light segments visible on white.
+              stroke={brandColors.darkGray}
               strokeWidth={1}
               isAnimationActive={false}
             />
