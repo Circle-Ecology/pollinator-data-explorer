@@ -1,4 +1,17 @@
 
+/* Circle Ecology brand palette, light mode to match the website and the
+   dashboard (DashboardPanel.css). Set on the explorer too, because the close
+   button sits beside the panel rather than inside it. */
+.observation-explorer,
+.site-details-panel {
+  --site-surface: #ffffff; /* White */
+  --site-border: #e0e0dc; /* Light Gray */
+  --site-text: #222f47; /* Dark Blue */
+  --site-text-muted: #4a5466; /* Dark Blue, softened for body text */
+  --site-accent: #577253; /* Dark Green */
+  --site-focus: #222f47; /* Dark Blue */
+}
+
 /* Main site details panel */
 .site-details-panel {
   width: 100%;
@@ -6,10 +19,10 @@
   max-width: 100%;
   box-sizing: border-box;
   padding: 24px;
-  border: 1px solid #454545;
+  border: 1px solid var(--site-border);
   border-radius: 14px;
-  background: #252525;
-  color: #f5f5f5;
+  background: var(--site-surface);
+  color: var(--site-text);
   overflow-wrap: anywhere;
 }
 
@@ -22,7 +35,7 @@
 .site-details-eyebrow {
   display: block;
   margin-bottom: 8px;
-  color: #a3c9aa;
+  color: var(--site-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -31,7 +44,7 @@
 
 .site-details-header h3 {
   margin: 0 0 8px;
-  color: #aaa;
+  color: var(--site-text-muted);
   font-size: 14px;
   font-weight: 500;
 }
@@ -44,7 +57,7 @@
 
 .site-details-header p {
   margin: 0;
-  color: #bbb;
+  color: var(--site-text-muted);
 }
 
 /* Centered two-column statistics */
@@ -56,8 +69,8 @@
   max-width: 700px;
   margin-left: auto;
   margin-right: auto;
-  border-top: 1px solid #454545;
-  border-bottom: 1px solid #454545;
+  border-top: 1px solid var(--site-border);
+  border-bottom: 1px solid var(--site-border);
 }
 
 .site-details-stats p,
@@ -71,7 +84,7 @@
 .site-details-stats strong,
 .site-details-survey strong {
   display: block;
-  color: #aaa;
+  color: var(--site-text-muted);
   font-size: 12px;
   font-weight: 500;
   margin-bottom: 3px;
@@ -82,7 +95,7 @@
   display: grid;
   gap: 12px;
   padding: 20px 0;
-  border-bottom: 1px solid #454545;
+  border-bottom: 1px solid var(--site-border);
 }
 
 .site-details-survey h3 {
@@ -93,7 +106,7 @@
 /* Occupant information */
 .site-details-taxa {
   padding-top: 16px;
-  color: #bbb;
+  color: var(--site-text-muted);
   font-size: 14px;
 }
 
@@ -106,10 +119,10 @@
   display: block;
   margin: 12px 0 0 auto;
   padding: 10px 22px;
-  border: 1px solid #666;
+  border: 1px solid var(--site-accent);
   border-radius: 8px;
-  background: #383838;
-  color: #fff;
+  background: var(--site-accent);
+  color: var(--site-surface);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -117,11 +130,12 @@
 }
 
 .observation-explorer .site-details-close:hover {
-  background: #484848;
+  border-color: var(--site-text);
+  background: var(--site-text);
 }
 
 .observation-explorer .site-details-close:focus-visible {
-  outline: 3px solid #a3c9aa;
+  outline: 3px solid var(--site-focus);
   outline-offset: 3px;
 }
 

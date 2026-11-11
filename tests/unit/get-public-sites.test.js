@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import {
   calculateSiteStats,
+  getLatestSurveyYear,
   getPublicSites,
   hasValidCoordinates,
 } from '../../src/api/getPublicSites'
@@ -135,6 +136,43 @@ describe('getPublicSites - US-15 site details', () => {
       tunnelCount: 2,
       occupiedTunnelCount: 1,
     })
+  })
+
+  it('flags only sites surveyed in the latest season in the dataset', async () => {
+    stubFetch(
+      [
+        { siteId: 'S1', propertyName: 'Active', latitude: 40, longitude: -105 },
+        { siteId: 'S2', propertyName: 'Retired', latitude: 40, longitude: -105 },
+        { siteId: 'S3', propertyName: 'Never surveyed', latitude: 40, longitude: -105 },
+      ],
+      [
+        { siteId: 'S1', tunnelId: 'T1', surveyDate: '2023-05-07', observationStatus: 'Empty' },
+        { siteId: 'S1', tunnelId: 'T1', surveyDate: '2026-10-01', observationStatus: 'Empty' },
+        { siteId: 'S2', tunnelId: 'T2', surveyDate: '2023-10-08', observationStatus: 'Empty' },
+      ]
+    )
+
+    const sites = await getPublicSites()
+    const flags = Object.fromEntries(
+      sites.map((site) => [site.siteId, site.surveyedInLatestSeason])
+    )
+
+    expect(flags).toEqual({ S1: true, S2: false, S3: false })
+  })
+})
+
+describe('getLatestSurveyYear', () => {
+  it('returns the latest survey year across all sites', () => {
+    const stats = calculateSiteStats([
+      { siteId: 'S1', tunnelId: 'T1', surveyDate: '2023-05-07' },
+      { siteId: 'S2', tunnelId: 'T2', surveyDate: '2026-10-01' },
+    ])
+
+    expect(getLatestSurveyYear(stats)).toBe('2026')
+  })
+
+  it('returns null when there are no valid survey dates', () => {
+    expect(getLatestSurveyYear(calculateSiteStats([]))).toBeNull()
   })
 })
 
