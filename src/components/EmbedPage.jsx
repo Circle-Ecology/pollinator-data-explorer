@@ -1,13 +1,14 @@
 
 import { useCallback, useRef, useState } from 'react'
 import './EmbedPage.css'
+import DashboardPanel from './DashboardPanel'
 import MapView from './MapView'
 import ObservationExplorer from './ObservationExplorer'
 
 // The embed is a scrollable dashboard page, not a map-only viewport: the map is
 // a bounded section at the top (see MapView), and the data-visualization
-// dashboard section below it is reachable by scrolling past the map. That
-// section has no ticket/design yet, so only its placement is reserved here.
+// dashboard (US-29, DashboardPanel) below it is reachable by scrolling past
+// the map.
 // Capped to a centered max-width rather than full browser width, so it reads
 // as a dashboard column instead of a full-bleed map on wide screens.
 
@@ -73,7 +74,7 @@ function EmbedPage() {
         onCloseDetails={handleCloseDetails}
       />
 
-      {/* Data visualization dashboard mounts here, below the map, once that story lands */}
+      <DashboardPanel />
     </div>
   )
 }

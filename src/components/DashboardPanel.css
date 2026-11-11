@@ -1,0 +1,296 @@
+/* US-29 dashboard box below the map, in the Circle Ecology brand palette.
+   Light mode to match the Circle Ecology website. */
+.dashboard-panel {
+  --dash-surface: #ffffff; /* White */
+  --dash-surface-raised: #f3f3f0; /* Light Gray, lightened */
+  --dash-border: #e0e0dc; /* Light Gray */
+  --dash-text: #222f47; /* Dark Blue */
+  --dash-text-muted: #4a5466; /* Dark Blue, softened for body text */
+  --dash-text-subtle: #8b9190; /* Dark Gray: borders only, too light for text */
+  --dash-accent: #577253; /* Dark Green */
+  --dash-focus: #222f47; /* Dark Blue */
+
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 24px 0;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  background: var(--dash-surface);
+  color: var(--dash-text);
+  text-align: left;
+  overflow: hidden;
+}
+
+.dashboard-title {
+  margin: 0;
+  padding: 20px 24px 12px;
+  font-size: clamp(20px, 3vw, 24px);
+}
+
+.dashboard-message {
+  margin: 0;
+  padding: 0 24px 24px;
+  color: var(--dash-text-muted);
+}
+
+.dashboard-message h3 {
+  margin: 0 0 8px;
+  color: var(--dash-text);
+}
+
+/* Category tabs */
+.dashboard-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--dash-border);
+  overflow-x: auto;
+}
+
+.dashboard-tab {
+  flex: none;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--dash-text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-tab[aria-selected='true'] {
+  border-bottom-color: var(--dash-accent);
+  color: var(--dash-text);
+}
+
+.dashboard-tab:focus-visible,
+.chart-list-item:focus-visible,
+.toggle-group-button:focus-visible,
+.chart-list-select select:focus-visible,
+.chart-data-table summary:focus-visible {
+  outline: 3px solid var(--dash-focus);
+  outline-offset: 2px;
+}
+
+/* Side list + chart area */
+.dashboard-tabpanel {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  padding: 20px 24px 24px;
+}
+
+.chart-list-heading {
+  margin: 0 0 8px;
+  color: var(--dash-accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chart-list-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chart-list-item {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--dash-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chart-list-item:hover {
+  background: var(--dash-surface-raised);
+}
+
+.chart-list-item[aria-current='true'] {
+  border-left-color: var(--dash-accent);
+  background: var(--dash-surface-raised);
+  color: var(--dash-text);
+  font-weight: 600;
+}
+
+.chart-list-select {
+  display: none;
+}
+
+.chart-list-select label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--dash-text-muted);
+  font-size: 12px;
+}
+
+.chart-list-select select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--dash-border);
+  border-radius: 6px;
+  background: var(--dash-surface);
+  color: var(--dash-text);
+  font: inherit;
+}
+
+/* Chart area */
+.chart-view {
+  min-width: 0;
+}
+
+.chart-view-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.chart-view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+}
+
+.toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle-group-label {
+  margin-right: 6px;
+  color: var(--dash-text-muted);
+  font-size: 12px;
+}
+
+.toggle-group-button {
+  padding: 4px 12px;
+  border: 1px solid var(--dash-text-subtle);
+  border-radius: 999px;
+  background: none;
+  color: var(--dash-text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toggle-group-button[aria-pressed='true'] {
+  border-color: var(--dash-accent);
+  background: var(--dash-accent);
+  color: var(--dash-surface);
+  font-weight: 600;
+}
+
+.stacked-bar-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.chart-view-empty {
+  color: var(--dash-text-muted);
+}
+
+.chart-snippet p {
+  margin: 12px 0 0;
+  color: var(--dash-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.chart-snippet strong {
+  color: var(--dash-accent);
+}
+
+.chart-caveat {
+  padding: 8px 12px;
+  border-left: 3px solid var(--dash-text-subtle);
+  background: var(--dash-surface-raised);
+}
+
+.chart-caveat strong {
+  color: var(--dash-text);
+}
+
+.chart-data-table {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.chart-data-table summary {
+  color: var(--dash-accent);
+  cursor: pointer;
+}
+
+.chart-data-table table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  color: var(--dash-text-muted);
+}
+
+.chart-data-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.chart-data-table th,
+.chart-data-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--dash-border);
+  text-align: left;
+}
+
+.chart-data-table thead th {
+  color: var(--dash-text-muted);
+  font-weight: 500;
+}
+
+.chart-data-table tbody th {
+  color: var(--dash-text);
+}
+
+/* Narrow screens: the side list becomes a select above the chart */
+@media (max-width: 640px) {
+  .dashboard-title {
+    padding: 16px 16px 8px;
+  }
+
+  .dashboard-tabs {
+    padding: 0 8px;
+  }
+
+  .dashboard-tabpanel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .chart-list-nav {
+    display: none;
+  }
+
+  .chart-list-select {
+    display: block;
+  }
+
+  .chart-data-table {
+    overflow-x: auto;
+  }
+}
