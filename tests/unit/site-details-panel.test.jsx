@@ -151,6 +151,7 @@ describe('SiteDetailsPanel - US-15', () => {
           ...site,
           firstSurveyDate: '2023-05-07',
           lastSurveyDate: '2026-10-01',
+          surveyedInLatestSeason: true,
           surveyDateCount: 32,
           tunnelCount: 449,
           occupiedTunnelCount: 170,
@@ -168,6 +169,26 @@ describe('SiteDetailsPanel - US-15', () => {
     expect(dialog).toHaveTextContent('Survey dates: May 7, 2023 - Current')
     expect(dialog).not.toHaveTextContent('October 1, 2026')
     expect(dialog).not.toHaveTextContent('Site activity duration')
+  })
+
+  it('ends the survey dates at the last survey for a site no longer surveyed', () => {
+    render(
+      <SiteDetailsPanel
+        site={{
+          ...site,
+          firstSurveyDate: '2023-05-07',
+          lastSurveyDate: '2023-10-08',
+          surveyedInLatestSeason: false,
+        }}
+      />
+    )
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog).toHaveTextContent(
+      'Survey dates: May 7, 2023 - October 8, 2023'
+    )
+    expect(dialog).not.toHaveTextContent('Current')
   })
 
   it('does not display unsupported occupant information', () => {
