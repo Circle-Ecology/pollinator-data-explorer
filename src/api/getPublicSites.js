@@ -85,6 +85,22 @@ function pickPublicSiteFields(site) {
   )
 }
 
+// The most recent survey season in the whole dataset, as a 'YYYY' string.
+// A site surveyed that season is treated as still monitored; nothing in the
+// sheet says outright when a site stops being surveyed.
+export function getLatestSurveyYear(statsBySite) {
+  let latest = null
+
+  for (const { surveyDates } of statsBySite.values()) {
+    for (const date of surveyDates) {
+      const year = date.slice(0, 4)
+      if (latest === null || year > latest) latest = year
+    }
+  }
+
+  return latest
+}
+
 export async function getPublicSites() {
   const [sites, observations] = await Promise.all([
     fetchJson('/data/sites.json'),
@@ -93,6 +109,7 @@ export async function getPublicSites() {
 
   const occupiedTunnelsBySite = countOccupiedTunnelsBySite(observations)
   const statsBySite = calculateSiteStats(observations)
+  const latestSurveyYear = getLatestSurveyYear(statsBySite)
 
   const invalidSites = sites.filter((site) => !hasValidCoordinates(site))
   if (invalidSites.length > 0) {
@@ -105,11 +122,15 @@ export async function getPublicSites() {
   return sites.filter(hasValidCoordinates).map((site) => {
     const stats = statsBySite.get(site.siteId)
     const dates = [...(stats?.surveyDates ?? [])].sort()
+    const lastSurveyDate = dates.at(-1) ?? null
 
     return {
       ...pickPublicSiteFields(site),
       firstSurveyDate: dates[0] ?? null,
-      lastSurveyDate: dates.at(-1) ?? null,
+      lastSurveyDate,
+      surveyedInLatestSeason:
+        lastSurveyDate !== null &&
+        lastSurveyDate.slice(0, 4) === latestSurveyYear,
       surveyDateCount: dates.length,
       tunnelCount: stats?.tunnelIds.size ?? 0,
       occupiedTunnelCount: occupiedTunnelsBySite.get(site.siteId)?.size ?? 0,
