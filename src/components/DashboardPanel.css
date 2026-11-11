@@ -1,13 +1,23 @@
-/* US-29 dashboard box below the map, matching the site details panel */
+/* US-29 dashboard box below the map, in the Circle Ecology brand palette
+   (same tokens as the map legend's dark theme in MapView.css). */
 .dashboard-panel {
+  --dash-surface: #222f47; /* Dark Blue */
+  --dash-surface-raised: rgba(255, 255, 255, 0.06);
+  --dash-border: #3d4d68;
+  --dash-text: #ffffff; /* White */
+  --dash-text-muted: #e0e0dc; /* Light Gray */
+  --dash-text-subtle: #8b9190; /* Dark Gray */
+  --dash-accent: #b7ccb3; /* Light Green */
+  --dash-focus: #ffbf47;
+
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   margin: 24px 0;
-  border: 1px solid #454545;
+  border: 1px solid var(--dash-border);
   border-radius: 14px;
-  background: #252525;
-  color: #f5f5f5;
+  background: var(--dash-surface);
+  color: var(--dash-text);
   text-align: left;
   overflow: hidden;
 }
@@ -21,10 +31,12 @@
 .dashboard-message {
   margin: 0;
   padding: 0 24px 24px;
+  color: var(--dash-text-muted);
 }
 
 .dashboard-message h3 {
   margin: 0 0 8px;
+  color: var(--dash-text);
 }
 
 /* Category tabs */
@@ -32,7 +44,7 @@
   display: flex;
   gap: 4px;
   padding: 0 16px;
-  border-bottom: 1px solid #454545;
+  border-bottom: 1px solid var(--dash-border);
   overflow-x: auto;
 }
 
@@ -42,15 +54,15 @@
   border: 0;
   border-bottom: 3px solid transparent;
   background: none;
-  color: #bbbbbb;
+  color: var(--dash-text-muted);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .dashboard-tab[aria-selected='true'] {
-  border-bottom-color: #a3c9aa;
-  color: #f5f5f5;
+  border-bottom-color: var(--dash-accent);
+  color: var(--dash-text);
 }
 
 .dashboard-tab:focus-visible,
@@ -58,7 +70,7 @@
 .toggle-group-button:focus-visible,
 .chart-list-select select:focus-visible,
 .chart-data-table summary:focus-visible {
-  outline: 3px solid #ffbf47;
+  outline: 3px solid var(--dash-focus);
   outline-offset: 2px;
 }
 
@@ -72,7 +84,7 @@
 
 .chart-list-heading {
   margin: 0 0 8px;
-  color: #a3c9aa;
+  color: var(--dash-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -94,7 +106,7 @@
   border-left: 3px solid transparent;
   border-radius: 4px;
   background: none;
-  color: #cccccc;
+  color: var(--dash-text-muted);
   font: inherit;
   font-size: 14px;
   text-align: left;
@@ -102,13 +114,13 @@
 }
 
 .chart-list-item:hover {
-  background: #2f2f2f;
+  background: var(--dash-surface-raised);
 }
 
 .chart-list-item[aria-current='true'] {
-  border-left-color: #a3c9aa;
-  background: #2f2f2f;
-  color: #f5f5f5;
+  border-left-color: var(--dash-accent);
+  background: var(--dash-surface-raised);
+  color: var(--dash-text);
   font-weight: 600;
 }
 
@@ -119,7 +131,7 @@
 .chart-list-select label {
   display: block;
   margin-bottom: 4px;
-  color: #aaaaaa;
+  color: var(--dash-text-muted);
   font-size: 12px;
 }
 
@@ -127,10 +139,10 @@
   box-sizing: border-box;
   width: 100%;
   padding: 8px;
-  border: 1px solid #555555;
+  border: 1px solid var(--dash-border);
   border-radius: 6px;
-  background: #1c1c1c;
-  color: #f5f5f5;
+  background: var(--dash-surface);
+  color: var(--dash-text);
   font: inherit;
 }
 
@@ -160,25 +172,25 @@
 
 .toggle-group-label {
   margin-right: 6px;
-  color: #aaaaaa;
+  color: var(--dash-text-muted);
   font-size: 12px;
 }
 
 .toggle-group-button {
   padding: 4px 12px;
-  border: 1px solid #555555;
+  border: 1px solid var(--dash-text-subtle);
   border-radius: 999px;
   background: none;
-  color: #cccccc;
+  color: var(--dash-text-muted);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
 }
 
 .toggle-group-button[aria-pressed='true'] {
-  border-color: #a3c9aa;
-  background: #a3c9aa;
-  color: #1c1c1c;
+  border-color: var(--dash-accent);
+  background: var(--dash-accent);
+  color: var(--dash-surface);
   font-weight: 600;
 }
 
@@ -188,27 +200,28 @@
 }
 
 .chart-view-empty {
-  color: #bbbbbb;
+  color: var(--dash-text-muted);
 }
 
 .chart-snippet p {
   margin: 12px 0 0;
+  color: var(--dash-text-muted);
   font-size: 14px;
   line-height: 1.6;
 }
 
 .chart-snippet strong {
-  color: #a3c9aa;
+  color: var(--dash-accent);
 }
 
 .chart-caveat {
   padding: 8px 12px;
-  border-left: 3px solid #ffbf47;
-  background: #2f2a1e;
+  border-left: 3px solid var(--dash-text-muted);
+  background: var(--dash-surface-raised);
 }
 
 .chart-caveat strong {
-  color: #ffbf47;
+  color: var(--dash-text);
 }
 
 .chart-data-table {
@@ -217,7 +230,7 @@
 }
 
 .chart-data-table summary {
-  color: #a3c9aa;
+  color: var(--dash-accent);
   cursor: pointer;
 }
 
@@ -225,6 +238,7 @@
   width: 100%;
   margin-top: 8px;
   border-collapse: collapse;
+  color: var(--dash-text-muted);
 }
 
 .chart-data-table caption {
@@ -239,13 +253,17 @@
 .chart-data-table th,
 .chart-data-table td {
   padding: 6px 8px;
-  border-bottom: 1px solid #3a3a3a;
+  border-bottom: 1px solid var(--dash-border);
   text-align: left;
 }
 
 .chart-data-table thead th {
-  color: #aaaaaa;
+  color: var(--dash-text-muted);
   font-weight: 500;
+}
+
+.chart-data-table tbody th {
+  color: var(--dash-text);
 }
 
 /* Narrow screens: the side list becomes a select above the chart */

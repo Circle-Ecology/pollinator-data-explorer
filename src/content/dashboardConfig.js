@@ -17,15 +17,14 @@
 //   categoryLabel - column heading for the x-axis in the data table
 //   series        - stacked series, bottom to top: { key, label, color }
 
+import { brandColors } from './brandColors'
+
 export const SNIPPET_MAX_LENGTH = 300
 
-// Colors chosen for contrast on the panel's dark background.
-const OCCUPIED_COLOR = '#7fb08a'
-const EMPTY_COLOR = '#5f6670'
-
+// Brand colors that stay readable on the panel's Dark Blue background.
 const OCCUPANCY_SERIES = [
-  { key: 'occupied', label: 'Occupied', color: OCCUPIED_COLOR },
-  { key: 'empty', label: 'Empty', color: EMPTY_COLOR },
+  { key: 'occupied', label: 'Occupied', color: brandColors.lightGreen },
+  { key: 'empty', label: 'Empty', color: brandColors.darkGray },
 ]
 
 const OCCUPANCY_2025_CAVEAT =
@@ -42,7 +41,7 @@ export const dashboardConfig = [
         id: 'occupancy-by-year',
         title: 'Occupied vs. Empty Nesting Holes by Year',
         snippet:
-          'Each bar is one monitoring year. The dark green part shows nesting ' +
+          'Each bar is one monitoring year. The green part shows nesting ' +
           'holes that held an occupant at some point that season; the gray ' +
           'part shows holes that stayed empty. Holes retired before use are ' +
           'left out.',

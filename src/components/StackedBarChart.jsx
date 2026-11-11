@@ -8,8 +8,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { brandColors } from '../content/brandColors'
 
-const AXIS_TICK = { fill: '#cccccc', fontSize: 12 }
+const AXIS_TICK = { fill: brandColors.lightGray, fontSize: 12 }
 
 // Long site names are angled once there are more bars than fit side by side.
 const ANGLE_LABELS_ABOVE = 4
@@ -41,7 +42,7 @@ function StackedBarChart({ chart, rows, measure }) {
           // Angled labels hang left of their bar, so leave room for the first.
           margin={{ top: 8, right: 8, bottom: angled ? 24 : 0, left: angled ? 72 : 0 }}
         >
-          <CartesianGrid vertical={false} stroke="#3a3a3a" />
+          <CartesianGrid vertical={false} stroke="rgba(224, 224, 220, 0.15)" />
           <XAxis
             dataKey="category"
             tick={AXIS_TICK}
@@ -60,12 +61,13 @@ function StackedBarChart({ chart, rows, measure }) {
             formatter={(value) => formatValue(value)}
             cursor={{ fill: 'rgba(255, 255, 255, 0.06)' }}
             contentStyle={{
-              background: '#1c1c1c',
-              border: '1px solid #454545',
-              color: '#f5f5f5',
+              background: brandColors.darkBlue,
+              border: `1px solid ${brandColors.darkGray}`,
+              color: brandColors.white,
             }}
+            labelStyle={{ color: brandColors.white, fontWeight: 600 }}
           />
-          <Legend wrapperStyle={{ color: '#f5f5f5' }} />
+          <Legend wrapperStyle={{ color: brandColors.lightGray }} />
           {chart.series.map((series) => (
             <Bar
               key={series.key}
@@ -73,6 +75,9 @@ function StackedBarChart({ chart, rows, measure }) {
               name={series.label}
               stackId="stack"
               fill={series.color}
+              // A thin background-colored edge keeps stacked segments apart.
+              stroke={brandColors.darkBlue}
+              strokeWidth={1}
               isAnimationActive={false}
             />
           ))}
