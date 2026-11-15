@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { OTHER_TALLY_VISITS } from './data/otherTally2025.js'
+import { generateDashboardDataset } from './generateDashboardDataset.js'
 import { countConflictedEntities, generatePublicDataset } from './generatePublicDataset.js'
 
 const DEFAULT_OUTPUT_DIRECTORY = fileURLToPath(new URL('../../data/', import.meta.url))
@@ -34,10 +36,14 @@ export async function writePublicDataset(parsedResult, {
     excludedRowCount: parsedResult.invalidRows + countConflictedEntities(parsedResult),
     status: 'published',
   }
+  // US-28: dashboard figures share the metadata's generatedAt so the files can be matched up.
+  const dashboard = generateDashboardDataset(dataset, parsedResult.tunnels, metadata.generatedAt,
+    { otherTallyVisits: OTHER_TALLY_VISITS })
   // Serialize every candidate before filesystem operations; never serialize dataset.status.
   const files = [
     ['sites.json', JSON.stringify(dataset.sites)],
     ['observations.json', JSON.stringify(dataset.observations)],
+    ['dashboard.json', JSON.stringify(dashboard)],
     ['dataset-status.json', JSON.stringify(metadata)],
   ]
   try {

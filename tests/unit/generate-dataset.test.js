@@ -225,7 +225,13 @@ describe('US-24 public projection', () => {
     expect(() => generatePublicDataset(input)).toThrow('Invalid public survey date')
   })
 
-  it.each([['commonName', { notes: 'secret' }], ['plugDepth', Infinity],
+  it('publishes a text Plug Depth unchanged', () => {
+    const input = makePublicDataset()
+    input.surveys[0].plugDepth = 'flush'
+    expect(generatePublicDataset(input).observations[0].plugDepth).toBe('flush')
+  })
+
+  it.each([['commonName', { notes: 'secret' }], ['plugDepth', Infinity], ['plugDepth', 2.5],
     ['manufacturedEmpty', 'true'], ['occupantType', ['Bee']]])('rejects unsafe public scalar %s', (field, value) => {
     const input = makePublicDataset()
     input.surveys[0][field] = value

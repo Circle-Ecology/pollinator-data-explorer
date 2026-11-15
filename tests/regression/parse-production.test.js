@@ -75,13 +75,13 @@ describe('US-08: Production Export Regression', () => {
         )
       ).toBe(true)
 
-      // Verify known tunnel attribute conflict
+      // sunExposure changes are no longer reported as tunnel conflicts, so this
+      // export has none (it previously had one, on sunExposure).
       const tunnelAttributeConflicts = result.errors.filter(
         (error) => error.code === 'TUNNEL_ATTRIBUTE_CONFLICT'
       )
 
-      expect(tunnelAttributeConflicts).toHaveLength(1)
-      expect(tunnelAttributeConflicts[0].field).toBe('sunExposure')
+      expect(tunnelAttributeConflicts).toHaveLength(0)
 
       // Verify no unexpected validation errors
       const knownErrorCodes = new Set([

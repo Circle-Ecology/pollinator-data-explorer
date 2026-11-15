@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { writePublicDataset } from '../../src/pipeline/writePublicDataset.js'
-import { makePublicDataset } from '../fixtures/publicDataset.js'
+import { makePublicDataset, makeRepresentativeDataset } from '../fixtures/publicDataset.js'
 import { HEADER_TO_FIELD, STAFF_ONLY_HEADERS } from '../../src/validation/csvSchema.js'
 
 const temporaryDirectories = []
@@ -18,7 +18,7 @@ afterEach(async () => {
 })
 
 describe('US-24 JSON artifacts', () => {
-  it('writes exactly three compact public JSON files and accurate separate metadata', async () => {
+  it('writes exactly four compact public JSON files and accurate separate metadata', async () => {
     const directory = await temporaryDirectory()
     const input = makePublicDataset()
     input.totalRows = 99
@@ -34,12 +34,13 @@ describe('US-24 JSON artifacts', () => {
     expect(metadata).toEqual({ generatedAt: now().toISOString(), sourceRowCount: 99,
       siteCount: 2, tunnelCount: 1, excludedRowCount: 0, status: 'published' })
     const files = await readdir(join(directory, 'data'))
-    expect(files.sort()).toEqual(['dataset-status.json', 'observations.json', 'sites.json'])
+    expect(files.sort()).toEqual(['dashboard.json', 'dataset-status.json', 'observations.json', 'sites.json'])
     const contents = await Promise.all(files.map(name => readFile(join(directory, 'data', name), 'utf8')))
     const parsed = contents.map(text => JSON.parse(text))
-    expect(parsed[0]).toEqual(metadata)
-    expect(parsed[1]).toHaveLength(2)
+    expect(parsed[0].generatedAt).toBe(metadata.generatedAt)
+    expect(parsed[1]).toEqual(metadata)
     expect(parsed[2]).toHaveLength(2)
+    expect(parsed[3]).toHaveLength(2)
     function checkKeys(value) {
       if (value === null || typeof value !== 'object') return
       for (const [key, child] of Object.entries(value)) {
@@ -105,5 +106,15 @@ describe('US-24 JSON artifacts', () => {
     await expect(writePublicDataset(makePublicDataset(), { outputDirectory, now }))
       .rejects.toThrow('Unable to write public dataset')
     expect(await readFile(outputDirectory, 'utf8')).toBe('existing file')
+  })
+})
+
+describe('US-28 dashboard.json', () => {
+  it('is written with the same generatedAt as dataset-status.json and stays under 500 KB', async () => {
+    const outputDirectory = await temporaryDirectory()
+    const metadata = await writePublicDataset(makeRepresentativeDataset(), { outputDirectory, now })
+    const dashboardText = await readFile(join(outputDirectory, 'dashboard.json'), 'utf8')
+    expect(JSON.parse(dashboardText).generatedAt).toBe(metadata.generatedAt)
+    expect(new TextEncoder().encode(dashboardText).length).toBeLessThan(500 * 1024)
   })
 })

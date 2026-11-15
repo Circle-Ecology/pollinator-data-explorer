@@ -252,7 +252,7 @@ describe('US-08: Normalize Export Rows', () => {
         'Observation Date': '07-24-2026',
         'Installation Year': '2025',
         'Tunnel Diameter (inches)': '0.25',
-        'Plug Depth': '2.5',
+        'Plug Depth': '1/2 inch',
         'Emergence Year': '2026',
         'Manufactured Empty': 'false',
       },
@@ -262,8 +262,27 @@ describe('US-08: Normalize Export Rows', () => {
 
     expect(result.tunnels[0].installationYear).toBe(2025)
     expect(result.tunnels[0].tunnelDiameterInches).toBe(0.25)
-    expect(result.surveys[0].plugDepth).toBe(2.5)
+    expect(result.surveys[0].plugDepth).toBe('1/2 inch')
     expect(result.surveys[0].emergenceYear).toBe(2026)
     expect(result.surveys[0].manufacturedEmpty).toBe(false)
+  })
+
+  it.each(['1.1 inches', '1 inch', '1/2 inch', '1/16 inch', 'flush', 'protruding'])(
+    'keeps the export\'s text Plug Depth %j', (depth) => {
+      const result = parseExportRows([{
+        'Property Name': 'Test Farm', City: 'Longmont', State: 'CO',
+        Coordinates: '40.15506, -105.0034', 'Unique ID': 'T001',
+        'Observation Date': '07-24-2026', 'Plug Depth': depth,
+      }], 'batch-001')
+      expect(result.surveys[0].plugDepth).toBe(depth)
+    })
+
+  it('treats an NA Plug Depth as missing', () => {
+    const result = parseExportRows([{
+      'Property Name': 'Test Farm', City: 'Longmont', State: 'CO',
+      Coordinates: '40.15506, -105.0034', 'Unique ID': 'T001',
+      'Observation Date': '07-24-2026', 'Plug Depth': 'NA',
+    }], 'batch-001')
+    expect(result.surveys[0].plugDepth).toBeNull()
   })
 })
