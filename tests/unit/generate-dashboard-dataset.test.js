@@ -477,20 +477,21 @@ describe('US-35 site scorecards', () => {
     expect(entries.S2).toMatchObject({ presentGenera: ['Anthidium', 'Hylaeus'], uniqueGenera: ['Anthidium'] })
   })
 
-  it('flags Site 1 because Other Occupants is 1 of 3 nests, and scores it 0', () => {
+  it('flags Site 1 because Other Occupants is 1 of 3 nests, but keeps its score', () => {
     expect(entries.S1.conditions.other).toMatchObject({ numerator: 1, denominator: 3, rate: 33, state: 'flag' })
-    expect(entries.S1).toMatchObject({ score: 0, max: 24, category: 'Flagged for Evaluation', flagged: true, flags: ['other'] })
+    // 2 genera + Emergence + the only-at-this-site bonus; the flagged condition earns no point.
+    expect(entries.S1).toMatchObject({ score: 4, max: 24, category: 'Low', flagged: true, flags: ['other'] })
   })
 
   it('measures each condition against its denominator', () => {
     expect(entries.S1.conditions).toMatchObject({
       parasitism: { numerator: 0, denominator: 2, rate: 0, state: 'none' },        // sealed nests: A and B
-      competition: { numerator: 0, denominator: 3, rate: 0, state: 'none' },        // occupied cavities
+      multiGenus: { numerator: 0, denominator: 3, rate: 0, state: 'none' },        // cavities with a General ID
       emergence: { numerator: 1, denominator: 2, rate: 50, recorded: true },        // B emerged
     })
     expect(entries.S2.conditions).toMatchObject({
       parasitism: { numerator: 1, denominator: 5, rate: 20, state: 'bonus' },       // E's Anthidium nest
-      competition: { numerator: 1, denominator: 4, rate: 25, state: 'bonus' },      // E holds two genera
+      multiGenus: { numerator: 1, denominator: 4, rate: 25, state: 'bonus' },      // E holds two genera
       other: { numerator: 0, denominator: 5, rate: 0, state: 'none' },
       emergence: { numerator: 0, denominator: 5, rate: 0, recorded: false },
     })

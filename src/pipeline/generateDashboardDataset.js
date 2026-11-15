@@ -6,46 +6,53 @@
 // 2025: 33%, 2026: 35%):
 //  - Occupied = Active, Complete or Reopened.
 //  - Excluded = never occupied and at least one "Retired hole" observation.
-// CONFIRMED against the deck's sealed nest rates by structural factor (2026, 32 of
-// 34 cells exact; 2025 installation-year chart within a point):
-//  - A sealed nest is an occupant run (see below) with at least one "Sealed" record,
-//    counted per occupant type; the rate is nests over available cavities.
-// CONFIRMED against the deck's occupants by site and type (2023, 2025, 2026):
-//  - An occupant is one run in a cavity. A run ends at any non-occupied
-//    observation and a new one starts on Reopened -> Active or Complete, or when
-//    a recorded Plug Composition changes. Its type is the first one recorded.
-//  - Runs with no recorded type are not counted.
-// CONFIRMED against the deck's occupants by General ID (2023, 2025, 2026): the
-// genus label is the run's General ID, except that Spider/Ant(s)/Pill Bug/Other
-// occupants are all "Other", a Bee or Wasp whose General ID is "Other" is
-// "Other (Bee)"/"Other (Wasp)", and runs with no General ID are not counted.
-// Occupant figures match the deck apart from 2025 Other (tracked outside the
-// sheet export) and small 2023 differences; see docs/public-dataset.md.
-// CONFIRMED against the deck's occupants by observation period (2023 and 2026 within
-// a point on 68 of 76 cells; 2025 Bee:Wasp split within a point): periods are 14-day
-// blocks from 11 March, and a cavity counts in every period it has an occupied,
-// typed observation, once per occupant type.
-// SITE SCORECARD (US-35), scoring rules from the ticket and checked against the deck's
-// 2023/2025/2026 scorecards: scores match for every site in 2023 and for 5 of 6 sites
-// in 2026. NOT matched: Site 7 in 2026 (the Megachile (Eutricharaea) share comes out
-// at 32%, the deck shows 26%), and the 2025 sites that the missing Other tracker
-// affects. Category cut-offs are inferred (the deck gives only 5=Low, 11-15=High,
-// 16-17=Very High); the only-at-this-site bonus is a single +1 (it makes 24 the max).
-// CONFIRMED against the deck's richness (2026, 36 of 36 cells): distinct General IDs
-// among Bee and Wasp nests, by diameter, site and type.
+// CONFIRMED by Circle Ecology (data guidance, Nov 2026), see docs/public-dataset.md:
+//  - A sealed nest is a nest (NEST_RULES) with at least one "Sealed" record, counted per occupant type;
+//    the rate is nests over the distinct cavities observed that year after the retired-hold exclusion,
+//    plainly rounded.
+//  - An occupant (OCCUPANT_RULES) is one run in a cavity. A run ends at any non-occupied observation and
+//    a new one starts on Reopened -> Active or Complete, or when a recorded Plug Composition changes. Its
+//    type is the first one recorded; runs with no recorded type are not counted.
+//  - The genus label is the run's General ID, except that Spider/Ant(s)/Pill Bug/Other occupants are all
+//    "Other" (blank General ID kept), a Bee or Wasp whose General ID is "Other" is "Other (Bee)"/"Other
+//    (Wasp)", and Bee/Wasp/Unknown runs with no General ID are not counted.
+//  - 2025 Other occupants come from the tally tracker (otherTally.js), not the sheet.
+//  - Observation periods are 14-day blocks from 11 March; a cavity counts in every period it has an
+//    occupied, typed observation, once per occupant type.
+//  - Site scorecards: see scoreSite and buildScorecards. Flags no longer zero a score.
+//  - Richness: distinct General IDs on any Bee or Wasp observation, by site and diameter.
+import { OTHER_TALLY_TYPES, summarizeOtherTally } from './otherTally.js'
 
 export const OCCUPIED_STATUSES = ['Active', 'Complete', 'Reopened']
 export const RETIRED_STATUS = 'Retired hole'
 export const NEST_OCCUPANT_TYPES = ['Bee', 'Wasp']
 export const SEALED_VALUE = 'Sealed'
-// Statuses that start a new occupant run after Reopened (occupant charts, scorecards, sealed rates).
+// Statuses that start a new occupant run after Reopened (occupant charts, scorecards).
 export const RUN_RESEAL_STATUSES = ['Active', 'Complete']
-// Genus profile pages: a cavity that is reopened and comes back Active is still the same nest; only
-// coming back Complete (resealed) starts a new one. With this rule 14 of the deck's 18 per-genus nest
-// counts match exactly (12 with RUN_RESEAL_STATUSES); the deck's own occupant-by-General-ID chart
-// still agrees with RUN_RESEAL_STATUSES, so the two figures are deliberately not the same count.
-export const NEST_RESEAL_STATUSES = ['Complete']
+// Plug Composition values that are not a nesting material: they are never a plug "change".
+export const NON_MATERIAL_PLUGS = ['occupant present', 'empty']
 
+// How an occupant run is split. `startsAfterReopened(observation)` says whether this observation,
+// coming straight after a Reopened one, starts a new run; `ignoredPlugs` are Plug Composition values
+// that neither count as the run's plug nor as a change of it.
+//  - OCCUPANT_RULES (occupant charts, scorecards): Reopened -> Active/Complete starts a new occupant.
+//  - NEST_RULES (genus pages, nest conditions, sealed nest rate), per Circle Ecology's guidance
+//    (Nov 2026): a new nest starts when an Active or Complete observation with Whole or hole = Sealed
+//    comes right after an Empty or Reopened one, or when the plug changes to a different nesting
+//    material (not 'occupant present' or 'empty'). Empty already closes a run, so the only extra rule
+//    here is that a Reopened -> Active/Complete observation must be Sealed to start a new nest.
+export const OCCUPANT_RULES = {
+  startsAfterReopened: o => RUN_RESEAL_STATUSES.includes(o.observationStatus),
+  ignoredPlugs: [],
+}
+export const NEST_RULES = {
+  startsAfterReopened: o => RUN_RESEAL_STATUSES.includes(o.observationStatus) && o.wholeOrHole === SEALED_VALUE,
+  ignoredPlugs: NON_MATERIAL_PLUGS,
+}
+
+// Plain rounding to the nearest whole percent, in integer arithmetic so that e.g. 4.5% is never
+// lost to a floating-point error (the deck rounds .5 up).
+const roundedPercent = (numerator, denominator) => Math.floor((200 * numerator + denominator) / (2 * denominator))
 const isOccupiedStatus = status => OCCUPIED_STATUSES.includes(status)
 const byDate = (a, b) => (a.surveyDate < b.surveyDate ? -1 : a.surveyDate > b.surveyDate ? 1 : 0)
 
@@ -64,10 +71,9 @@ export function classifyCavityOccupancy(observations) {
 // observations } (type and General ID are null when none was ever recorded in the
 // run; both are the first recorded).
 //
-// `resealStatuses` is the set of statuses that start a new run straight after a Reopened
-// observation. Occupant counts use RUN_RESEAL_STATUSES; the genus profile pages count
-// "nests" and use NEST_RESEAL_STATUSES (see there).
-function splitOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
+// `rules` is OCCUPANT_RULES or NEST_RULES (see there): occupant counts use the first, the genus
+// profile pages and nest conditions count "nests" and use the second.
+function splitOccupantRuns(observations, rules = OCCUPANT_RULES) {
   const runs = []
   let previousStatus = null
   let plug = null
@@ -80,8 +86,9 @@ function splitOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
       plug = null
       continue
     }
-    const plugChanged = o.plugComposition != null && plug != null && o.plugComposition !== plug
-    const resealed = previousStatus === 'Reopened' && resealStatuses.includes(status)
+    const material = o.plugComposition != null && !rules.ignoredPlugs.includes(o.plugComposition) ? o.plugComposition : null
+    const plugChanged = material !== null && plug !== null && material !== plug
+    const resealed = previousStatus === 'Reopened' && rules.startsAfterReopened(o)
     if (!open || resealed || plugChanged) {
       runs.push({ occupantType: null, generalId: null, observations: [] })
       plug = null
@@ -89,7 +96,7 @@ function splitOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
     }
     const run = runs[runs.length - 1]
     run.observations.push(o)
-    if (o.plugComposition != null) plug = o.plugComposition
+    if (material !== null) plug = material
     if (run.occupantType === null && o.occupantType != null) run.occupantType = o.occupantType
     if (run.generalId === null && o.generalId != null) run.generalId = o.generalId
     previousStatus = status
@@ -98,8 +105,8 @@ function splitOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
 }
 
 // The same runs as { occupantType, generalId } only.
-export function listOccupantRuns(observations, resealStatuses = RUN_RESEAL_STATUSES) {
-  return splitOccupantRuns(observations, resealStatuses).map(({ occupantType, generalId }) => ({ occupantType, generalId }))
+export function listOccupantRuns(observations, rules = OCCUPANT_RULES) {
+  return splitOccupantRuns(observations, rules).map(({ occupantType, generalId }) => ({ occupantType, generalId }))
 }
 
 export function countOccupantRuns(observations) {
@@ -109,8 +116,8 @@ export function countOccupantRuns(observations) {
 // Sealed nests of one occupant type in a cavity's observations: each occupant run of
 // that type that has at least one "Sealed" record counts once. A nest sealed again
 // after being reopened, or after its Plug Composition changed, is a new run.
-export function countSealedNests(observations, occupantType) {
-  return splitOccupantRuns(observations)
+export function countSealedNests(observations, occupantType, rules = NEST_RULES) {
+  return splitOccupantRuns(observations, rules)
     .filter(run => run.occupantType === occupantType && run.observations.some(o => o.wholeOrHole === SEALED_VALUE))
     .length
 }
@@ -118,7 +125,7 @@ export function countSealedNests(observations, occupantType) {
 // cavities: [{ group, observations }] (group = the factor value, e.g. 'Log').
 // Returns { [group]: { available, Bee: { sealed, rate }, Wasp: { sealed, rate } } },
 // where `available` is the non-excluded cavities observed that year.
-export function computeSealedNestRate(cavities, year) {
+export function computeSealedNestRate(cavities, year, rules = NEST_RULES) {
   const prefix = `${year}-`
   const result = {}
   for (const { group, observations } of cavities) {
@@ -129,18 +136,18 @@ export function computeSealedNestRate(cavities, year) {
       ...Object.fromEntries(NEST_OCCUPANT_TYPES.map(type => [type, { sealed: 0, rate: 0 }])),
     })
     entry.available += 1
-    for (const type of NEST_OCCUPANT_TYPES) entry[type].sealed += countSealedNests(inYear, type)
+    for (const type of NEST_OCCUPANT_TYPES) entry[type].sealed += countSealedNests(inYear, type, rules)
   }
   for (const entry of Object.values(result)) {
     for (const type of NEST_OCCUPANT_TYPES) {
-      entry[type].rate = Math.round((entry[type].sealed / entry.available) * 100)
+      entry[type].rate = roundedPercent(entry[type].sealed, entry.available)
     }
   }
   return result
 }
 
 // Nest conditions (deck: "Number of Nests by Observation Status"). Nests use the genus-profile
-// rule (NEST_RESEAL_STATUSES). A nest is counted under every condition it has a record for, so
+// rule (NEST_RULES). A nest is counted under every condition it has a record for, so
 // the bars overlap and can add up to more than the nests: Active = an Active observation that
 // has a Plug Depth; Complete = a Complete observation; Emerged, Parasitized and Chalkbrood =
 // an Emergence, Parasitism or Chalkbrood Characteristics "Whole or hole" record. `sealed` is
@@ -153,7 +160,7 @@ export const NEST_STATUS_TYPES = ['Bee', 'Wasp']
 export function countNestStatuses(cavityObservations, occupantType) {
   const counts = { Active: 0, Complete: 0, Emerged: 0, Parasitized: 0, Chalkbrood: 0, sealed: 0 }
   for (const observations of cavityObservations) {
-    for (const run of splitOccupantRuns(observations, NEST_RESEAL_STATUSES)) {
+    for (const run of splitOccupantRuns(observations, NEST_RULES)) {
       if (run.occupantType !== occupantType) continue
       const records = run.observations
       if (records.some(o => o.observationStatus === 'Active' && o.plugDepth != null)) counts.Active += 1
@@ -251,9 +258,17 @@ function tally(cavityObservations) {
 // Occupant chart categories. Anything that is not Bee, Wasp or Unknown is "Other";
 // the Other-occupants chart then splits that by its own type.
 export const OCCUPANT_TYPES = ['Bee', 'Wasp', 'Unknown', 'Other']
-export const OTHER_OCCUPANT_TYPES = ['Spider', 'Ant(s)', 'Pill Bug', 'Other']
+export const OTHER_OCCUPANT_TYPES = OTHER_TALLY_TYPES
 const occupantCategory = type => (['Bee', 'Wasp', 'Unknown'].includes(type) ? type : 'Other')
-const otherCategory = type => (['Spider', 'Ant(s)', 'Pill Bug'].includes(type) ? type : 'Other')
+// The Other-occupants chart type of an occupant ({ occupantType, generalId }). In 2023 spiders were
+// recorded as occupant type Other with General ID "Spider", so the General ID is what tells them apart.
+const otherCategory = ({ occupantType, generalId }) => {
+  if (['Spider', 'Ant(s)', 'Pill Bug'].includes(occupantType)) return occupantType
+  return generalId === 'Spider' ? 'Spider' : 'Other'
+}
+// The Other-type breakdowns leave out Other occupants whose General ID is "Unknown" (the occupant
+// charts keep them), per Circle Ecology.
+const inOtherBreakdown = ({ generalId }) => generalId !== 'Unknown'
 
 // The deck's General ID label for an occupant run, or null when it has none.
 function genusLabel({ occupantType, generalId }) {
@@ -262,6 +277,10 @@ function genusLabel({ occupantType, generalId }) {
   if (generalId === null) return null
   return generalId === 'Other' ? `Other (${occupantType})` : generalId
 }
+
+// Circle Ecology's multi-genus cavity use: a cavity counts when two or more distinct General IDs
+// were recorded on any of its observations in the year.
+const distinctGeneralIds = observations => new Set(observations.map(o => o.generalId).filter(id => id != null))
 
 const byCountThenName = (a, b) => b.total - a.total || compareGroups(a.generalId, b.generalId)
 
@@ -305,7 +324,7 @@ function lastPlugDepth(observations) {
 
 // cavityYears: [{ year, siteId, tunnel, observations }] (every cavity observed in a year).
 function buildGenusProfiles(cavityYears) {
-  const splitNests = observations => splitOccupantRuns(observations, NEST_RESEAL_STATUSES)
+  const splitNests = observations => splitOccupantRuns(observations, NEST_RULES)
   const available = cavityYears.filter(c => !isExcludedCavity(c.observations))
   const nestsByGenus = new Map()
   for (const cavity of cavityYears) {
@@ -324,8 +343,7 @@ function buildGenusProfiles(cavityYears) {
     const sharedWith = new Map()
     let shared = 0
     for (const cavity of cavities) {
-      const others = new Set(splitNests(cavity.observations).map(r => r.generalId)
-        .filter(id => id !== null && id !== generalId))
+      const others = new Set([...distinctGeneralIds(cavity.observations)].filter(id => id !== generalId))
       if (others.size > 0) shared += 1
       for (const id of others) sharedWith.set(id, (sharedWith.get(id) ?? 0) + 1)
     }
@@ -405,10 +423,10 @@ function periodCounts(cavities, keys, categorize, include) {
   for (const { observations } of cavities) {
     const seen = new Set()
     for (const o of observations) {
-      if (!isOccupiedStatus(o.observationStatus) || o.occupantType == null || !include(o.occupantType)) continue
+      if (!isOccupiedStatus(o.observationStatus) || o.occupantType == null || !include(o)) continue
       const period = periodIndex(o.surveyDate)
       if (period === null) continue
-      seen.add(`${period}|${categorize(o.occupantType)}`)
+      seen.add(`${period}|${categorize(o)}`)
     }
     for (const entry of seen) {
       const [period, category] = entry.split('|')
@@ -417,6 +435,28 @@ function periodCounts(cavities, keys, categorize, include) {
       counts.total += 1
       byPeriod.set(Number(period), counts)
     }
+  }
+  return byPeriod
+}
+
+// The 2025 tracker's counts per period: for each site the highest count of each type among its
+// visits in the period, summed over sites. Returns Map(period -> { ...counts, total }).
+function tallyPeriodCounts(yearTally) {
+  const perSite = new Map()
+  for (const [siteId, { visits }] of yearTally) {
+    for (const visit of visits) {
+      const period = periodIndex(visit.date)
+      if (period === null) continue
+      const best = perSite.get(`${siteId}|${period}`) ?? { period, ...zeroCounts(OTHER_OCCUPANT_TYPES) }
+      for (const type of OTHER_OCCUPANT_TYPES) best[type] = Math.max(best[type], visit[type])
+      perSite.set(`${siteId}|${period}`, best)
+    }
+  }
+  const byPeriod = new Map()
+  for (const { period, ...counts } of perSite.values()) {
+    const sum = byPeriod.get(period) ?? { ...zeroCounts(OTHER_OCCUPANT_TYPES), total: 0 }
+    for (const type of OTHER_OCCUPANT_TYPES) { sum[type] += counts[type]; sum.total += counts[type] }
+    byPeriod.set(period, sum)
   }
   return byPeriod
 }
@@ -436,11 +476,21 @@ function periodRows(year, lastSurveyPeriod, keys, byPeriod) {
 
 export const SCORE_THRESHOLD = 0.30
 export const SCORE_MAX = 24
-export const FLAGGED_CATEGORY = 'Flagged for Evaluation'
 // Inferred boundaries (to confirm with Circle Ecology): the deck shows 5 = Low, 11-15 = High, 16-17 = Very High.
 const SCORE_CATEGORIES = [{ min: 16, name: 'Very High' }, { min: 8, name: 'High' }, { min: 0, name: 'Low' }]
-const FLAG_CONDITIONS = ['parasitism', 'chalkbrood', 'competition', 'other', 'megachile', 'osmiaMud']
-const BONUS_CONDITIONS = ['parasitism', 'competition', 'other']
+// Condition ids. The scorecard calls the old "Competition" condition "Multi-genus cavity use"
+// (Circle Ecology, Nov 2026); the genus profile pages keep their own `competition` field.
+export const SCORECARD_CONDITION_LABELS = {
+  parasitism: 'Parasitism',
+  chalkbrood: 'Chalkbrood Characteristics',
+  multiGenus: 'Multi-genus cavity use',
+  other: 'Other Occupants',
+  megachile: 'Megachile (Eutricharaea)',
+  osmiaMud: 'Osmia (mud)',
+  emergence: 'Emergence',
+}
+const FLAG_CONDITIONS = ['parasitism', 'chalkbrood', 'multiGenus', 'other', 'megachile', 'osmiaMud']
+const BONUS_CONDITIONS = ['parasitism', 'multiGenus', 'other']
 const SCORE_THRESHOLD_PERCENT = Math.round(SCORE_THRESHOLD * 100)
 
 // Integer arithmetic so that exactly 30% is never flagged by a rounding error.
@@ -450,24 +500,23 @@ const withinThreshold = ({ numerator, denominator }) => numerator > 0 && numerat
 /**
  * Pure: score one site in one year. `summary` is
  * { presentGenera, uniqueGenera, emergenceRecorded, conditions: { [id]: { numerator, denominator } } }.
- * +1 per genus present; +1 for each of Parasitism, Competition and Other Occupants that is above 0% and
- * at most 30%; +1 if Emergence is recorded; +1 (once) if any genus was found only at this site. Any
- * flag condition above 30% sets the score to 0 and the category to "Flagged for Evaluation".
+ * +1 per genus present; +1 for each of Parasitism, Multi-genus cavity use and Other Occupants that is
+ * above 0% and at most 30%; +1 if Emergence is recorded; +1 (once) if any genus was found only at this
+ * site. A flag condition above 30% marks the site `flagged` and lists it in `flags`, but no longer
+ * zeroes the score (Circle Ecology, Nov 2026: a flag means "evaluate and manage", not "bad"); the
+ * flagged condition just earns no point and is shown in a flag colour.
  */
 export function scoreSite({ presentGenera, uniqueGenera, emergenceRecorded, conditions }) {
   const flags = FLAG_CONDITIONS.filter(id => exceedsThreshold(conditions[id]))
-  if (flags.length > 0) {
-    return { score: 0, max: SCORE_MAX, category: FLAGGED_CATEGORY, flagged: true, flags, bonuses: [] }
-  }
   const bonuses = BONUS_CONDITIONS.filter(id => withinThreshold(conditions[id]))
   if (emergenceRecorded) bonuses.push('emergence')
   if (uniqueGenera.length > 0) bonuses.push('uniqueGenus')
   const score = presentGenera.length + bonuses.length
   const category = SCORE_CATEGORIES.find(({ min }) => score >= min).name
-  return { score, max: SCORE_MAX, category, flagged: false, flags: [], bonuses }
+  return { score, max: SCORE_MAX, category, flagged: flags.length > 0, flags, bonuses }
 }
 
-const ratePercent = ({ numerator, denominator }) => (denominator > 0 ? Math.round((numerator / denominator) * 100) : null)
+const ratePercent = ({ numerator, denominator }) => (denominator > 0 ? roundedPercent(numerator, denominator) : null)
 
 function conditionState(id, condition) {
   if (FLAG_CONDITIONS.includes(id) && exceedsThreshold(condition)) return 'flag'
@@ -482,7 +531,7 @@ function scorecardGenus({ occupantType, generalId }) {
 }
 
 // cavityYears: [{ year, siteId, tunnel, observations }].
-function buildScorecards(cavityYears) {
+function buildScorecards(cavityYears, tally) {
   // Which genera exist (and whether each is a bee or a wasp genus), over all years.
   const votes = new Map()
   for (const { observations } of cavityYears) {
@@ -511,17 +560,29 @@ function buildScorecards(cavityYears) {
     const nests = cavities.flatMap(c => splitOccupantRuns(c.observations)).filter(run => run.occupantType !== null)
     const sealed = nests.filter(run => run.observations.some(o => o.wholeOrHole === SEALED_VALUE))
     const count = (list, test) => list.filter(test).length
-    const occupied = cavities.filter(c => classifyCavityOccupancy(c.observations) === 'occupied')
-    const multiGenus = occupied.filter(c => new Set(c.observations
-      .filter(o => isOccupiedStatus(o.observationStatus)).map(o => o.generalId).filter(id => id != null)).size > 1)
+    // 2025: the tracker's peak Other count replaces the Other occupants recorded in the sheet.
+    const tracked = tally.get(String(year))?.get(siteId)?.peak ?? null
+    const sheetOther = count(nests, run => occupantCategory(run.occupantType) === 'Other')
+    const otherOccupants = tracked === null ? sheetOther : tracked.total
+    // "All occupants at the site that year, across all occupant types."
+    const occupants = nests.length - sheetOther + otherOccupants
+    // Multi-genus cavity use: cavities with more than one distinct General ID, out of the cavities that
+    // have at least one (a cavity with no General ID cannot show multi-genus use).
+    const idCounts = cavities.map(c => distinctGeneralIds(c.observations).size)
     const hasRecord = value => run => run.observations.some(o => o.wholeOrHole === value)
     const conditions = {
       parasitism: { numerator: count(nests, hasRecord('Parasitism')), denominator: sealed.length },
-      chalkbrood: { numerator: count(nests, hasRecord('Chalkbrood Characteristics')), denominator: nests.length },
-      competition: { numerator: multiGenus.length, denominator: occupied.length },
-      other: { numerator: count(nests, run => occupantCategory(run.occupantType) === 'Other'), denominator: nests.length },
-      megachile: { numerator: count(nests, run => run.generalId === 'Megachile (Eutricharaea)'), denominator: nests.length },
-      osmiaMud: { numerator: count(nests, run => run.generalId === 'Osmia (mud)'), denominator: nests.length },
+      chalkbrood: { numerator: count(nests, hasRecord('Chalkbrood Characteristics')), denominator: occupants },
+      multiGenus: { numerator: count(idCounts, n => n > 1), denominator: count(idCounts, n => n > 0) },
+      other: { numerator: otherOccupants, denominator: occupants },
+      // Megachile (Eutricharaea) occupants minus any ever recorded as Parasitism or Chalkbrood
+      // Characteristics, over all occupants (those still included in the denominator).
+      megachile: {
+        numerator: count(nests, run => run.generalId === 'Megachile (Eutricharaea)' &&
+          !hasRecord('Parasitism')(run) && !hasRecord('Chalkbrood Characteristics')(run)),
+        denominator: occupants,
+      },
+      osmiaMud: { numerator: count(nests, run => run.generalId === 'Osmia (mud)'), denominator: occupants },
     }
     const emergence = { numerator: count(nests, hasRecord('Emergence')), denominator: sealed.length }
     return {
@@ -568,8 +629,15 @@ function buildScorecards(cavityYears) {
  * reach the output. Every aggregate carries its counts and denominator.
  * Shape: { generatedAt, years, charts: { [chartId]: { [year]: rows } } }.
  */
-export function generateDashboardDataset({ sites, observations }, tunnels, generatedAt) {
+export function generateDashboardDataset({ sites, observations }, tunnels, generatedAt, { otherTallyVisits = [] } = {}) {
   const tunnelById = new Map(tunnels.map(t => [t.tunnelId, t]))
+  const siteIdByBlock = new Map()
+  for (const t of tunnels) {
+    if (t.blockNumber != null && t.siteId != null && !siteIdByBlock.has(String(t.blockNumber))) {
+      siteIdByBlock.set(String(t.blockNumber), t.siteId)
+    }
+  }
+  const otherTally = summarizeOtherTally(otherTallyVisits, siteIdByBlock)
   const siteById = new Map(sites.map(s => [s.siteId, s]))
   const years = [...new Set(observations.map(yearOf))].sort(byText)
 
@@ -619,23 +687,47 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
       cavityYears.push({ year: Number(year), siteId: c.siteId, tunnel: c.tunnel, observations: c.observations })
     }
     const allObservations = cavities.map(c => c.observations)
-    charts[CHART_IDS.occupantsByYearType][year] = [occupantCounts(allObservations, OCCUPANT_TYPES, occupantCategory)]
-    const siteRows = (keys, categorize) => [...bySite]
+    // A year covered by the Other tally tracker takes the Other occupants of each tracked site from the
+    // tracker's peak count instead of the sheet (see otherTally.js).
+    const yearTally = otherTally.get(year) ?? new Map()
+    const trackedOther = siteId => yearTally.get(siteId)?.peak ?? null
+    const withTrackedOther = (siteId, counts) => {
+      const tracked = trackedOther(siteId)
+      return tracked === null ? counts : { ...counts, total: counts.total - counts.Other + tracked.total, Other: tracked.total }
+    }
+    const siteRows = [...bySite]
       .sort(([a], [b]) => byText(a, b))
       .map(([siteId, group]) => ({
-        siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...occupantCounts(group, keys, categorize),
+        siteId, propertyName: siteById.get(siteId)?.propertyName ?? null,
+        ...withTrackedOther(siteId, occupantCounts(group, OCCUPANT_TYPES, occupantCategory)),
       }))
-    charts[CHART_IDS.occupantsBySite][year] = siteRows(OCCUPANT_TYPES, occupantCategory)
-      .map(({ siteId, propertyName, total }) => ({ siteId, propertyName, total }))
-    charts[CHART_IDS.occupantsBySiteType][year] = siteRows(OCCUPANT_TYPES, occupantCategory)
-    // Only the Other occupants: total counts just Spider, Ant(s), Pill Bug and Other.
+    const sheetYearCounts = occupantCounts(allObservations, OCCUPANT_TYPES, occupantCategory)
+    const yearOtherDelta = siteRows.reduce((sum, row) => sum + row.Other, 0) -
+      [...bySite.values()].reduce((sum, group) => sum + occupantCounts(group, OCCUPANT_TYPES, occupantCategory).Other, 0)
+    charts[CHART_IDS.occupantsByYearType][year] = [{
+      ...sheetYearCounts, Other: sheetYearCounts.Other + yearOtherDelta, total: sheetYearCounts.total + yearOtherDelta,
+    }]
+    charts[CHART_IDS.occupantsBySite][year] = siteRows.map(({ siteId, propertyName, total }) => ({ siteId, propertyName, total }))
+    charts[CHART_IDS.occupantsBySiteType][year] = siteRows
+    // Only the Other occupants: total counts just Spider, Ant(s), Pill Bug and Other. Other occupants whose
+    // General ID is "Unknown" are left out of this breakdown.
     charts[CHART_IDS.otherBySiteType][year] = [...bySite]
       .sort(([a], [b]) => byText(a, b))
       .map(([siteId, group]) => {
-        const others = group.map(observations => listOccupantRuns(observations)
-          .filter(run => run.occupantType !== null && occupantCategory(run.occupantType) === 'Other'))
         const counts = { ...zeroCounts(OTHER_OCCUPANT_TYPES), total: 0 }
-        for (const runs of others) for (const run of runs) { counts[otherCategory(run.occupantType)] += 1; counts.total += 1 }
+        const tracked = trackedOther(siteId)
+        if (tracked !== null) {
+          for (const type of OTHER_OCCUPANT_TYPES) counts[type] = tracked[type]
+          counts.total = tracked.total
+        } else {
+          for (const observations of group) {
+            for (const run of listOccupantRuns(observations)) {
+              if (run.occupantType === null || occupantCategory(run.occupantType) !== 'Other' || !inOtherBreakdown(run)) continue
+              counts[otherCategory(run)] += 1
+              counts.total += 1
+            }
+          }
+        }
         return { siteId, propertyName: siteById.get(siteId)?.propertyName ?? null, ...counts }
       })
 
@@ -650,6 +742,12 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
         entry.total += 1
         byGenus.set(generalId, entry)
       }
+    }
+    if (yearOtherDelta !== 0) {
+      const entry = byGenus.get('Other') ?? { generalId: 'Other', ...zeroCounts(OCCUPANT_TYPES), total: 0 }
+      entry.Other += yearOtherDelta
+      entry.total += yearOtherDelta
+      byGenus.set('Other', entry)
     }
     const genera = [...byGenus.values()].sort(byCountThenName)
     charts[CHART_IDS.occupantsByGenus][year] = genera
@@ -666,8 +764,7 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
       .map(([siteId, group]) => ({
         siteId,
         propertyName: siteById.get(siteId)?.propertyName ?? null,
-        multiGenus: group.filter(observations =>
-          new Set(listOccupantRuns(observations).map(run => run.generalId).filter(id => id !== null)).size > 1).length,
+        multiGenus: group.filter(observations => distinctGeneralIds(observations).size > 1).length,
         occupied: group.filter(observations => classifyCavityOccupancy(observations) === 'occupied').length,
       }))
 
@@ -677,12 +774,23 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
 
     // Seasonal occupancy by two-week observation period.
     const periods = observations.filter(o => yearOf(o) === year).map(o => periodIndex(o.surveyDate)).filter(p => p !== null)
-    const lastPeriod = periods.length ? Math.max(...periods) : -1
-    charts[CHART_IDS.occupantsByPeriodType][year] = periodRows(
-      Number(year), lastPeriod, OCCUPANT_TYPES, periodCounts(cavities, OCCUPANT_TYPES, occupantCategory, () => true))
-    charts[CHART_IDS.otherByPeriodType][year] = periodRows(
-      Number(year), lastPeriod, OTHER_OCCUPANT_TYPES,
-      periodCounts(cavities, OTHER_OCCUPANT_TYPES, otherCategory, type => occupantCategory(type) === 'Other'))
+    const tallyPeriods = tallyPeriodCounts(yearTally)
+    const lastPeriod = Math.max(-1, ...periods, ...tallyPeriods.keys())
+    const occupantPeriods = periodCounts(cavities, OCCUPANT_TYPES, o => occupantCategory(o.occupantType), () => true)
+    const otherPeriods = periodCounts(cavities, OTHER_OCCUPANT_TYPES, otherCategory,
+      o => occupantCategory(o.occupantType) === 'Other' && inOtherBreakdown(o))
+    if (yearTally.size > 0) {
+      // The tracker replaces the sheet's Other occupants in every period of a tracked year.
+      for (const period of new Set([...occupantPeriods.keys(), ...tallyPeriods.keys()])) {
+        const counts = occupantPeriods.get(period) ?? { ...zeroCounts(OCCUPANT_TYPES), total: 0 }
+        const other = tallyPeriods.get(period)?.total ?? 0
+        occupantPeriods.set(period, { ...counts, total: counts.total - counts.Other + other, Other: other })
+      }
+      otherPeriods.clear()
+      for (const [period, counts] of tallyPeriods) otherPeriods.set(period, counts)
+    }
+    charts[CHART_IDS.occupantsByPeriodType][year] = periodRows(Number(year), lastPeriod, OCCUPANT_TYPES, occupantPeriods)
+    charts[CHART_IDS.otherByPeriodType][year] = periodRows(Number(year), lastPeriod, OTHER_OCCUPANT_TYPES, otherPeriods)
 
     // Richness: distinct General IDs among bee and wasp nests, by diameter and site.
     const richness = new Map()
@@ -691,8 +799,10 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
       const diameter = String(c.tunnel.tunnelDiameterInches)
       const key = `${diameter}|${c.siteId}`
       const entry = richness.get(key) ?? { diameter, siteId: c.siteId, genera: { Bee: new Set(), Wasp: new Set() } }
-      for (const run of listOccupantRuns(c.observations)) {
-        if (entry.genera[run.occupantType] && run.generalId !== null) entry.genera[run.occupantType].add(run.generalId)
+      // Richness comes from every observation (not only the first of each nest): the distinct General IDs
+      // recorded on any Bee or Wasp observation, Unknown and Other each counting as one value.
+      for (const o of c.observations) {
+        if (entry.genera[o.occupantType] && o.generalId != null) entry.genera[o.occupantType].add(o.generalId)
       }
       richness.set(key, entry)
     }
@@ -714,7 +824,7 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
     }
   }
   charts[CHART_IDS.genusProfile] = buildGenusProfiles(cavityYears)
-  const scorecards = buildScorecards(cavityYears)
+  const scorecards = buildScorecards(cavityYears, otherTally)
   charts[CHART_IDS.scorecardGenera] = { all: scorecards.genera }
   charts[CHART_IDS.scorecardAllSites] = scorecards.allSites
   charts[CHART_IDS.scorecardSiteOverYears] = scorecards.siteOverYears

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SCORE_MAX, SCORE_THRESHOLD, FLAGGED_CATEGORY, scoreSite,
+  SCORE_MAX, SCORE_THRESHOLD, SCORECARD_CONDITION_LABELS, scoreSite,
 } from '../../src/pipeline/generateDashboardDataset.js'
 
 // A condition is { numerator, denominator }; an absent one counts as 0 of 100.
@@ -10,7 +10,7 @@ const summary = (overrides = {}) => ({
   presentGenera: [],
   uniqueGenera: [],
   emergenceRecorded: false,
-  conditions: { parasitism: none, chalkbrood: none, competition: none, other: none, megachile: none, osmiaMud: none },
+  conditions: { parasitism: none, chalkbrood: none, multiGenus: none, other: none, megachile: none, osmiaMud: none },
   ...overrides,
 })
 const genera = n => Array.from({ length: n }, (_, i) => `Genus ${i}`)
@@ -19,7 +19,7 @@ describe('US-35 scoreSite', () => {
   it('exports the contract constants', () => {
     expect(SCORE_THRESHOLD).toBe(0.3)
     expect(SCORE_MAX).toBe(24)
-    expect(FLAGGED_CATEGORY).toBe('Flagged for Evaluation')
+    expect(SCORECARD_CONDITION_LABELS.multiGenus).toBe('Multi-genus cavity use')
   })
 
   it('scores Site 1 in 2026 as 15/24 "High": 11 genera plus four bonuses', () => {
@@ -27,28 +27,28 @@ describe('US-35 scoreSite', () => {
       presentGenera: genera(11),
       emergenceRecorded: true, // 31% emerged
       conditions: {
-        parasitism: cond(4), chalkbrood: cond(11), competition: cond(17), other: cond(4),
+        parasitism: cond(4), chalkbrood: cond(11), multiGenus: cond(17), other: cond(4),
         megachile: cond(26), osmiaMud: none,
       },
     }))
     expect(result).toMatchObject({ score: 15, max: 24, category: 'High', flagged: false, flags: [] })
   })
 
-  it('flags the site and scores 0 when Megachile (Eutricharaea) is at 48%', () => {
+  it('flags the site but keeps its score when Megachile (Eutricharaea) is at 48%', () => {
     const result = scoreSite(summary({
       presentGenera: genera(11),
       conditions: { ...summary().conditions, megachile: cond(48) },
     }))
-    expect(result).toMatchObject({ score: 0, category: 'Flagged for Evaluation', flagged: true, flags: ['megachile'] })
+    expect(result).toMatchObject({ score: 11, category: 'High', flagged: true, flags: ['megachile'] })
   })
 
-  it.each(['parasitism', 'chalkbrood', 'competition', 'other', 'megachile', 'osmiaMud'])(
+  it.each(['parasitism', 'chalkbrood', 'multiGenus', 'other', 'megachile', 'osmiaMud'])(
     'flags the site when %s is over 30%', (id) => {
       const result = scoreSite(summary({
         presentGenera: genera(5),
         conditions: { ...summary().conditions, [id]: cond(31) },
       }))
-      expect(result).toMatchObject({ score: 0, flagged: true, flags: [id] })
+      expect(result).toMatchObject({ score: 5, flagged: true, flags: [id] })
     })
 
   it('does not flag a value of exactly 30%', () => {
@@ -67,7 +67,7 @@ describe('US-35 scoreSite', () => {
   })
 
   it('gives no bonus for a condition at 0%, and a bonus for each one above 0% up to 30%', () => {
-    const conditions = { ...summary().conditions, parasitism: cond(0), competition: cond(6), other: cond(30) }
+    const conditions = { ...summary().conditions, parasitism: cond(0), multiGenus: cond(6), other: cond(30) }
     expect(scoreSite(summary({ presentGenera: genera(2), conditions })).score).toBe(2 + 2)
   })
 

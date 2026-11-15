@@ -40,7 +40,7 @@ The constants in `src/validation/csvSchema.js` must match this document.
 | 13 | `Observer Email` | Staff-only | string | | *(staff email)* | `observerEmail` |
 | 14 | `Nester of family` | Optional | text | | `Megachilidae` | `nesterFamily` |
 | 15 | `General ID` | Optional | text | | `Megachile (Eutricharaea)` | `generalId` |
-| 16 | `Whole or hole` | Optional | enum | `Empty`, `Sealed`, `Not Sealed`, `Emergence`, `Parasitism` | `Sealed` | `wholeOrHole` |
+| 16 | `Whole or hole` | Optional | enum | `Empty`, `Sealed`, `Not Sealed`, `Emergence`, `Parasitism`, `Chalkbrood Characteristics` (recoded from "old nest" notes, never counted as Sealed) | `Sealed` | `wholeOrHole` |
 | 17 | `Common Name` | Optional | text | | `Leafcutting bee` | `commonName` |
 | 18 | `Notes` | Optional | text | | `NA` | `notes` (staff-only per Data Contract) |
 | 19 | `Manufactured Empty` | Optional | boolean | Seen: `TRUE`, `FALSE` (not enforced) | `FALSE` | `manufacturedEmpty` |

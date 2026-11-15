@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countOccupantRuns, listOccupantRuns, NEST_RESEAL_STATUSES, RUN_RESEAL_STATUSES, countNestStatuses, countPlugDepths } from '../../src/pipeline/generateDashboardDataset.js'
+import { countOccupantRuns, listOccupantRuns, NEST_RULES, RUN_RESEAL_STATUSES, countNestStatuses, countPlugDepths } from '../../src/pipeline/generateDashboardDataset.js'
 import { obs } from '../fixtures/cavityObservations.js'
 
 describe('US-28 countOccupantRuns', () => {
@@ -103,10 +103,23 @@ describe('US-28 reseal rule for genus profile nests', () => {
     expect(countOccupantRuns(reopenedThen('Active'))).toBe(2)
   })
 
-  it('profile nests treat Reopened -> Active as the same nest but Reopened -> Complete as a new one', () => {
-    expect(NEST_RESEAL_STATUSES).toEqual(['Complete'])
-    expect(listOccupantRuns(reopenedThen('Active'), NEST_RESEAL_STATUSES)).toHaveLength(1)
-    expect(listOccupantRuns(reopenedThen('Complete'), NEST_RESEAL_STATUSES)).toHaveLength(2)
+  it('profile nests treat Reopened -> Active (not sealed) as the same nest, but a sealed Active or Complete as a new one', () => {
+    const sealed = status => reopenedThen(status).map((o, i) => (i === 2 ? { ...o, wholeOrHole: 'Sealed' } : o))
+    expect(listOccupantRuns(reopenedThen('Active'), NEST_RULES)).toHaveLength(1)
+    expect(listOccupantRuns(reopenedThen('Complete'), NEST_RULES)).toHaveLength(1)
+    expect(listOccupantRuns(sealed('Active'), NEST_RULES)).toHaveLength(2)
+    expect(listOccupantRuns(sealed('Complete'), NEST_RULES)).toHaveLength(2)
+  })
+
+  it('a nest only starts a new nest on a plug change to another nesting material', () => {
+    const plugs = values => values.map((plugComposition, i) =>
+      obs('Active', `2025-0${i + 6}-01`, { plugComposition }))
+    // 'occupant present' and 'empty' are not nesting materials: no new nest, though a new occupant run.
+    expect(listOccupantRuns(plugs(['mud', 'occupant present', 'mud']), NEST_RULES)).toHaveLength(1)
+    expect(listOccupantRuns(plugs(['mud', 'occupant present', 'mud']))).toHaveLength(3)
+    expect(listOccupantRuns(plugs(['mud', 'grass']), NEST_RULES)).toHaveLength(2)
+    // A plug first recorded after an observation without one is not a change.
+    expect(listOccupantRuns(plugs([null, 'mud']), NEST_RULES)).toHaveLength(1)
   })
 })
 
