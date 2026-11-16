@@ -20,6 +20,23 @@ export const dashboardData = {
         { siteId: 'Site 1', propertyName: 'Site 1', occupied: 200, empty: 200, excluded: 0, available: 400 },
       ],
     },
+    // Unknown only exists from 2026, so earlier years have it at zero.
+    'occupants-by-year-type': {
+      2023: [{ Bee: 40, Wasp: 18, Unknown: 0, Other: 220, total: 278 }],
+      2025: [{ Bee: 678, Wasp: 298, Unknown: 0, Other: 3, total: 979 }],
+      2026: [{ Bee: 533, Wasp: 241, Unknown: 29, Other: 77, total: 880 }],
+    },
+    'occupants-by-site-type': {
+      2023: [
+        { siteId: 'Site 1', propertyName: 'Site 1', Bee: 2, Wasp: 2, Unknown: 0, Other: 24, total: 28 },
+      ],
+      2025: [
+        { siteId: 'Site 1', propertyName: 'Site 1', Bee: 181, Wasp: 20, Unknown: 0, Other: 0, total: 201 },
+      ],
+      2026: [
+        { siteId: 'Site 1', propertyName: 'Site 1', Bee: 175, Wasp: 44, Unknown: 14, Other: 10, total: 243 },
+      ],
+    },
   },
 }
 

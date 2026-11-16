@@ -12,6 +12,8 @@ import { brandColors } from '../content/brandColors'
 
 const AXIS_TICK = { fill: brandColors.darkBlue, fontSize: 12 }
 
+const PERCENT_TICKS = [0, 25, 50, 75, 100]
+
 // Long site names are angled once there are more bars than fit side by side.
 const ANGLE_LABELS_ABOVE = 4
 
@@ -54,6 +56,9 @@ function StackedBarChart({ chart, rows, measure }) {
           <YAxis
             tick={AXIS_TICK}
             domain={isPercent ? [0, 100] : [0, 'auto']}
+            // Rounded shares can add up to 100.1; keep the axis at 0-100%.
+            allowDataOverflow={isPercent}
+            ticks={isPercent ? PERCENT_TICKS : undefined}
             tickFormatter={formatValue}
             width={56}
           />
@@ -68,10 +73,14 @@ function StackedBarChart({ chart, rows, measure }) {
             labelStyle={{ color: brandColors.darkBlue, fontWeight: 600 }}
           />
           {/* Recharts colors legend text like its bar; keep it readable. */}
+          {/* Legend order follows the config (the stack order), not A-Z. */}
           <Legend
             formatter={(value) => (
               <span style={{ color: brandColors.darkBlue }}>{value}</span>
             )}
+            itemSorter={(item) =>
+              chart.series.findIndex((series) => series.key === item.dataKey)
+            }
           />
           {chart.series.map((series) => (
             <Bar

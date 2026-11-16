@@ -7,7 +7,7 @@ import { dashboardConfig } from '../../src/content/dashboardConfig'
 import { dashboardData, stubResizeObserver } from '../fixtures/dashboardData'
 
 const twoTabConfig = [
-  ...dashboardConfig,
+  dashboardConfig[0],
   {
     id: 'second',
     label: 'Second Tab',
@@ -127,6 +127,44 @@ describe('DashboardPanel - US-29', () => {
 
     await screen.findByRole('tab')
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  it('switches to the Occupants tab and its charts', async () => {
+    render(<DashboardPanel loadData={loadData} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Occupants' }))
+
+    expect(screen.getByRole('tab', { name: 'Occupants' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Occupants by Year and Type' })
+    ).toBeInTheDocument()
+
+    const nav = screen.getByRole('navigation', { name: 'Charts: Occupants' })
+    expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Occupants by Year and Type',
+      'Occupants by Site and Type',
+    ])
+  })
+
+  it('leaves an occupant type with no data out of the data table', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/embed?tab=occupants&chart=occupants-by-site-type&year=2025'
+    )
+    render(<DashboardPanel loadData={loadData} />)
+
+    const table = await screen.findByRole('table', {
+      name: 'Occupants by Site and Type',
+    })
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent)
+
+    expect(headers).toEqual(['Site', 'Bee', 'Wasp', 'Total'])
   })
 
   it('shows a friendly message when dashboard.json fails to load', async () => {

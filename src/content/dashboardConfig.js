@@ -33,6 +33,19 @@ const OCCUPANCY_2025_CAVEAT =
   'as a spider or ant) were tracked on a separate sheet and are not counted ' +
   'here, so 2025 totals run slightly low.'
 
+// One color per occupant type. A type with no occupants in the chart's
+// current view (e.g. Unknown before 2026) is left out of the legend.
+const OCCUPANT_TYPE_SERIES = [
+  { key: 'Bee', label: 'Bee', color: brandColors.darkGreen },
+  { key: 'Wasp', label: 'Wasp', color: brandColors.darkBlue },
+  { key: 'Unknown', label: 'Unknown', color: brandColors.darkGray },
+  { key: 'Other', label: 'Other', color: brandColors.lightGreen },
+]
+
+const OCCUPANTS_2025_CAVEAT =
+  'In 2025, "Other" occupants (such as spiders and ants) were tallied on a ' +
+  'separate sheet that is not included here, so 2025 shows very few of them.'
+
 export const dashboardConfig = [
   {
     id: 'occupancy',
@@ -68,6 +81,43 @@ export const dashboardConfig = [
         categoryKey: 'propertyName',
         categoryLabel: 'Site',
         series: OCCUPANCY_SERIES,
+      },
+    ],
+  },
+  {
+    id: 'occupants',
+    label: 'Occupants',
+    charts: [
+      {
+        id: 'occupants-by-year-type',
+        title: 'Occupants by Year and Type',
+        snippet:
+          'Each bar is one monitoring year, split by who moved in: bees, ' +
+          'wasps, other creatures such as spiders and ants, and occupants ' +
+          'that could not be identified. A nesting hole can count more than ' +
+          'once if a new occupant moved in later in the season.',
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'stackedBar',
+        supportsYears: false,
+        measures: ['count', 'percent'],
+        categoryKey: 'year',
+        categoryLabel: 'Year',
+        series: OCCUPANT_TYPE_SERIES,
+      },
+      {
+        id: 'occupants-by-site-type',
+        title: 'Occupants by Site and Type',
+        snippet:
+          'Each bar is one monitoring site in the selected year, split by ' +
+          'occupant type. Switch to Percentage to compare the mix of bees, ' +
+          'wasps and other occupants between sites of different sizes.',
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'stackedBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        categoryKey: 'propertyName',
+        categoryLabel: 'Site',
+        series: OCCUPANT_TYPE_SERIES,
       },
     ],
   },

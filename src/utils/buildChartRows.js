@@ -16,6 +16,15 @@ export function getChartYears(chartData, years) {
   })
 }
 
+// Series with at least one non-zero count in these rows. A zero everywhere
+// usually means "not tracked that year" (e.g. Unknown before 2026), so the
+// series is left out of the chart, legend and table rather than shown as 0.
+export function getVisibleSeries(chart, rows) {
+  return chart.series.filter((series) =>
+    rows.some((row) => row.counts[series.key] > 0)
+  )
+}
+
 export function buildChartRows(chart, chartData, { years, year }) {
   if (!chartData) return []
 

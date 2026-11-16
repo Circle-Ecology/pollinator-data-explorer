@@ -3,6 +3,7 @@ import { dashboardConfig } from '../../src/content/dashboardConfig'
 import {
   buildChartRows,
   getChartYears,
+  getVisibleSeries,
 } from '../../src/utils/buildChartRows'
 import { dashboardData } from '../fixtures/dashboardData'
 
@@ -44,6 +45,32 @@ describe('buildChartRows - US-29', () => {
       const sum = row.percents.occupied + row.percents.empty
       expect(sum).toBeCloseTo(100, 0)
     }
+  })
+
+  it('hides a series that is zero in every row of the view', () => {
+    const [occupantsByYear, occupantsBySite] = dashboardConfig[1].charts
+    const siteRows = buildChartRows(
+      occupantsBySite,
+      charts['occupants-by-site-type'],
+      { years, year: 2023 }
+    )
+    const yearRows = buildChartRows(
+      occupantsByYear,
+      charts['occupants-by-year-type'],
+      { years }
+    )
+
+    expect(getVisibleSeries(occupantsBySite, siteRows).map((s) => s.key)).toEqual([
+      'Bee',
+      'Wasp',
+      'Other',
+    ])
+    expect(getVisibleSeries(occupantsByYear, yearRows).map((s) => s.key)).toEqual([
+      'Bee',
+      'Wasp',
+      'Unknown',
+      'Other',
+    ])
   })
 
   it('returns no rows for a year without data', () => {
