@@ -1,16 +1,21 @@
 import {
   Bar,
   BarChart,
-  CartesianGrid,
   Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import { brandColors } from '../content/brandColors'
+import { brandColors, brandFonts } from '../content/brandColors'
 
-const AXIS_TICK = { fill: brandColors.darkBlue, fontSize: 12 }
+// Matches theme_pollinator_v01.R: Poppins in near-black, no gridlines or
+// axis lines.
+const AXIS_TICK = {
+  fill: brandColors.black,
+  fontSize: 12,
+  fontFamily: brandFonts.body,
+}
 
 const PERCENT_TICKS = [0, 25, 50, 75, 100]
 
@@ -44,10 +49,11 @@ function StackedBarChart({ chart, rows, measure }) {
           // Angled labels hang left of their bar, so leave room for the first.
           margin={{ top: 8, right: 8, bottom: angled ? 24 : 0, left: angled ? 72 : 0 }}
         >
-          <CartesianGrid vertical={false} stroke={brandColors.lightGray} />
           <XAxis
             dataKey="category"
             tick={AXIS_TICK}
+            axisLine={false}
+            tickLine={false}
             interval={0}
             angle={angled ? -45 : 0}
             textAnchor={angled ? 'end' : 'middle'}
@@ -55,6 +61,8 @@ function StackedBarChart({ chart, rows, measure }) {
           />
           <YAxis
             tick={AXIS_TICK}
+            axisLine={false}
+            tickLine={false}
             domain={isPercent ? [0, 100] : [0, 'auto']}
             // Rounded shares can add up to 100.1; keep the axis at 0-100%.
             allowDataOverflow={isPercent}
@@ -68,19 +76,21 @@ function StackedBarChart({ chart, rows, measure }) {
             contentStyle={{
               background: brandColors.white,
               border: `1px solid ${brandColors.lightGray}`,
-              color: brandColors.darkBlue,
+              color: brandColors.black,
+              fontFamily: brandFonts.body,
             }}
-            labelStyle={{ color: brandColors.darkBlue, fontWeight: 600 }}
+            labelStyle={{ color: brandColors.black, fontWeight: 600 }}
           />
           {/* Recharts colors legend text like its bar; keep it readable. */}
           {/* Legend order follows the config (the stack order), not A-Z. */}
           <Legend
             formatter={(value) => (
-              <span style={{ color: brandColors.darkBlue }}>{value}</span>
+              <span style={{ color: brandColors.black }}>{value}</span>
             )}
             itemSorter={(item) =>
               chart.series.findIndex((series) => series.key === item.dataKey)
             }
+            wrapperStyle={{ fontFamily: brandFonts.body, fontSize: 13 }}
           />
           {chart.series.map((series) => (
             <Bar

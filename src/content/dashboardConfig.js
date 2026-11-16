@@ -21,11 +21,10 @@ import { brandColors } from './brandColors'
 
 export const SNIPPET_MAX_LENGTH = 300
 
-// Brand colors on the panel's white background, like Circle Ecology's
-// chart deck: a strong color for occupied, light gray for empty.
+// Chart colors from theme_pollinator_v01.R, as in Circle Ecology's deck.
 const OCCUPANCY_SERIES = [
-  { key: 'occupied', label: 'Occupied', color: brandColors.darkGreen },
-  { key: 'empty', label: 'Empty', color: brandColors.lightGray },
+  { key: 'occupied', label: 'Occupied', color: brandColors.occupied },
+  { key: 'empty', label: 'Empty', color: brandColors.empty },
 ]
 
 const OCCUPANCY_2025_CAVEAT =
@@ -36,10 +35,10 @@ const OCCUPANCY_2025_CAVEAT =
 // One color per occupant type. A type with no occupants in the chart's
 // current view (e.g. Unknown before 2026) is left out of the legend.
 const OCCUPANT_TYPE_SERIES = [
-  { key: 'Bee', label: 'Bee', color: brandColors.darkGreen },
-  { key: 'Wasp', label: 'Wasp', color: brandColors.darkBlue },
-  { key: 'Unknown', label: 'Unknown', color: brandColors.darkGray },
-  { key: 'Other', label: 'Other', color: brandColors.lightGreen },
+  { key: 'Bee', label: 'Bee', color: brandColors.bee },
+  { key: 'Wasp', label: 'Wasp', color: brandColors.wasp },
+  { key: 'Unknown', label: 'Unknown', color: brandColors.unknown },
+  { key: 'Other', label: 'Other', color: brandColors.other },
 ]
 
 const OCCUPANTS_2025_CAVEAT =
@@ -55,8 +54,8 @@ export const dashboardConfig = [
         id: 'occupancy-by-year',
         title: 'Occupied vs. Empty Nesting Holes by Year',
         snippet:
-          'Each bar is one monitoring year. The green part shows nesting ' +
-          'holes that held an occupant at some point that season; the gray ' +
+          'Each bar is one monitoring year. The dark part shows nesting ' +
+          'holes that held an occupant at some point that season; the light ' +
           'part shows holes that stayed empty. Holes retired before use are ' +
           'left out.',
         caveat: OCCUPANCY_2025_CAVEAT,
@@ -72,7 +71,7 @@ export const dashboardConfig = [
         title: 'Occupied vs. Empty Nesting Holes by Site',
         snippet:
           'Each bar is one monitoring site in the selected year. Compare how ' +
-          'much of each bar is green to see where nesting holes were used ' +
+          'much of each bar is dark to see where nesting holes were used ' +
           'most. A site only appears in the years it was monitored.',
         caveat: OCCUPANCY_2025_CAVEAT,
         component: 'stackedBar',
