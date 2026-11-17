@@ -1,3 +1,5 @@
+import { SITE_STAT_FIELDS } from '../pipeline/siteStats.js'
+
 // US-37: the pipeline precomputes each site's figures into sites.json
 // (src/pipeline/siteStats.js), so the browser loads only sites.json and
 // never downloads every observation.
@@ -14,17 +16,6 @@ const PUBLIC_SITE_FIELDS = [
   'longitude',
   'elevationMeters',
 ]
-
-// Precomputed figures (SITE_STAT_FIELDS in siteStats.js), with the value used
-// if a field is missing, e.g. from a sites.json published before US-37.
-const SITE_STAT_DEFAULTS = {
-  firstSurveyDate: null,
-  lastSurveyDate: null,
-  surveyedInLatestSeason: false,
-  surveyDateCount: 0,
-  tunnelCount: 0,
-  occupiedTunnelCount: 0,
-}
 
 async function fetchJson(path) {
   const response = await fetch(path)
@@ -45,22 +36,36 @@ export function hasValidCoordinates({ latitude, longitude }) {
   )
 }
 
+// A missing figure stays null, which the map and panel show as "Not recorded";
+// it is never replaced with a made-up 0.
 function pickPublicSiteFields(site) {
-  return {
-    ...Object.fromEntries(
-      PUBLIC_SITE_FIELDS.map((field) => [field, site[field] ?? null])
-    ),
-    ...Object.fromEntries(
-      Object.entries(SITE_STAT_DEFAULTS).map(([field, fallback]) => [
-        field,
-        site[field] ?? fallback,
-      ])
-    ),
+  return Object.fromEntries(
+    [...PUBLIC_SITE_FIELDS, ...SITE_STAT_FIELDS].map((field) => [
+      field,
+      site[field] ?? null,
+    ])
+  )
+}
+
+// Netlify builds sites.json and the app together, so the figures should
+// always be there. If not (e.g. stale local data), say so instead of failing
+// silently.
+function warnAboutMissingFigures(sites) {
+  const missing = sites.filter((site) =>
+    SITE_STAT_FIELDS.some((field) => !(field in site))
+  )
+  if (missing.length > 0) {
+    console.warn(
+      `sites.json is missing site figures for ${missing.length} site(s); ` +
+        'regenerate it with `npm run pipeline:publish -- public/data`.',
+      missing.map(({ siteId }) => siteId)
+    )
   }
 }
 
 export async function getPublicSites() {
   const sites = await fetchJson('/data/sites.json')
+  warnAboutMissingFigures(sites)
 
   const invalidSites = sites.filter((site) => !hasValidCoordinates(site))
   if (invalidSites.length > 0) {

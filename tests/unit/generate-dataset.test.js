@@ -36,6 +36,41 @@ describe('US-37 site figures in sites.json', () => {
       occupiedTunnelCount: 1,
     })
   })
+
+  it('gives a public site with no approved surveys null dates and zero counts', () => {
+    const input = makePublicDataset()
+    input.sites.push({ ...input.sites[0], siteId: 'S2', propertyName: 'Unsurveyed Meadow' })
+    input.tunnels.push({ tunnelId: 'T2', siteId: 'S2' })
+    input.surveys.push({ ...input.surveys[0], tunnelId: 'T2', recordStatus: 'pending' })
+
+    const site = generatePublicDataset(input).sites.find((s) => s.siteId === 'S2')
+
+    expect(site).toMatchObject({
+      firstSurveyDate: null,
+      lastSurveyDate: null,
+      surveyedInLatestSeason: false,
+      surveyDateCount: 0,
+      tunnelCount: 0,
+      occupiedTunnelCount: 0,
+    })
+  })
+
+  it('counts an occupied tunnel once, using only Complete, Active and Reopened', () => {
+    const input = makePublicDataset()
+    const survey = (tunnelId, surveyDate, observationStatus) =>
+      ({ ...input.surveys[0], tunnelId, surveyDate, observationStatus })
+    input.tunnels.push({ tunnelId: 'T2', siteId: 'S1' }, { tunnelId: 'T3', siteId: 'S1' })
+    input.surveys.push(
+      survey('T1', '2025-02-01', 'Active'), // T1 again: still one tunnel
+      survey('T2', '2025-01-01', 'Empty'),
+      survey('T3', '2025-01-01', 'Retired hole'),
+    )
+
+    const [site] = generatePublicDataset(input).sites
+
+    expect(site.occupiedTunnelCount).toBe(1)
+    expect(site.tunnelCount).toBe(3)
+  })
 })
 
 describe('US-24 public projection', () => {

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { getPublicSites, hasValidCoordinates } from '../../src/api/getPublicSites'
+import { SITE_STAT_FIELDS } from '../../src/pipeline/siteStats.js'
 
 // US-37: sites.json now carries each site's figures, so the browser loads
 // only sites.json. Every request is recorded so tests can check that.
@@ -44,19 +45,50 @@ describe('getPublicSites - US-37', () => {
     expect(site).toMatchObject(stats)
   })
 
-  it('treats missing figures as not recorded rather than failing', async () => {
-    stubFetch([{ siteId: 'S1', propertyName: 'A', latitude: 40, longitude: -105 }])
+  it('shows missing figures as not recorded (null), never as zero, and warns', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    stubFetch([
+      { siteId: 'S1', propertyName: 'A', latitude: 40, longitude: -105 },
+      { siteId: 'S2', propertyName: 'B', latitude: 40, longitude: -105, ...stats },
+    ])
+
+    const [withoutFigures, withFigures] = await getPublicSites()
+
+    for (const field of SITE_STAT_FIELDS) {
+      expect(withoutFigures[field]).toBeNull()
+    }
+    expect(withFigures).toMatchObject(stats)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0][0]).toMatch(/missing site figures for 1 site/)
+    expect(warn.mock.calls[0][1]).toEqual(['S1'])
+    warn.mockRestore()
+  })
+
+  it('does not warn when every site has its figures', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    stubFetch([{ siteId: 'S1', propertyName: 'A', latitude: 40, longitude: -105, ...stats }])
+
+    await getPublicSites()
+
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('forwards exactly the public site fields and the pipeline\'s stat fields', async () => {
+    stubFetch([{ siteId: 'S1', propertyName: 'A', latitude: 40, longitude: -105, ...stats }])
 
     const [site] = await getPublicSites()
 
-    expect(site).toMatchObject({
-      firstSurveyDate: null,
-      lastSurveyDate: null,
-      surveyedInLatestSeason: false,
-      surveyDateCount: 0,
-      tunnelCount: 0,
-      occupiedTunnelCount: 0,
-    })
+    expect(Object.keys(site)).toEqual([
+      'siteId',
+      'propertyName',
+      'city',
+      'state',
+      'latitude',
+      'longitude',
+      'elevationMeters',
+      ...SITE_STAT_FIELDS,
+    ])
   })
 
   it('excludes a site with non-finite coordinates rather than placing it at 0,0', async () => {

@@ -80,7 +80,9 @@ export function getLatestSurveyYear(statsBySite) {
 }
 
 // Each site with its figures added. A site with no observations gets null
-// dates and zero counts.
+// dates and zero counts. `sites` must already be the public projection
+// (generatePublicDataset's publicSite): each record is copied whole, so a raw
+// record passed in here would leak its private fields into sites.json.
 export function addSiteStats(sites, observations) {
   const occupiedTunnelsBySite = countOccupiedTunnelsBySite(observations)
   const statsBySite = calculateSiteStats(observations)
