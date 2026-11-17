@@ -1,26 +1,28 @@
-// US-29: single source of truth for the dashboard's tabs and charts.
-// Circle Ecology staff can reorder tabs, reword titles, snippets and caveats,
-// or recolor series here without touching any component.
-//
-// Each chart:
-//   id            - must match a chart id in /data/dashboard.json
-//   title         - shown above the chart and in the side list
-//   snippet       - 1-3 sentences, at most 300 characters, explaining how to
-//                   read the chart. No specific figures: the data refreshes.
-//   caveat        - optional data note shown below the snippet
-//   component     - chart type, a key of CHART_COMPONENTS in ChartView
-//   supportsYears - true: one year at a time with a year toggle;
-//                   false: every year side by side on the x-axis
-//   measures      - which of 'count' and 'percent' the measure toggle offers
-//   categoryKey   - row field used for the x-axis labels ('year' when
-//                   supportsYears is false)
-//   categoryLabel - column heading for the x-axis in the data table
-//   series        - stacked series, bottom to top: { key, label, color,
-//                   trackedFrom? }. trackedFrom is the first year the
-//                   series was recorded; earlier years leave it out of the
-//                   chart rather than showing a misleading 0.
+
+ // US-29: single source of truth for the dashboard's tabs and charts.
+ // Circle Ecology staff can reorder tabs, reword titles, snippets and caveats,
+ // or recolor series here without touching any component.
+ //
+ // Each chart:
+ //   id            - must match a chart id in /data/dashboard.json
+ //   title         - shown above the chart and in the side list
+ //   snippet       - 1-3 sentences, at most 300 characters, explaining how to
+ //                   read the chart. No specific figures: the data refreshes.
+ //   caveat        - optional data note shown below the snippet
+ //   component     - chart type, a key of CHART_COMPONENTS in ChartView
+ //   supportsYears - true: one year at a time with a year toggle;
+ //                   false: every year side by side on the x-axis
+ //   measures      - which of 'count' and 'percent' the measure toggle offers
+ //   categoryKey   - row field used for the x-axis labels ('year' when
+ //                   supportsYears is false)
+ //   categoryLabel - column heading for the x-axis in the data table
+ //   series        - stacked series, bottom to top: { key, label, color,
+ //                   trackedFrom? }. trackedFrom is the first year the
+ //                   series was recorded; earlier years leave it out of the
+ //                   chart rather than showing a misleading 0.
 
 import { brandColors } from './brandColors'
+import { genusChartConfig } from './genusChartConfig'
 
 export const SNIPPET_MAX_LENGTH = 300
 
@@ -183,4 +185,7 @@ export const dashboardConfig = [
       },
     ],
   },
+
+  // US-32: Add Genus charts to the existing dashboard.
+  genusChartConfig,
 ]
