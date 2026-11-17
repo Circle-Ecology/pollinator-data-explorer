@@ -49,8 +49,9 @@ const OTHER_TYPE_SERIES = [
   { key: 'Other', label: 'Other', color: brandColors.other },
 ]
 
+// Single-color totals use the theme's slate, as in the deck.
 const OCCUPANT_TOTAL_SERIES = [
-  { key: 'total', label: 'Occupants', color: brandColors.darkGreen },
+  { key: 'total', label: 'Occupants', color: brandColors.occupied },
 ]
 
 // The pipeline takes 2025 Other occupants from Circle Ecology's separate
