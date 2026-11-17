@@ -86,6 +86,18 @@
   padding: 20px 24px 24px;
 }
 
+/* Optional one-line explainer for the whole tab, across both columns */
+.dashboard-tab-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--dash-accent);
+  background: var(--dash-surface-raised);
+  color: var(--dash-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .chart-list-heading {
   margin: 0 0 8px;
   color: var(--dash-accent);
@@ -202,6 +214,66 @@
 .stacked-bar-chart {
   width: 100%;
   min-width: 0;
+}
+
+/* Side-by-side panels sharing one y-axis (FacetedStackedBarChart) */
+.faceted-chart {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.faceted-chart-panels {
+  display: flex;
+  gap: 8px;
+  min-width: 420px;
+}
+
+/* Panels share the space equally; the first also holds the shared 40px
+   y-axis, so it starts 40px wider and every panel's bars are equal. */
+.faceted-chart-panel {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.faceted-chart-panel:first-child {
+  flex-basis: 40px;
+}
+
+.faceted-chart-panel:first-child .faceted-chart-heading {
+  margin-left: 40px;
+}
+
+.faceted-chart-heading {
+  margin: 0 0 4px;
+  padding: 4px;
+  background: var(--dash-surface-raised);
+  color: var(--dash-text);
+  font-size: 13px;
+  text-align: center;
+}
+
+.faceted-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.faceted-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.faceted-chart-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--dash-text-subtle);
 }
 
 .chart-view-empty {

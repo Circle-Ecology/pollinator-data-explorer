@@ -30,4 +30,7 @@ export const strings = {
   dashboardTableToggle: 'Show data table',
   dashboardNoData: 'No data is available for this chart and year.',
   dashboardNotRecorded: 'Not recorded',
+  dashboardRateAxisLabel: 'Sealed nest rate (%)',
+  dashboardAvailableCavities: 'Available nesting holes',
+  dashboardSealedNests: 'sealed nests',
 }

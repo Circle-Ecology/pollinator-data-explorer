@@ -90,6 +90,8 @@ function DashboardPanel({
           aria-labelledby={`dashboard-tab-${tab.id}`}
           className="dashboard-tabpanel"
         >
+          {tab.note && <p className="dashboard-tab-note">{tab.note}</p>}
+
           <ChartList
             tab={tab}
             selectedChartId={chart.id}

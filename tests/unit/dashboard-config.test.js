@@ -29,11 +29,15 @@ describe('dashboardConfig - US-29', () => {
     expect(new Set(chartIds).size).toBe(chartIds.length)
   })
 
-  it('only offers count and percent measures', () => {
+  it('only offers count, percent or rate measures', () => {
     for (const chart of charts) {
       expect(chart.measures.length).toBeGreaterThan(0)
       for (const measure of chart.measures) {
-        expect(['count', 'percent']).toContain(measure)
+        expect(['count', 'percent', 'rate']).toContain(measure)
+      }
+      // A rate chart shows only rates, so it has no measure toggle.
+      if (chart.measures.includes('rate')) {
+        expect(chart.measures).toEqual(['rate'])
       }
     }
   })

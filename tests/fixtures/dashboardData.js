@@ -49,6 +49,59 @@ export const dashboardData = {
         { siteId: 'Site 1', propertyName: 'Site 1', Spider: 9, 'Ant(s)': 0, 'Pill Bug': 1, Other: 0, total: 10 },
       ],
     },
+    // Sealed nest rates: snags were first installed in 2025, so 2023 has
+    // logs only. rate = sealed / available, as a whole-number percentage.
+    'sealed-rate-by-cwd': {
+      2023: [{ group: 'Log', available: 630, Bee: { sealed: 19, rate: 3 }, Wasp: { sealed: 13, rate: 2 } }],
+      2025: [
+        { group: 'Log', available: 1338, Bee: { sealed: 430, rate: 32 }, Wasp: { sealed: 194, rate: 14 } },
+        { group: 'Snag', available: 1048, Bee: { sealed: 155, rate: 15 }, Wasp: { sealed: 48, rate: 5 } },
+      ],
+      2026: [
+        { group: 'Log', available: 1200, Bee: { sealed: 288, rate: 24 }, Wasp: { sealed: 144, rate: 12 } },
+        { group: 'Snag', available: 983, Bee: { sealed: 118, rate: 12 }, Wasp: { sealed: 10, rate: 1 } },
+      ],
+    },
+    'sealed-rate-by-substrate': {
+      2023: [{ group: 'Pine', available: 630, Bee: { sealed: 19, rate: 3 }, Wasp: { sealed: 13, rate: 2 } }],
+      2025: [{ group: 'Cottonwood', available: 2000, Bee: { sealed: 500, rate: 25 }, Wasp: { sealed: 220, rate: 11 } }],
+      2026: [{ group: 'Cottonwood', available: 1900, Bee: { sealed: 342, rate: 18 }, Wasp: { sealed: 133, rate: 7 } }],
+    },
+    // Alphabetical, as the pipeline writes it; the config puts it in compass order.
+    'sealed-rate-by-direction': {
+      2025: [
+        { group: 'N Log', available: 600, Bee: { sealed: 162, rate: 27 }, Wasp: { sealed: 84, rate: 14 } },
+        { group: 'NE Snag', available: 250, Bee: { sealed: 30, rate: 12 }, Wasp: { sealed: 13, rate: 5 } },
+        { group: 'S Log', available: 738, Bee: { sealed: 273, rate: 37 }, Wasp: { sealed: 111, rate: 15 } },
+      ],
+    },
+    'sealed-rate-by-install-year': {
+      2025: [{ group: '2023 Log', available: 630, Bee: { sealed: 120, rate: 19 }, Wasp: { sealed: 60, rate: 10 } }],
+    },
+    'sealed-rate-by-diameter': {
+      2026: [
+        { group: '0.125', available: 700, Bee: { sealed: 7, rate: 1 }, Wasp: { sealed: 14, rate: 2 } },
+        { group: '0.25', available: 750, Bee: { sealed: 263, rate: 35 }, Wasp: { sealed: 30, rate: 4 } },
+      ],
+    },
+    // Distinct genera per diameter and site.
+    'richness-by-diameter-site': {
+      2026: [
+        { diameter: '0.125', siteId: 'Site 1', propertyName: 'Site 1', Bee: 2, Wasp: 1 },
+        { diameter: '0.125', siteId: 'Site 3', propertyName: 'Site 3', Bee: 0, Wasp: 1 },
+        { diameter: '0.25', siteId: 'Site 1', propertyName: 'Site 1', Bee: 3, Wasp: 5 },
+        { diameter: '0.25', siteId: 'Site 3', propertyName: 'Site 3', Bee: 3, Wasp: 5 },
+        { diameter: '0.375', siteId: 'Site 1', propertyName: 'Site 1', Bee: 4, Wasp: 5 },
+        { diameter: '0.375', siteId: 'Site 3', propertyName: 'Site 3', Bee: 2, Wasp: 2 },
+      ],
+    },
+    // Only the fields the dashboard reads: Circle Ecology's site numbers.
+    'scorecard-all-sites': {
+      2026: [
+        { siteId: 'Site 1', siteNumber: '1' },
+        { siteId: 'Site 3', siteNumber: '3' },
+      ],
+    },
     'occupants-by-site-type': {
       2023: [
         { siteId: 'Site 1', propertyName: 'Site 1', Bee: 2, Wasp: 2, Unknown: 0, Other: 24, total: 28 },
