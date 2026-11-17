@@ -1,4 +1,5 @@
 import { CONFLICT_CODES } from '../us08/parseExportRows.js'
+import { addSiteStats } from './siteStats.js'
 
 // These allowlists mirror docs/data-contract.md. Never spread source records here.
 const SITE_FIELDS = {
@@ -155,5 +156,7 @@ export function generatePublicDataset(parsedResult) {
   const observations = Array.from(surveysByKey.values())
   sites.sort((a, b) => compare(a.siteId, b.siteId))
   observations.sort((a, b) => compare(a.tunnelId, b.tunnelId) || compare(a.surveyDate, b.surveyDate))
-  return { sites, observations, status: parsedResult }
+  // US-37: each site carries its figures, computed from public observations
+  // only, so the browser never needs to download observations.json.
+  return { sites: addSiteStats(sites, observations), observations, status: parsedResult }
 }

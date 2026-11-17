@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { generatePublicDataset } from '../../src/pipeline/generatePublicDataset.js'
 import { makePublicDataset } from '../fixtures/publicDataset.js'
+import { SITE_STAT_FIELDS } from '../../src/pipeline/siteStats.js'
 
-const SITE_KEYS = ['siteId', 'propertyName', 'city', 'state', 'latitude', 'longitude', 'elevationMeters']
+// Public site fields, then the US-37 precomputed figures.
+const SITE_KEYS = ['siteId', 'propertyName', 'city', 'state', 'latitude', 'longitude', 'elevationMeters',
+  ...SITE_STAT_FIELDS]
 const SURVEY_KEYS = ['siteId', 'tunnelId', 'surveyDate', 'observationStatus', 'occupantType', 'nesterFamily',
   'generalId', 'commonName', 'plugDepth', 'plugComposition', 'plugColor', 'plugConfidence',
   'wholeOrHole', 'emergenceYear', 'manufacturedEmpty', 'recordStatus']
@@ -16,6 +19,24 @@ function assertPublicKeys(value) {
     assertPublicKeys(child)
   }
 }
+
+describe('US-37 site figures in sites.json', () => {
+  it('adds each site\'s figures, counting only published (approved) surveys', () => {
+    const input = makePublicDataset()
+    input.surveys.push({ ...input.surveys[0], surveyDate: '2026-08-01', recordStatus: 'pending' })
+    const [site] = generatePublicDataset(input).sites
+
+    // The pending 2026 survey is not public, so it changes no figure.
+    expect(site).toMatchObject({
+      firstSurveyDate: '2025-01-01',
+      lastSurveyDate: '2025-01-01',
+      surveyedInLatestSeason: true,
+      surveyDateCount: 1,
+      tunnelCount: 1,
+      occupiedTunnelCount: 1,
+    })
+  })
+})
 
 describe('US-24 public projection', () => {
   it('projects exactly the documented public keys and preserves the internal status contract', () => {

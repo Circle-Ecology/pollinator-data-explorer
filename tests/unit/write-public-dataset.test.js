@@ -118,3 +118,22 @@ describe('US-28 dashboard.json', () => {
     expect(new TextEncoder().encode(dashboardText).length).toBeLessThan(500 * 1024)
   })
 })
+
+describe('US-37 sites.json', () => {
+  it('carries each site\'s figures, no staff-only fields, and stays under 50 KB', async () => {
+    const outputDirectory = await temporaryDirectory()
+    await writePublicDataset(makeRepresentativeDataset(), { outputDirectory, now })
+    const sitesText = await readFile(join(outputDirectory, 'sites.json'), 'utf8')
+    const sites = JSON.parse(sitesText)
+
+    expect(sites).toHaveLength(6)
+    for (const site of sites) {
+      expect(site.tunnelCount).toBeGreaterThan(0)
+      expect(site.surveyDateCount).toBeGreaterThan(0)
+    }
+    for (const field of ['observerId', 'observerEmail', 'observerFirstName', 'observerLastName', 'notes']) {
+      expect(sitesText).not.toContain(field)
+    }
+    expect(new TextEncoder().encode(sitesText).length).toBeLessThan(50 * 1024)
+  })
+})
