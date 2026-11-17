@@ -1,5 +1,9 @@
 import { strings } from '../content/strings'
-import { buildChartRows, getChartYears } from '../utils/buildChartRows'
+import {
+  buildChartRows,
+  getChartYears,
+  getVisibleSeries,
+} from '../utils/buildChartRows'
 import ChartDataTable from './ChartDataTable'
 import ChartSnippet from './ChartSnippet'
 import MeasureToggle from './MeasureToggle'
@@ -15,6 +19,11 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
   const chartData = data.charts[chart.id]
   const years = getChartYears(chartData, data.years)
   const rows = buildChartRows(chart, chartData, { years: data.years, year })
+  const yearsInView = chart.supportsYears ? [year] : years
+  const visibleChart = {
+    ...chart,
+    series: getVisibleSeries(chart, yearsInView),
+  }
   const Chart = CHART_COMPONENTS[chart.component]
 
   return (
@@ -40,9 +49,9 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
 
       {rows.length > 0 && Chart ? (
         <>
-          <Chart chart={chart} rows={rows} measure={measure} />
+          <Chart chart={visibleChart} rows={rows} measure={measure} />
           <ChartSnippet snippet={chart.snippet} caveat={chart.caveat} />
-          <ChartDataTable chart={chart} rows={rows} />
+          <ChartDataTable chart={visibleChart} rows={rows} />
         </>
       ) : (
         <>

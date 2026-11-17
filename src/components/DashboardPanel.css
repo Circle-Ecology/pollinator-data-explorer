@@ -4,7 +4,9 @@
   --dash-surface: #ffffff; /* White */
   --dash-surface-raised: #f3f3f0; /* Light Gray, lightened */
   --dash-border: #e0e0dc; /* Light Gray */
-  --dash-text: #222f47; /* Dark Blue */
+  --dash-text: #222222; /* Black, as in theme_pollinator_v01.R */
+  --dash-font-title: 'Alice', Georgia, serif;
+  --dash-font-body: 'Poppins', system-ui, sans-serif;
   --dash-text-muted: #4a5466; /* Dark Blue, softened for body text */
   --dash-text-subtle: #8b9190; /* Dark Gray: borders only, too light for text */
   --dash-accent: #577253; /* Dark Green */
@@ -18,12 +20,14 @@
   border-radius: 14px;
   background: var(--dash-surface);
   color: var(--dash-text);
+  font-family: var(--dash-font-body);
   text-align: left;
   overflow: hidden;
 }
 
 .dashboard-title {
   margin: 0;
+  font-family: var(--dash-font-title);
   padding: 20px 24px 12px;
   font-size: clamp(20px, 3vw, 24px);
 }
@@ -153,6 +157,7 @@
 
 .chart-view-title {
   margin: 0 0 12px;
+  font-family: var(--dash-font-title);
   font-size: 18px;
 }
 

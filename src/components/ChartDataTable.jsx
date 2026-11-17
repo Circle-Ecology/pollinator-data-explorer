@@ -25,8 +25,9 @@ function ChartDataTable({ chart, rows }) {
               <th scope="row">{row.category}</th>
               {chart.series.map((series) => (
                 <td key={series.key}>
-                  {row.counts[series.key].toLocaleString()} (
-                  {row.percents[series.key]}%)
+                  {row.counts[series.key] === null
+                    ? strings.dashboardNotRecorded
+                    : `${row.counts[series.key].toLocaleString()} (${row.percents[series.key]}%)`}
                 </td>
               ))}
               <td>{row.total.toLocaleString()}</td>

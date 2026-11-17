@@ -7,7 +7,7 @@ import { dashboardConfig } from '../../src/content/dashboardConfig'
 import { dashboardData, stubResizeObserver } from '../fixtures/dashboardData'
 
 const twoTabConfig = [
-  ...dashboardConfig,
+  dashboardConfig[0],
   {
     id: 'second',
     label: 'Second Tab',
@@ -127,6 +127,28 @@ describe('DashboardPanel - US-29', () => {
 
     await screen.findByRole('tab')
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  it('switches to the Occupants tab and its charts', async () => {
+    render(<DashboardPanel loadData={loadData} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Occupants' }))
+
+    expect(screen.getByRole('tab', { name: 'Occupants' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Occupants by Year and Type' })
+    ).toBeInTheDocument()
+
+    const nav = screen.getByRole('navigation', { name: 'Charts: Occupants' })
+    expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Occupants by Year and Type',
+      'Occupants by Site',
+      'Occupants by Site and Type',
+      'Other Occupants by Site and Type',
+    ])
   })
 
   it('shows a friendly message when dashboard.json fails to load', async () => {

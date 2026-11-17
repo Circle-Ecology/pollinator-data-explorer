@@ -3,6 +3,7 @@ import { dashboardConfig } from '../../src/content/dashboardConfig'
 import {
   buildChartRows,
   getChartYears,
+  getVisibleSeries,
 } from '../../src/utils/buildChartRows'
 import { dashboardData } from '../fixtures/dashboardData'
 
@@ -44,6 +45,59 @@ describe('buildChartRows - US-29', () => {
       const sum = row.percents.occupied + row.percents.empty
       expect(sum).toBeCloseTo(100, 0)
     }
+  })
+
+  describe('getVisibleSeries', () => {
+    const occupantCharts = dashboardConfig.find((tab) => tab.id === 'occupants').charts
+    const chart = (id) => occupantCharts.find((c) => c.id === id)
+    const keys = (id, yearsInView) =>
+      getVisibleSeries(chart(id), yearsInView).map((s) => s.key)
+
+    it('leaves out a series in years before it was tracked', () => {
+      expect(keys('occupants-by-site-type', [2023])).toEqual(['Bee', 'Wasp', 'Other'])
+      expect(keys('other-by-site-type', [2023])).toEqual(['Spider', 'Other'])
+      expect(keys('other-by-site-type', [2025])).toEqual(['Spider', 'Ant(s)', 'Other'])
+    })
+
+    it('keeps a tracked series even when every count is zero', () => {
+      // The 2026 fixture has no ants at its only site: a real "none found".
+      expect(charts['other-by-site-type'][2026][0]['Ant(s)']).toBe(0)
+      expect(keys('other-by-site-type', [2026])).toEqual([
+        'Spider',
+        'Ant(s)',
+        'Pill Bug',
+        'Other',
+      ])
+    })
+
+    it('shows a series if any year side by side tracked it', () => {
+      expect(keys('occupants-by-year-type', years)).toEqual([
+        'Bee',
+        'Wasp',
+        'Unknown',
+        'Other',
+      ])
+    })
+
+    it('never hides a series without a trackedFrom year', () => {
+      expect(keys('occupants-by-site', [2023])).toEqual(['total'])
+    })
+
+    it('reports a series as not recorded (null) for bars before it was tracked', () => {
+      const rows = buildChartRows(
+        chart('occupants-by-year-type'),
+        charts['occupants-by-year-type'],
+        { years }
+      )
+      const byYear = Object.fromEntries(rows.map((row) => [row.category, row]))
+
+      expect(byYear['2023'].counts.Unknown).toBeNull()
+      expect(byYear['2023'].percents.Unknown).toBeNull()
+      expect(byYear['2025'].counts.Unknown).toBeNull()
+      expect(byYear['2026'].counts.Unknown).toBe(29)
+      // Not recorded is left out of the bar's total, so shares still add up.
+      expect(byYear['2023'].total).toBe(278)
+    })
   })
 
   it('returns no rows for a year without data', () => {

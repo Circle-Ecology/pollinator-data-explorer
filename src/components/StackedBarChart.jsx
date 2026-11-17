@@ -1,16 +1,26 @@
 import {
   Bar,
   BarChart,
-  CartesianGrid,
   Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import { brandColors } from '../content/brandColors'
+import { brandColors, brandFonts } from '../content/brandColors'
+import { strings } from '../content/strings'
+import {
+  getValueAxisProps,
+  legendOrderBySeries,
+} from '../utils/stackedBarOptions'
 
-const AXIS_TICK = { fill: brandColors.darkBlue, fontSize: 12 }
+// Matches theme_pollinator_v01.R: Poppins in near-black, no gridlines or
+// axis lines.
+const AXIS_TICK = {
+  fill: brandColors.black,
+  fontSize: 12,
+  fontFamily: brandFonts.body,
+}
 
 // Long site names are angled once there are more bars than fit side by side.
 const ANGLE_LABELS_ABOVE = 4
@@ -42,10 +52,11 @@ function StackedBarChart({ chart, rows, measure }) {
           // Angled labels hang left of their bar, so leave room for the first.
           margin={{ top: 8, right: 8, bottom: angled ? 24 : 0, left: angled ? 72 : 0 }}
         >
-          <CartesianGrid vertical={false} stroke={brandColors.lightGray} />
           <XAxis
             dataKey="category"
             tick={AXIS_TICK}
+            axisLine={false}
+            tickLine={false}
             interval={0}
             angle={angled ? -45 : 0}
             textAnchor={angled ? 'end' : 'middle'}
@@ -53,25 +64,35 @@ function StackedBarChart({ chart, rows, measure }) {
           />
           <YAxis
             tick={AXIS_TICK}
-            domain={isPercent ? [0, 100] : [0, 'auto']}
+            axisLine={false}
+            tickLine={false}
+            {...getValueAxisProps(isPercent)}
             tickFormatter={formatValue}
             width={56}
           />
           <Tooltip
-            formatter={(value) => formatValue(value)}
+            // null = series not recorded in that bar's year (see buildChartRows).
+            formatter={(value) =>
+              value === null || value === undefined
+                ? strings.dashboardNotRecorded
+                : formatValue(value)
+            }
             cursor={{ fill: 'rgba(34, 47, 71, 0.06)' }}
             contentStyle={{
               background: brandColors.white,
               border: `1px solid ${brandColors.lightGray}`,
-              color: brandColors.darkBlue,
+              color: brandColors.black,
+              fontFamily: brandFonts.body,
             }}
-            labelStyle={{ color: brandColors.darkBlue, fontWeight: 600 }}
+            labelStyle={{ color: brandColors.black, fontWeight: 600 }}
           />
           {/* Recharts colors legend text like its bar; keep it readable. */}
           <Legend
             formatter={(value) => (
-              <span style={{ color: brandColors.darkBlue }}>{value}</span>
+              <span style={{ color: brandColors.black }}>{value}</span>
             )}
+            itemSorter={legendOrderBySeries(chart.series)}
+            wrapperStyle={{ fontFamily: brandFonts.body, fontSize: 13 }}
           />
           {chart.series.map((series) => (
             <Bar
