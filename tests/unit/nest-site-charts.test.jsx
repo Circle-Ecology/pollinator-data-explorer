@@ -99,6 +99,23 @@ describe('Nest Sites tab - US-33', () => {
     expect(screen.getByRole('note')).toHaveTextContent('Snags were first installed in 2025')
   })
 
+  it.each([
+    'sealed-rate-by-cwd',
+    'sealed-rate-by-substrate',
+    'sealed-rate-by-direction',
+    'sealed-rate-by-install-year',
+  ])('%s explains a missing level only in 2023, not in later years', async (id) => {
+    window.history.replaceState(null, '', `/embed?tab=nest-sites&chart=${id}&year=2023`)
+    const { unmount } = render(<DashboardPanel loadData={loadData} />)
+    expect(await screen.findByRole('note')).toHaveTextContent('this year')
+    unmount()
+
+    window.history.replaceState(null, '', `/embed?tab=nest-sites&chart=${id}&year=2025`)
+    render(<DashboardPanel loadData={loadData} />)
+    await screen.findByRole('heading', { name: new RegExp(`${chartById(id).title} \\(2025\\)`) })
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
   it('puts directions in compass order, logs before snags', () => {
     const rows = buildRateRows(
       chartById('sealed-rate-by-direction'),

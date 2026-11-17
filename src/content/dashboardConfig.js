@@ -10,7 +10,8 @@
 //   title         - shown above the chart and in the side list
 //   snippet       - 1-3 sentences, at most 300 characters, explaining how to
 //                   read the chart. No specific figures: the data refreshes.
-//   caveat        - optional data note shown below the snippet
+//   caveat        - optional data note shown below the snippet: plain text
+//                   (every year) or { text, years } (only those years)
 //   component     - chart type, a key of CHART_TYPES in ChartView:
 //                   'stackedBar', 'groupedRate' (side-by-side sealed nest
 //                   rates) or 'facetedStackedBar' (one panel per facet)
@@ -93,7 +94,9 @@ const NEST_TYPE_SERIES = [
   { key: 'Wasp', label: 'Wasp', color: brandColors.wasp },
 ]
 
+// Notes that explain a missing level only apply to the year it was missing.
 const SNAGS_FROM_2025 = 'Snags were first installed in 2025'
+const in2023 = (text) => ({ text, years: [2023] })
 
 // Logs before Snags, each in compass order.
 const DIRECTION_ORDER = ['Log', 'Snag'].flatMap((type) =>
@@ -231,7 +234,7 @@ export const dashboardConfig = [
           'Each pair of bars compares how often bees and wasps sealed a ' +
           'nest in logs (lying down) versus snags (standing) in the selected ' +
           'year. A taller bar means that structure was used more for its size.',
-        caveat: `${SNAGS_FROM_2025}, so 2023 shows logs only.`,
+        caveat: in2023(`${SNAGS_FROM_2025}, so this year shows logs only.`),
         categoryKey: 'group',
         categoryLabel: 'Structure',
       }),
@@ -241,9 +244,10 @@ export const dashboardConfig = [
         snippet:
           'Each pair of bars compares bee and wasp sealed nest rates in ' +
           'cottonwood versus pine in the selected year.',
-        caveat:
-          'All nesting holes monitored in 2023 were in pine, so 2023 shows ' +
-          'pine only.',
+        caveat: in2023(
+          'All nesting holes monitored in 2023 were in pine, so this year ' +
+            'shows pine only.'
+        ),
         categoryKey: 'group',
         categoryLabel: 'Wood type',
       }),
@@ -254,9 +258,9 @@ export const dashboardConfig = [
           'Each pair of bars is one direction a log or snag faces, comparing ' +
           'bee and wasp sealed nest rates. Logs are listed first, then snags, ' +
           'each going around the compass from north.',
-        caveat:
-          `${SNAGS_FROM_2025}, so 2023 shows log directions only. A ` +
-          'direction appears only in years it had nesting holes.',
+        caveat: in2023(
+          `${SNAGS_FROM_2025}, so this year shows log directions only.`
+        ),
         categoryKey: 'group',
         categoryLabel: 'Direction',
         categoryOrder: DIRECTION_ORDER,
@@ -268,7 +272,9 @@ export const dashboardConfig = [
           'Each pair of bars is a group of logs or snags installed in the ' +
           'same year, showing whether older or newer structures were used ' +
           'more. The same structures are tracked in 2025 and 2026.',
-        caveat: 'Only 2023 logs existed in 2023, so that year has one group.',
+        caveat: in2023(
+          'Only logs installed in 2023 existed this year, so it has one group.'
+        ),
         categoryKey: 'group',
         categoryLabel: 'Installed',
       }),

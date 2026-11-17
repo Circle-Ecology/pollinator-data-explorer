@@ -21,6 +21,17 @@ describe('dashboardConfig - US-29', () => {
     }
   })
 
+  it('limits year-specific data notes to study years', () => {
+    for (const chart of charts) {
+      if (chart.caveat === undefined || typeof chart.caveat === 'string') continue
+      expect(typeof chart.caveat.text).toBe('string')
+      expect(chart.caveat.years.length).toBeGreaterThan(0)
+      for (const year of chart.caveat.years) {
+        expect(dashboardData.years).toContain(year)
+      }
+    }
+  })
+
   it('has unique tab and chart ids', () => {
     const tabIds = dashboardConfig.map((tab) => tab.id)
     const chartIds = charts.map((chart) => chart.id)

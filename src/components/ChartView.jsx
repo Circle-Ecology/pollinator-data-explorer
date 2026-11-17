@@ -4,6 +4,7 @@ import {
   getChartYears,
   getVisibleSeries,
 } from '../utils/buildChartRows'
+import { getCaveatText } from '../utils/chartCaveat'
 import { buildFacetedRows, getSiteNumbers } from '../utils/facetedChartRows'
 import { buildRateRows } from '../utils/rateChartRows'
 import ChartDataTable from './ChartDataTable'
@@ -46,6 +47,7 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
   const chartData = data.charts[chart.id]
   const years = getChartYears(chartData, data.years)
   const type = CHART_TYPES[chart.component]
+  const caveat = getCaveatText(chart.caveat, chart.supportsYears ? year : null)
   const rows = type ? type.buildRows(chart, data, year) : []
   const yearsInView = chart.supportsYears ? [year] : years
   const visibleChart = {
@@ -77,13 +79,13 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
       {rows.length > 0 ? (
         <>
           <type.Chart chart={visibleChart} rows={rows} measure={measure} />
-          <ChartSnippet snippet={chart.snippet} caveat={chart.caveat} />
+          <ChartSnippet snippet={chart.snippet} caveat={caveat} />
           <type.Table chart={visibleChart} rows={rows} />
         </>
       ) : (
         <>
           <p className="chart-view-empty">{strings.dashboardNoData}</p>
-          <ChartSnippet snippet={chart.snippet} caveat={chart.caveat} />
+          <ChartSnippet snippet={chart.snippet} caveat={caveat} />
         </>
       )}
     </section>

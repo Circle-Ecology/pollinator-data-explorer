@@ -69,6 +69,10 @@ export const dashboardData = {
     },
     // Alphabetical, as the pipeline writes it; the config puts it in compass order.
     'sealed-rate-by-direction': {
+      2023: [
+        { group: 'N Log', available: 300, Bee: { sealed: 9, rate: 3 }, Wasp: { sealed: 6, rate: 2 } },
+        { group: 'S Log', available: 330, Bee: { sealed: 10, rate: 3 }, Wasp: { sealed: 7, rate: 2 } },
+      ],
       2025: [
         { group: 'N Log', available: 600, Bee: { sealed: 162, rate: 27 }, Wasp: { sealed: 84, rate: 14 } },
         { group: 'NE Snag', available: 250, Bee: { sealed: 30, rate: 12 }, Wasp: { sealed: 13, rate: 5 } },
@@ -76,6 +80,7 @@ export const dashboardData = {
       ],
     },
     'sealed-rate-by-install-year': {
+      2023: [{ group: '2023 Log', available: 630, Bee: { sealed: 19, rate: 3 }, Wasp: { sealed: 13, rate: 2 } }],
       2025: [{ group: '2023 Log', available: 630, Bee: { sealed: 120, rate: 19 }, Wasp: { sealed: 60, rate: 10 } }],
     },
     'sealed-rate-by-diameter': {
