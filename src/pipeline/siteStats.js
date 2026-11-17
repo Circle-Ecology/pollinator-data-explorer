@@ -1,3 +1,5 @@
+import { PUBLIC_SITE_FIELDS } from './publicFields.js'
+
 // US-37: per-site figures for the map and site details panel, calculated in
 // the pipeline so visitors download only sites.json, never every observation.
 // The rules are unchanged from when the browser calculated them (US-14,
@@ -79,10 +81,10 @@ export function getLatestSurveyYear(statsBySite) {
   return latest
 }
 
-// Each site with its figures added. A site with no observations gets null
-// dates and zero counts. `sites` must already be the public projection
-// (generatePublicDataset's publicSite): each record is copied whole, so a raw
-// record passed in here would leak its private fields into sites.json.
+// Each site's public fields plus its figures. A site with no observations
+// gets null dates and zero counts. The output is built only from the
+// PUBLIC_SITE_FIELDS allowlist, so even a raw record cannot leak private
+// fields into sites.json.
 export function addSiteStats(sites, observations) {
   const occupiedTunnelsBySite = countOccupiedTunnelsBySite(observations)
   const statsBySite = calculateSiteStats(observations)
@@ -94,7 +96,9 @@ export function addSiteStats(sites, observations) {
     const lastSurveyDate = dates.at(-1) ?? null
 
     return {
-      ...site,
+      ...Object.fromEntries(
+        PUBLIC_SITE_FIELDS.map((field) => [field, site[field] ?? null])
+      ),
       firstSurveyDate: dates[0] ?? null,
       lastSurveyDate,
       surveyedInLatestSeason:

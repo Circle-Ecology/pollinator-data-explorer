@@ -5,6 +5,7 @@ import {
   getLatestSurveyYear,
   SITE_STAT_FIELDS,
 } from '../../src/pipeline/siteStats.js'
+import { PUBLIC_SITE_FIELDS } from '../../src/pipeline/publicFields.js'
 
 const site = (siteId) => ({ siteId, propertyName: siteId, latitude: 40, longitude: -105 })
 const survey = (siteId, tunnelId, surveyDate, observationStatus = 'Empty') => ({
@@ -72,6 +73,9 @@ describe('addSiteStats - US-37', () => {
 
     expect(result).toEqual({
       ...site('S1'),
+      city: null,
+      state: null,
+      elevationMeters: null,
       firstSurveyDate: null,
       lastSurveyDate: null,
       surveyedInLatestSeason: false,
@@ -81,10 +85,33 @@ describe('addSiteStats - US-37', () => {
     })
   })
 
+  it('never copies private fields, even from a raw site record', () => {
+    const raw = {
+      ...site('S1'),
+      city: 'Longmont',
+      observerId: 'o-1',
+      observerEmail: 'private@example.com',
+      observerFirstName: 'Private',
+      observerLastName: 'Observer',
+      notes: 'Confidential staff note',
+      isPublic: true,
+    }
+
+    const [result] = addSiteStats([raw], [survey('S1', 'T1', '2025-07-01')])
+    const text = JSON.stringify(result)
+
+    for (const field of ['observerId', 'observerEmail', 'observerFirstName', 'observerLastName', 'notes', 'isPublic']) {
+      expect(result).not.toHaveProperty(field)
+    }
+    expect(text).not.toContain('private@example.com')
+    expect(text).not.toContain('Confidential')
+    expect(result.city).toBe('Longmont')
+  })
+
   it('adds exactly the documented stat fields and keeps the site fields', () => {
     const [result] = addSiteStats([site('S1')], [survey('S1', 'T1', '2025-07-01')])
 
-    expect(Object.keys(result)).toEqual([...Object.keys(site('S1')), ...SITE_STAT_FIELDS])
+    expect(Object.keys(result)).toEqual([...PUBLIC_SITE_FIELDS, ...SITE_STAT_FIELDS])
   })
 })
 

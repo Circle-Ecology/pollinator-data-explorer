@@ -1,11 +1,9 @@
 import { CONFLICT_CODES } from '../us08/parseExportRows.js'
+import { SITE_FIELDS } from './publicFields.js'
 import { addSiteStats } from './siteStats.js'
 
 // These allowlists mirror docs/data-contract.md. Never spread source records here.
-const SITE_FIELDS = {
-  siteId: 'string', propertyName: 'string', city: 'string', state: 'string',
-  latitude: 'number', longitude: 'number', elevationMeters: 'number',
-}
+// SITE_FIELDS lives in publicFields.js, shared with siteStats.js.
 const SURVEY_FIELDS = {
   tunnelId: 'string', surveyDate: 'string', observationStatus: 'string',
   occupantType: 'string', nesterFamily: 'string', generalId: 'string', commonName: 'string',
