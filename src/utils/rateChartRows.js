@@ -37,3 +37,12 @@ export function buildRateRows(chart, chartData, { year }) {
 
   return sortByCategoryOrder(rows, chart.categoryOrder)
 }
+
+// Tooltip text for one bar, e.g. "15% (155 of 1,048)". `item` is the Recharts
+// tooltip entry: its dataKey is the series key (e.g. "Bee") and its payload
+// holds the bar's sealed count and available holes (see GroupedBarChart).
+export function formatRateTooltip(value, item) {
+  const sealed = item?.payload?.[`${item.dataKey}Sealed`] ?? 0
+  const available = item?.payload?.available ?? 0
+  return `${value}% (${sealed.toLocaleString()} of ${available.toLocaleString()})`
+}

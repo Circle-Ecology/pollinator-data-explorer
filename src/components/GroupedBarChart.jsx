@@ -9,6 +9,7 @@ import {
 } from 'recharts'
 import { brandColors, brandFonts } from '../content/brandColors'
 import { strings } from '../content/strings'
+import { formatRateTooltip } from '../utils/rateChartRows'
 import { legendOrderBySeries } from '../utils/stackedBarOptions'
 
 // US-33: side-by-side bars per level (e.g. Bee and Wasp sealed nest rates
@@ -74,11 +75,7 @@ function GroupedBarChart({ chart, rows }) {
             }}
           />
           <Tooltip
-            formatter={(value, name, item) => {
-              const series = chart.series.find((entry) => entry.label === name)
-              const sealed = item.payload[`${series?.key}Sealed`]
-              return `${value}% (${sealed} of ${item.payload.available.toLocaleString()})`
-            }}
+            formatter={(value, _name, item) => formatRateTooltip(value, item)}
             cursor={{ fill: 'rgba(34, 47, 71, 0.06)' }}
             contentStyle={{
               background: brandColors.white,

@@ -2,6 +2,9 @@
 // Circle Ecology staff can reorder tabs, reword titles, snippets and caveats,
 // or recolor series here without touching any component.
 //
+// Each tab: { id, label, note?, charts }. `note` is one optional sentence
+// shown above the tab's charts.
+//
 // Each chart:
 //   id            - must match a chart id in /data/dashboard.json
 //   title         - shown above the chart and in the side list
@@ -15,8 +18,6 @@
 //                   false: every year side by side on the x-axis
 //   measures      - which of 'count' and 'percent' the measure toggle offers
 //                   ('rate' for sealed nest rate charts, which have no toggle)
-//
-// Each tab may also have a `note`: one sentence shown above its charts.
 //   categoryKey   - row field used for the x-axis labels ('year' when
 //                   supportsYears is false)
 //   categoryLabel - column heading for the x-axis in the data table
