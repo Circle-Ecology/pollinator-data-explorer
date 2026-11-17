@@ -29,4 +29,5 @@ export const strings = {
   dashboardCaveatLabel: 'Data note',
   dashboardTableToggle: 'Show data table',
   dashboardNoData: 'No data is available for this chart and year.',
+  dashboardNotRecorded: 'Not recorded',
 }

@@ -86,6 +86,27 @@ describe('Occupants tab - US-30', () => {
     expect(row).toHaveTextContent('209')
   })
 
+  it('shows Not recorded, not 0, for Unknown in years before it existed', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/embed?tab=occupants&chart=occupants-by-year-type'
+    )
+    render(<DashboardPanel loadData={loadData} />)
+
+    const table = await screen.findByRole('table', {
+      name: 'Occupants by Year and Type',
+    })
+    const unknownColumn = headersOf(table).indexOf('Unknown')
+    const unknownIn = (year) =>
+      within(within(table).getByRole('row', { name: new RegExp(`^${year}`) }))
+        .getAllByRole('cell')[unknownColumn - 1]
+
+    expect(unknownIn(2023)).toHaveTextContent('Not recorded')
+    expect(unknownIn(2025)).toHaveTextContent('Not recorded')
+    expect(unknownIn(2026)).toHaveTextContent('29 (3.3%)')
+  })
+
   it('omits a site with no data in the selected year', async () => {
     const table = await renderTable('occupants-by-site', 2025)
 

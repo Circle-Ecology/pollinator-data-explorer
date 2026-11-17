@@ -1,9 +1,17 @@
 // US-29: turn precomputed dashboard rows into one row per bar.
 // Percentages are each series' share of that bar's series total, so a
 // stacked bar in percentage mode always sums to 100.
+// A series not yet recorded in a bar's year (before its trackedFrom) gets
+// null instead of 0, so the chart draws nothing and the table says
+// "Not recorded" rather than reporting a misleading zero.
 
 function percentOf(count, total) {
+  if (count === null) return null
   return total > 0 ? Math.round((count / total) * 1000) / 10 : 0
+}
+
+function isRecorded(series, year) {
+  return !series.trackedFrom || Number(year) >= series.trackedFrom
 }
 
 // Years that have rows for this chart, in the order dashboard.json lists them.
@@ -38,11 +46,16 @@ export function buildChartRows(chart, chartData, { years, year }) {
       )
 
   return sourceRows.map((row) => {
+    const rowYear = chart.supportsYears ? year : row.year
     const counts = {}
 
     for (const series of chart.series) {
       const value = Number(row[series.key])
-      counts[series.key] = Number.isFinite(value) ? value : 0
+      counts[series.key] = !isRecorded(series, rowYear)
+        ? null
+        : Number.isFinite(value)
+          ? value
+          : 0
     }
 
     const total = Object.values(counts).reduce((sum, value) => sum + value, 0)

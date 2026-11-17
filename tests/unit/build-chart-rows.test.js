@@ -82,6 +82,22 @@ describe('buildChartRows - US-29', () => {
     it('never hides a series without a trackedFrom year', () => {
       expect(keys('occupants-by-site', [2023])).toEqual(['total'])
     })
+
+    it('reports a series as not recorded (null) for bars before it was tracked', () => {
+      const rows = buildChartRows(
+        chart('occupants-by-year-type'),
+        charts['occupants-by-year-type'],
+        { years }
+      )
+      const byYear = Object.fromEntries(rows.map((row) => [row.category, row]))
+
+      expect(byYear['2023'].counts.Unknown).toBeNull()
+      expect(byYear['2023'].percents.Unknown).toBeNull()
+      expect(byYear['2025'].counts.Unknown).toBeNull()
+      expect(byYear['2026'].counts.Unknown).toBe(29)
+      // Not recorded is left out of the bar's total, so shares still add up.
+      expect(byYear['2023'].total).toBe(278)
+    })
   })
 
   it('returns no rows for a year without data', () => {

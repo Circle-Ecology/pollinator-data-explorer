@@ -8,6 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import { brandColors, brandFonts } from '../content/brandColors'
+import { strings } from '../content/strings'
 import {
   getValueAxisProps,
   legendOrderBySeries,
@@ -70,7 +71,12 @@ function StackedBarChart({ chart, rows, measure }) {
             width={56}
           />
           <Tooltip
-            formatter={(value) => formatValue(value)}
+            // null = series not recorded in that bar's year (see buildChartRows).
+            formatter={(value) =>
+              value === null || value === undefined
+                ? strings.dashboardNotRecorded
+                : formatValue(value)
+            }
             cursor={{ fill: 'rgba(34, 47, 71, 0.06)' }}
             contentStyle={{
               background: brandColors.white,
