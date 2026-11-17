@@ -1,30 +1,64 @@
+
 import { strings } from '../content/strings'
 import {
   buildChartRows,
   getChartYears,
   getVisibleSeries,
 } from '../utils/buildChartRows'
+import {
+  buildGenusRows,
+  buildTypeGenusRows,
+  buildMultiGenusRows,
+} from '../utils/genusChartRows'
+
 import ChartDataTable from './ChartDataTable'
+import GenusChartDataTable from './GenusChartDataTable'
 import ChartSnippet from './ChartSnippet'
 import MeasureToggle from './MeasureToggle'
 import StackedBarChart from './StackedBarChart'
+import HorizontalBarChart from './HorizontalBarChart'
+import TypeGenusBarChart from './TypeGenusBarChart'
+import MultiGenusBarChart from './MultiGenusBarChart'
 import YearToggle from './YearToggle'
 
-// Chart types a config entry can name in its `component` field.
+// Chart types supported by the dashboard.
 const CHART_COMPONENTS = {
   stackedBar: StackedBarChart,
+  horizontalBar: HorizontalBarChart,
+  typeGenusBar: TypeGenusBarChart,
+  multiGenusBar: MultiGenusBarChart,
+}
+
+// US-32: Genus-specific data preparation.
+const GENUS_ROW_BUILDERS = {
+  'occupants-by-type-genus': buildTypeGenusRows,
+  'occupants-by-genus': buildGenusRows,
+  'multi-genus-cavities-by-site': buildMultiGenusRows,
 }
 
 function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }) {
   const chartData = data.charts[chart.id]
   const years = getChartYears(chartData, data.years)
-  const rows = buildChartRows(chart, chartData, { years: data.years, year })
+
+  // US-32: Use the appropriate row builder for Genus charts.
+  const genusRowBuilder = GENUS_ROW_BUILDERS[chart.id]
+  const isGenusChart = Boolean(genusRowBuilder)
+
+  const rows = isGenusChart
+    ? genusRowBuilder(chartData?.[year] ?? [])
+    : buildChartRows(chart, chartData, { years: data.years, year })
+
+  // PR #73: Show only series relevant to the selected year.
   const yearsInView = chart.supportsYears ? [year] : years
-  const visibleChart = {
-    ...chart,
-    series: getVisibleSeries(chart, yearsInView),
-  }
+  const visibleChart = isGenusChart
+    ? chart
+    : {
+        ...chart,
+        series: getVisibleSeries(chart, yearsInView),
+      }
+
   const Chart = CHART_COMPONENTS[chart.component]
+  const DataTable = isGenusChart ? GenusChartDataTable : ChartDataTable
 
   return (
     <section className="chart-view" aria-labelledby={`chart-title-${chart.id}`}>
@@ -51,7 +85,7 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
         <>
           <Chart chart={visibleChart} rows={rows} measure={measure} />
           <ChartSnippet snippet={chart.snippet} caveat={chart.caveat} />
-          <ChartDataTable chart={visibleChart} rows={rows} />
+          <DataTable chart={visibleChart} rows={rows} />
         </>
       ) : (
         <>

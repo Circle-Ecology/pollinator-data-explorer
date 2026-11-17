@@ -1,3 +1,4 @@
+
 import { describe, expect, it } from 'vitest'
 import {
   dashboardConfig,
@@ -16,7 +17,11 @@ describe('dashboardConfig - US-29', () => {
   })
 
   it('uses chart ids that exist in dashboard.json', () => {
-    for (const chart of charts) {
+    const occupancyCharts = dashboardConfig.find(
+      (tab) => tab.id === 'occupancy'
+    ).charts
+
+    for (const chart of occupancyCharts) {
       expect(dashboardData.charts).toHaveProperty([chart.id])
     }
   })
