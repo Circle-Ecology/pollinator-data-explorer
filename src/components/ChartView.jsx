@@ -19,7 +19,11 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
   const chartData = data.charts[chart.id]
   const years = getChartYears(chartData, data.years)
   const rows = buildChartRows(chart, chartData, { years: data.years, year })
-  const visibleChart = { ...chart, series: getVisibleSeries(chart, rows) }
+  const yearsInView = chart.supportsYears ? [year] : years
+  const visibleChart = {
+    ...chart,
+    series: getVisibleSeries(chart, yearsInView),
+  }
   const Chart = CHART_COMPONENTS[chart.component]
 
   return (

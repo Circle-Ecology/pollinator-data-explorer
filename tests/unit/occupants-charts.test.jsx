@@ -12,11 +12,11 @@ const occupantsTab = dashboardConfig.find((tab) => tab.id === 'occupants')
 const chartById = (id) => occupantsTab.charts.find((chart) => chart.id === id)
 const loadData = () => Promise.resolve(dashboardData)
 
-async function renderTable(chartId, year) {
+async function renderTable(chartId, year, measure = 'count') {
   window.history.replaceState(
     null,
     '',
-    `/embed?tab=occupants&chart=${chartId}&year=${year}`
+    `/embed?tab=occupants&chart=${chartId}&year=${year}&measure=${measure}`
   )
   render(<DashboardPanel loadData={loadData} />)
 
@@ -54,13 +54,36 @@ describe('Occupants tab - US-30', () => {
   it('renders no Unknown series for 2025', async () => {
     const table = await renderTable('occupants-by-site-type', 2025)
 
-    expect(headersOf(table)).toEqual(['Site', 'Bee', 'Wasp', 'Total'])
+    expect(headersOf(table)).toEqual(['Site', 'Bee', 'Wasp', 'Other', 'Total'])
   })
 
   it('renders only Spider and Other in the Other-types chart for 2023', async () => {
     const table = await renderTable('other-by-site-type', 2023)
 
     expect(headersOf(table)).toEqual(['Site', 'Spider', 'Other', 'Total'])
+  })
+
+  it('keeps a type that was tracked but had none that year', async () => {
+    const table = await renderTable('other-by-site-type', 2026)
+
+    expect(headersOf(table)).toEqual([
+      'Site',
+      'Spider',
+      'Ant(s)',
+      'Pill Bug',
+      'Other',
+      'Total',
+    ])
+    expect(within(table).getAllByRole('cell')[1]).toHaveTextContent('0 (0%)')
+  })
+
+  it('shows both the count and the percentage in percentage mode', async () => {
+    const table = await renderTable('occupants-by-site-type', 2025, 'percent')
+    const row = within(table).getByRole('row', { name: /Site 1/ })
+
+    // Site 1, 2025: 181 of 209 occupants were bees.
+    expect(row).toHaveTextContent('181 (86.6%)')
+    expect(row).toHaveTextContent('209')
   })
 
   it('omits a site with no data in the selected year', async () => {
@@ -76,6 +99,8 @@ describe('Occupants tab - US-30', () => {
     expect(table).toHaveTextContent('Site 2')
   })
 
+  // Each share is rounded to one decimal, so with up to four series a bar can
+  // be off by at most 4 x 0.05 = 0.2 (e.g. 100.1). Anything more is a bug.
   it('makes every stacked bar sum to 100 in percentage mode', () => {
     for (const chart of occupantsTab.charts) {
       if (!chart.measures.includes('percent')) continue
@@ -89,7 +114,7 @@ describe('Occupants tab - US-30', () => {
         for (const row of rows) {
           if (row.total === 0) continue
           const sum = Object.values(row.percents).reduce((a, b) => a + b, 0)
-          expect(sum).toBeCloseTo(100, 0)
+          expect(Math.abs(sum - 100)).toBeLessThanOrEqual(0.2)
         }
       }
     }

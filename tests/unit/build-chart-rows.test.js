@@ -47,32 +47,41 @@ describe('buildChartRows - US-29', () => {
     }
   })
 
-  it('hides a series that is zero in every row of the view', () => {
+  describe('getVisibleSeries', () => {
     const occupantCharts = dashboardConfig.find((tab) => tab.id === 'occupants').charts
-    const occupantsByYear = occupantCharts.find((c) => c.id === 'occupants-by-year-type')
-    const occupantsBySite = occupantCharts.find((c) => c.id === 'occupants-by-site-type')
-    const siteRows = buildChartRows(
-      occupantsBySite,
-      charts['occupants-by-site-type'],
-      { years, year: 2023 }
-    )
-    const yearRows = buildChartRows(
-      occupantsByYear,
-      charts['occupants-by-year-type'],
-      { years }
-    )
+    const chart = (id) => occupantCharts.find((c) => c.id === id)
+    const keys = (id, yearsInView) =>
+      getVisibleSeries(chart(id), yearsInView).map((s) => s.key)
 
-    expect(getVisibleSeries(occupantsBySite, siteRows).map((s) => s.key)).toEqual([
-      'Bee',
-      'Wasp',
-      'Other',
-    ])
-    expect(getVisibleSeries(occupantsByYear, yearRows).map((s) => s.key)).toEqual([
-      'Bee',
-      'Wasp',
-      'Unknown',
-      'Other',
-    ])
+    it('leaves out a series in years before it was tracked', () => {
+      expect(keys('occupants-by-site-type', [2023])).toEqual(['Bee', 'Wasp', 'Other'])
+      expect(keys('other-by-site-type', [2023])).toEqual(['Spider', 'Other'])
+      expect(keys('other-by-site-type', [2025])).toEqual(['Spider', 'Ant(s)', 'Other'])
+    })
+
+    it('keeps a tracked series even when every count is zero', () => {
+      // The 2026 fixture has no ants at its only site: a real "none found".
+      expect(charts['other-by-site-type'][2026][0]['Ant(s)']).toBe(0)
+      expect(keys('other-by-site-type', [2026])).toEqual([
+        'Spider',
+        'Ant(s)',
+        'Pill Bug',
+        'Other',
+      ])
+    })
+
+    it('shows a series if any year side by side tracked it', () => {
+      expect(keys('occupants-by-year-type', years)).toEqual([
+        'Bee',
+        'Wasp',
+        'Unknown',
+        'Other',
+      ])
+    })
+
+    it('never hides a series without a trackedFrom year', () => {
+      expect(keys('occupants-by-site', [2023])).toEqual(['total'])
+    })
   })
 
   it('returns no rows for a year without data', () => {

@@ -15,7 +15,10 @@
 //   categoryKey   - row field used for the x-axis labels ('year' when
 //                   supportsYears is false)
 //   categoryLabel - column heading for the x-axis in the data table
-//   series        - stacked series, bottom to top: { key, label, color }
+//   series        - stacked series, bottom to top: { key, label, color,
+//                   trackedFrom? }. trackedFrom is the first year the
+//                   series was recorded; earlier years leave it out of the
+//                   chart rather than showing a misleading 0.
 
 import { brandColors } from './brandColors'
 
@@ -32,20 +35,31 @@ const OCCUPANCY_2025_CAVEAT =
   'as a spider or ant) were tracked on a separate sheet and are not counted ' +
   'here, so 2025 totals run slightly low.'
 
-// One color per occupant type. A type with no occupants in the chart's
-// current view (e.g. Unknown before 2026) is left out of the legend.
+// One color per occupant type. Unknown became an Occupant Type option in 2026.
 const OCCUPANT_TYPE_SERIES = [
   { key: 'Bee', label: 'Bee', color: brandColors.bee },
   { key: 'Wasp', label: 'Wasp', color: brandColors.wasp },
-  { key: 'Unknown', label: 'Unknown', color: brandColors.unknown },
+  {
+    key: 'Unknown',
+    label: 'Unknown',
+    color: brandColors.unknown,
+    trackedFrom: 2026,
+  },
   { key: 'Other', label: 'Other', color: brandColors.other },
 ]
 
-// Non-bee, non-wasp occupants, split by what they were.
+// Non-bee, non-wasp occupants, split by what they were. Tracking grew more
+// specific over time: ants were recorded separately from 2025, pill bugs
+// from 2026 (as in Circle Ecology's deck).
 const OTHER_TYPE_SERIES = [
   { key: 'Spider', label: 'Spider', color: brandColors.spider },
-  { key: 'Ant(s)', label: 'Ant(s)', color: brandColors.ant },
-  { key: 'Pill Bug', label: 'Pill Bug', color: brandColors.pillBug },
+  { key: 'Ant(s)', label: 'Ant(s)', color: brandColors.ant, trackedFrom: 2025 },
+  {
+    key: 'Pill Bug',
+    label: 'Pill Bug',
+    color: brandColors.pillBug,
+    trackedFrom: 2026,
+  },
   { key: 'Other', label: 'Other', color: brandColors.other },
 ]
 

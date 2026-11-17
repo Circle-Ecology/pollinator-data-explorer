@@ -16,12 +16,15 @@ export function getChartYears(chartData, years) {
   })
 }
 
-// Series with at least one non-zero count in these rows. A zero everywhere
-// usually means "not tracked that year" (e.g. Unknown before 2026), so the
-// series is left out of the chart, legend and table rather than shown as 0.
-export function getVisibleSeries(chart, rows) {
-  return chart.series.filter((series) =>
-    rows.some((row) => row.counts[series.key] > 0)
+// Series recorded in at least one of the years on screen. A series with a
+// `trackedFrom` year (e.g. Unknown from 2026) is left out of the chart,
+// legend and table for earlier years, because a 0 there means "not recorded
+// yet", not "none found". A real zero in a tracked year stays visible.
+export function getVisibleSeries(chart, yearsInView) {
+  return chart.series.filter(
+    (series) =>
+      !series.trackedFrom ||
+      yearsInView.some((year) => Number(year) >= series.trackedFrom)
   )
 }
 

@@ -8,6 +8,10 @@ import {
   YAxis,
 } from 'recharts'
 import { brandColors, brandFonts } from '../content/brandColors'
+import {
+  getValueAxisProps,
+  legendOrderBySeries,
+} from '../utils/stackedBarOptions'
 
 // Matches theme_pollinator_v01.R: Poppins in near-black, no gridlines or
 // axis lines.
@@ -16,8 +20,6 @@ const AXIS_TICK = {
   fontSize: 12,
   fontFamily: brandFonts.body,
 }
-
-const PERCENT_TICKS = [0, 25, 50, 75, 100]
 
 // Long site names are angled once there are more bars than fit side by side.
 const ANGLE_LABELS_ABOVE = 4
@@ -63,10 +65,7 @@ function StackedBarChart({ chart, rows, measure }) {
             tick={AXIS_TICK}
             axisLine={false}
             tickLine={false}
-            domain={isPercent ? [0, 100] : [0, 'auto']}
-            // Rounded shares can add up to 100.1; keep the axis at 0-100%.
-            allowDataOverflow={isPercent}
-            ticks={isPercent ? PERCENT_TICKS : undefined}
+            {...getValueAxisProps(isPercent)}
             tickFormatter={formatValue}
             width={56}
           />
@@ -82,14 +81,11 @@ function StackedBarChart({ chart, rows, measure }) {
             labelStyle={{ color: brandColors.black, fontWeight: 600 }}
           />
           {/* Recharts colors legend text like its bar; keep it readable. */}
-          {/* Legend order follows the config (the stack order), not A-Z. */}
           <Legend
             formatter={(value) => (
               <span style={{ color: brandColors.black }}>{value}</span>
             )}
-            itemSorter={(item) =>
-              chart.series.findIndex((series) => series.key === item.dataKey)
-            }
+            itemSorter={legendOrderBySeries(chart.series)}
             wrapperStyle={{ fontFamily: brandFonts.body, fontSize: 13 }}
           />
           {chart.series.map((series) => (
