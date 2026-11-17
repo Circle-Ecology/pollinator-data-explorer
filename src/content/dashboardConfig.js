@@ -41,9 +41,25 @@ const OCCUPANT_TYPE_SERIES = [
   { key: 'Other', label: 'Other', color: brandColors.other },
 ]
 
+// Non-bee, non-wasp occupants, split by what they were.
+const OTHER_TYPE_SERIES = [
+  { key: 'Spider', label: 'Spider', color: brandColors.spider },
+  { key: 'Ant(s)', label: 'Ant(s)', color: brandColors.ant },
+  { key: 'Pill Bug', label: 'Pill Bug', color: brandColors.pillBug },
+  { key: 'Other', label: 'Other', color: brandColors.other },
+]
+
+const OCCUPANT_TOTAL_SERIES = [
+  { key: 'total', label: 'Occupants', color: brandColors.darkGreen },
+]
+
+// The pipeline takes 2025 Other occupants from Circle Ecology's separate
+// tally tracker (see docs/public-dataset.md).
 const OCCUPANTS_2025_CAVEAT =
   'In 2025, "Other" occupants (such as spiders and ants) were tallied on a ' +
-  'separate sheet that is not included here, so 2025 shows very few of them.'
+  'separate sheet that recorded the most seen at any one visit, a different ' +
+  'counting method from other years, so treat 2025 Other numbers as a ' +
+  'rough guide.'
 
 export const dashboardConfig = [
   {
@@ -104,6 +120,22 @@ export const dashboardConfig = [
         series: OCCUPANT_TYPE_SERIES,
       },
       {
+        id: 'occupants-by-site',
+        title: 'Occupants by Site',
+        snippet:
+          'Each bar is the total number of occupants recorded at one ' +
+          'monitoring site in the selected year. Sites with more nesting ' +
+          'holes tend to have more occupants, so see the Occupancy tab to ' +
+          'compare how much of each site was used.',
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'stackedBar',
+        supportsYears: true,
+        measures: ['count'],
+        categoryKey: 'propertyName',
+        categoryLabel: 'Site',
+        series: OCCUPANT_TOTAL_SERIES,
+      },
+      {
         id: 'occupants-by-site-type',
         title: 'Occupants by Site and Type',
         snippet:
@@ -117,6 +149,22 @@ export const dashboardConfig = [
         categoryKey: 'propertyName',
         categoryLabel: 'Site',
         series: OCCUPANT_TYPE_SERIES,
+      },
+      {
+        id: 'other-by-site-type',
+        title: 'Other Occupants by Site and Type',
+        snippet:
+          'Each bar is one monitoring site in the selected year, showing ' +
+          'only occupants that were not bees or wasps: spiders, ants, pill ' +
+          'bugs and others. A type only appears in years it was recorded ' +
+          'separately.',
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'stackedBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        categoryKey: 'propertyName',
+        categoryLabel: 'Site',
+        series: OTHER_TYPE_SERIES,
       },
     ],
   },

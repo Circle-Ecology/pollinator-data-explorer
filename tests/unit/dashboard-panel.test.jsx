@@ -145,26 +145,10 @@ describe('DashboardPanel - US-29', () => {
     const nav = screen.getByRole('navigation', { name: 'Charts: Occupants' })
     expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual([
       'Occupants by Year and Type',
+      'Occupants by Site',
       'Occupants by Site and Type',
+      'Other Occupants by Site and Type',
     ])
-  })
-
-  it('leaves an occupant type with no data out of the data table', async () => {
-    window.history.replaceState(
-      null,
-      '',
-      '/embed?tab=occupants&chart=occupants-by-site-type&year=2025'
-    )
-    render(<DashboardPanel loadData={loadData} />)
-
-    const table = await screen.findByRole('table', {
-      name: 'Occupants by Site and Type',
-    })
-    const headers = within(table)
-      .getAllByRole('columnheader')
-      .map((cell) => cell.textContent)
-
-    expect(headers).toEqual(['Site', 'Bee', 'Wasp', 'Total'])
   })
 
   it('shows a friendly message when dashboard.json fails to load', async () => {

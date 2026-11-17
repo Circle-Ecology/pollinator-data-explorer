@@ -48,7 +48,9 @@ describe('buildChartRows - US-29', () => {
   })
 
   it('hides a series that is zero in every row of the view', () => {
-    const [occupantsByYear, occupantsBySite] = dashboardConfig[1].charts
+    const occupantCharts = dashboardConfig.find((tab) => tab.id === 'occupants').charts
+    const occupantsByYear = occupantCharts.find((c) => c.id === 'occupants-by-year-type')
+    const occupantsBySite = occupantCharts.find((c) => c.id === 'occupants-by-site-type')
     const siteRows = buildChartRows(
       occupantsBySite,
       charts['occupants-by-site-type'],

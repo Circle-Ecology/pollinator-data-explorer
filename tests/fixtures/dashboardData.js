@@ -26,6 +26,28 @@ export const dashboardData = {
       2025: [{ Bee: 678, Wasp: 298, Unknown: 0, Other: 3, total: 979 }],
       2026: [{ Bee: 533, Wasp: 241, Unknown: 29, Other: 77, total: 880 }],
     },
+    // Site 2 was only monitored in 2023, so later years leave it out.
+    'occupants-by-site': {
+      2023: [
+        { siteId: 'Site 1', propertyName: 'Site 1', total: 28 },
+        { siteId: 'Site 2', propertyName: 'Site 2', total: 20 },
+      ],
+      2025: [{ siteId: 'Site 1', propertyName: 'Site 1', total: 209 }],
+      2026: [{ siteId: 'Site 1', propertyName: 'Site 1', total: 243 }],
+    },
+    // Ants and pill bugs were not recorded separately in 2023.
+    'other-by-site-type': {
+      2023: [
+        { siteId: 'Site 1', propertyName: 'Site 1', Spider: 20, 'Ant(s)': 0, 'Pill Bug': 0, Other: 4, total: 24 },
+        { siteId: 'Site 2', propertyName: 'Site 2', Spider: 5, 'Ant(s)': 0, 'Pill Bug': 0, Other: 1, total: 6 },
+      ],
+      2025: [
+        { siteId: 'Site 1', propertyName: 'Site 1', Spider: 5, 'Ant(s)': 0, 'Pill Bug': 0, Other: 3, total: 8 },
+      ],
+      2026: [
+        { siteId: 'Site 1', propertyName: 'Site 1', Spider: 9, 'Ant(s)': 0, 'Pill Bug': 1, Other: 0, total: 10 },
+      ],
+    },
     'occupants-by-site-type': {
       2023: [
         { siteId: 'Site 1', propertyName: 'Site 1', Bee: 2, Wasp: 2, Unknown: 0, Other: 24, total: 28 },
