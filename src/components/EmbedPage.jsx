@@ -10,7 +10,8 @@ import ObservationExplorer from './ObservationExplorer'
 // dashboard (US-29, DashboardPanel) below it is reachable by scrolling past
 // the map.
 // Capped to a centered max-width rather than full browser width, so it reads
-// as a dashboard column instead of a full-bleed map on wide screens.
+// as a dashboard column instead of a full-bleed map on wide screens. The map
+// section is narrower than the dashboard (see EmbedPage.css).
 
 function EmbedPage() {
   const [selectedSite, setSelectedSite] = useState(null)

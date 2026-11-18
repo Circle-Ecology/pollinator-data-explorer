@@ -1,5 +1,14 @@
+/* The page is wide enough for the dashboard's charts; the map section (map
+   and site details) keeps its narrower, centered column. */
 .embed-page {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+.embed-page > .site-map,
+.embed-page > .observation-explorer {
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
 }
