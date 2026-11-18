@@ -5,6 +5,16 @@
 // null instead of 0, so the chart draws nothing and the table says
 // "Not recorded" rather than reporting a misleading zero.
 
+import { formatPeriodRange } from './formatPeriodRange'
+
+// How a row's x-axis label is built, by the chart's categoryFormat.
+function categoryOf(chart, row) {
+  if (chart.categoryFormat === 'periodRange') {
+    return formatPeriodRange(row.start, row.end)
+  }
+  return String(row[chart.categoryKey] ?? 'Not recorded')
+}
+
 function percentOf(count, total) {
   if (count === null) return null
   return total > 0 ? Math.round((count / total) * 1000) / 10 : 0
@@ -66,7 +76,7 @@ export function buildChartRows(chart, chartData, { years, year }) {
     }
 
     return {
-      category: String(row[chart.categoryKey] ?? 'Not recorded'),
+      category: categoryOf(chart, row),
       counts,
       percents,
       total,

@@ -1,10 +1,9 @@
 import { CONFLICT_CODES } from '../us08/parseExportRows.js'
+import { SITE_FIELDS } from './publicFields.js'
+import { addSiteStats } from './siteStats.js'
 
 // These allowlists mirror docs/data-contract.md. Never spread source records here.
-const SITE_FIELDS = {
-  siteId: 'string', propertyName: 'string', city: 'string', state: 'string',
-  latitude: 'number', longitude: 'number', elevationMeters: 'number',
-}
+// SITE_FIELDS lives in publicFields.js, shared with siteStats.js.
 const SURVEY_FIELDS = {
   tunnelId: 'string', surveyDate: 'string', observationStatus: 'string',
   occupantType: 'string', nesterFamily: 'string', generalId: 'string', commonName: 'string',
@@ -155,5 +154,7 @@ export function generatePublicDataset(parsedResult) {
   const observations = Array.from(surveysByKey.values())
   sites.sort((a, b) => compare(a.siteId, b.siteId))
   observations.sort((a, b) => compare(a.tunnelId, b.tunnelId) || compare(a.surveyDate, b.surveyDate))
-  return { sites, observations, status: parsedResult }
+  // US-37: each site carries its figures, computed from public observations
+  // only, so the browser never needs to download observations.json.
+  return { sites: addSiteStats(sites, observations), observations, status: parsedResult }
 }

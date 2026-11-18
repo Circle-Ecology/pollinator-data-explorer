@@ -19,6 +19,19 @@ it('US-24: transforms a verified wholly synthetic production-shaped dataset', ()
   expect(output.observations.every(s => s.siteId === tunnelSites.get(s.tunnelId))).toBe(true)
   const reversed = { ...input, sites: input.sites.toReversed(), tunnels: input.tunnels.toReversed(),
     surveys: input.surveys.toReversed() }
+  // US-37: each site's precomputed figures agree with an independent count
+  // over the public observations (what the browser used to calculate).
+  for (const site of output.sites) {
+    const own = output.observations.filter(s => s.siteId === site.siteId)
+    const dates = [...new Set(own.map(s => s.surveyDate))].sort()
+    expect(site.tunnelCount).toBe(new Set(own.map(s => s.tunnelId)).size)
+    expect(site.surveyDateCount).toBe(dates.length)
+    expect(site.firstSurveyDate).toBe(dates[0])
+    expect(site.lastSurveyDate).toBe(dates.at(-1))
+    expect(site.occupiedTunnelCount).toBe(new Set(own
+      .filter(s => ['Complete', 'Active', 'Reopened'].includes(s.observationStatus))
+      .map(s => s.tunnelId)).size)
+  }
   const repeat = generatePublicDataset(reversed)
   expect(JSON.stringify(repeat.sites)).toBe(JSON.stringify(output.sites))
   expect(JSON.stringify(repeat.observations)).toBe(JSON.stringify(output.observations))

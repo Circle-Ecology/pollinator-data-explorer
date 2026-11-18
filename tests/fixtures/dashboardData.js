@@ -49,6 +49,36 @@ export const dashboardData = {
         { siteId: 'Site 1', propertyName: 'Site 1', Spider: 9, 'Ant(s)': 0, 'Pill Bug': 1, Other: 0, total: 10 },
       ],
     },
+    // Two-week periods from 11 March; period 7 has no occupants and is kept
+    // so the season's shape stays honest.
+    'occupants-by-period-type': {
+      2023: [
+        { period: 7, start: '2023-06-17', end: '2023-06-30', Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 },
+        { period: 8, start: '2023-07-01', end: '2023-07-14', Bee: 3, Wasp: 1, Unknown: 0, Other: 40, total: 44 },
+      ],
+      2025: [
+        { period: 7, start: '2025-06-17', end: '2025-06-30', Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 },
+        { period: 8, start: '2025-07-01', end: '2025-07-14', Bee: 300, Wasp: 90, Unknown: 0, Other: 30, total: 420 },
+      ],
+      2026: [
+        { period: 7, start: '2026-06-17', end: '2026-06-30', Bee: 0, Wasp: 0, Unknown: 0, Other: 0, total: 0 },
+        { period: 8, start: '2026-07-01', end: '2026-07-14', Bee: 315, Wasp: 108, Unknown: 18, Other: 17, total: 458 },
+      ],
+    },
+    'other-by-period-type': {
+      2023: [
+        { period: 7, start: '2023-06-17', end: '2023-06-30', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 },
+        { period: 8, start: '2023-07-01', end: '2023-07-14', Spider: 10, 'Ant(s)': 0, 'Pill Bug': 0, Other: 30, total: 40 },
+      ],
+      2025: [
+        { period: 7, start: '2025-06-17', end: '2025-06-30', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 },
+        { period: 8, start: '2025-07-01', end: '2025-07-14', Spider: 20, 'Ant(s)': 5, 'Pill Bug': 0, Other: 5, total: 30 },
+      ],
+      2026: [
+        { period: 7, start: '2026-06-17', end: '2026-06-30', Spider: 0, 'Ant(s)': 0, 'Pill Bug': 0, Other: 0, total: 0 },
+        { period: 8, start: '2026-07-01', end: '2026-07-14', Spider: 12, 'Ant(s)': 3, 'Pill Bug': 1, Other: 1, total: 17 },
+      ],
+    },
     // Sealed nest rates: snags were first installed in 2025, so 2023 has
     // logs only. rate = sealed / available, as a whole-number percentage.
     'sealed-rate-by-cwd': {

@@ -214,6 +214,13 @@
 .stacked-bar-chart {
   width: 100%;
   min-width: 0;
+  /* Charts with many bars scroll sideways here, never the whole page. */
+  overflow-x: auto;
+}
+
+.stacked-bar-chart:focus-visible {
+  outline: 3px solid var(--dash-focus);
+  outline-offset: 2px;
 }
 
 /* Side-by-side panels sharing one y-axis (FacetedStackedBarChart) */

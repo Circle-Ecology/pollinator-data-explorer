@@ -21,6 +21,8 @@
 //                   ('rate' for sealed nest rate charts, which have no toggle)
 //   categoryKey   - row field used for the x-axis labels ('year' when
 //                   supportsYears is false)
+//   categoryFormat - optional: 'periodRange' labels each bar by its start
+//                   and end dates ("Jul 1–Jul 14") instead of categoryKey
 //   categoryLabel - column heading for the x-axis in the data table
 //   categoryOrder - optional list fixing the order of the x-axis labels
 //                   (labels not listed follow, in data order)
@@ -87,6 +89,13 @@ const OCCUPANTS_2025_CAVEAT =
   'separate sheet that recorded the most seen at any one visit, a different ' +
   'counting method from other years, so treat 2025 Other numbers as a ' +
   'rough guide.'
+
+// Per-period 2025 Other counts also come from the tally tracker: the most
+// seen at a visit in each period, with zero for periods it had no visit.
+const SEASON_2025_CAVEAT =
+  'In 2025, "Other" occupants (such as spiders and ants) were tallied on a ' +
+  'separate sheet, using the most seen at one visit. Periods without a ' +
+  'tally visit show as zero, so treat 2025 Other numbers as a rough guide.'
 
 // Bee and Wasp side by side, for sealed nest rates and genus richness.
 const NEST_TYPE_SERIES = [
@@ -215,6 +224,46 @@ export const dashboardConfig = [
         measures: ['count', 'percent'],
         categoryKey: 'propertyName',
         categoryLabel: 'Site',
+        series: OTHER_TYPE_SERIES,
+      },
+    ],
+  },
+  {
+    id: 'season',
+    label: 'Season',
+    charts: [
+      {
+        id: 'occupants-by-period-type',
+        title: 'Occupants by Observation Period and Type',
+        snippet:
+          'Each bar is one two-week observation period in the selected ' +
+          'year, split by occupant type. A nesting hole counts in every ' +
+          'period it stayed occupied, so the bars show how activity builds ' +
+          'and fades over the season.',
+        caveat: SEASON_2025_CAVEAT,
+        component: 'stackedBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        categoryKey: 'period',
+        categoryFormat: 'periodRange',
+        categoryLabel: 'Period',
+        series: OCCUPANT_TYPE_SERIES,
+      },
+      {
+        id: 'other-by-period-type',
+        title: 'Other Occupants by Observation Period and Type',
+        snippet:
+          'Each bar is one two-week period in the selected year, showing ' +
+          'only occupants that were not bees or wasps. Empty bars are ' +
+          'periods with none recorded, kept so the shape of the season ' +
+          'stays honest.',
+        caveat: SEASON_2025_CAVEAT,
+        component: 'stackedBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        categoryKey: 'period',
+        categoryFormat: 'periodRange',
+        categoryLabel: 'Period',
         series: OTHER_TYPE_SERIES,
       },
     ],

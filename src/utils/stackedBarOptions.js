@@ -16,3 +16,17 @@ export function getValueAxisProps(isPercent) {
 export function legendOrderBySeries(series) {
   return (item) => series.findIndex((entry) => entry.key === item.dataKey)
 }
+
+// Charts with many bars (e.g. 16 two-week periods) get a minimum width so
+// the bars and angled labels stay readable; on narrow screens the chart then
+// scrolls sideways inside its own box instead of squeezing or widening the
+// page. Sized so 16 bars still fit the desktop chart area without scrolling.
+export const SCROLL_ABOVE_BARS = 8
+export const MIN_BAR_SLOT_PX = 24
+const AXIS_AND_MARGIN_PX = 140
+
+export function getChartMinWidth(barCount) {
+  return barCount > SCROLL_ABOVE_BARS
+    ? barCount * MIN_BAR_SLOT_PX + AXIS_AND_MARGIN_PX
+    : undefined
+}

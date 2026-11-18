@@ -65,7 +65,15 @@ reported conflicts cause refusal before projection. Distinct survey dates remain
 Public objects follow the existing [data contract](data-contract.md):
 
 - `sites.json`: an array with exactly `siteId`, `propertyName`, `city`, `state`,
-  `latitude`, `longitude`, `elevationMeters`.
+  `latitude`, `longitude`, `elevationMeters`, followed by each site's figures
+  for the map and site details panel (US-37, #72; `src/pipeline/siteStats.js`):
+  `firstSurveyDate`, `lastSurveyDate` (ISO dates, `null` if never surveyed),
+  `surveyedInLatestSeason` (surveyed in the latest survey year in the dataset),
+  `surveyDateCount`, `tunnelCount` (surveyed tunnels) and `occupiedTunnelCount`
+  (tunnels with any `Complete`, `Active` or `Reopened` survey). They are computed
+  from the public observations only, so the browser loads `sites.json` alone and
+  never downloads `observations.json`. `observations.json` is still written for
+  now; whether to stop publishing it is a team decision (see #72).
 - `observations.json`: an array with exactly `siteId`, `tunnelId`, `surveyDate`,
   `observationStatus`, `occupantType`, `nesterFamily`, `generalId`, `commonName`,
   `plugDepth`, `plugComposition`, `plugColor`, `plugConfidence`, `wholeOrHole`,

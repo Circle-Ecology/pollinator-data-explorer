@@ -108,6 +108,14 @@ It must not contain staff-only information.
 | `latitude` | number | Yes | Latitude of the site |
 | `longitude` | number | Yes | Longitude of the site |
 | `elevationMeters` | number | Yes | Elevation of the site in meters |
+| `firstSurveyDate` | string \| null | Yes | First public survey date (`YYYY-MM-DD`); `null` if never surveyed (US-37) |
+| `lastSurveyDate` | string \| null | Yes | Last public survey date (`YYYY-MM-DD`); `null` if never surveyed (US-37) |
+| `surveyedInLatestSeason` | boolean | Yes | Surveyed in the latest survey year in the dataset, i.e. still monitored (US-37) |
+| `surveyDateCount` | number | Yes | Number of distinct public survey dates (US-37) |
+| `tunnelCount` | number | Yes | Number of distinct tunnels with a public survey (US-37) |
+| `occupiedTunnelCount` | number | Yes | Tunnels with any `Complete`, `Active` or `Reopened` public survey (US-37) |
+
+The last six fields are computed by the pipeline (`src/pipeline/siteStats.js`) and written to `sites.json`, so the browser never needs `observations.json`. If one is missing the browser treats it as `null` ("Not recorded").
 
 The following staff-only fields must never appear in `PublicSiteSummary`:
 

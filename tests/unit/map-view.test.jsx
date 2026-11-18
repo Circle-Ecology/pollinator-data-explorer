@@ -156,4 +156,19 @@ describe('MapView', () => {
     await waitFor(() => expect(screen.getAllByTestId('site-marker')).toHaveLength(1))
     expect(fakeMap.setView).toHaveBeenCalledWith([40.1672, -105.1019], 12)
   })
+
+  it('says occupied tunnels are not recorded when the figure is missing (US-37)', async () => {
+    render(
+      <MapView
+        loadSites={() =>
+          Promise.resolve([
+            { siteId: 'S1', propertyName: 'No Figures', latitude: 40.1, longitude: -105.1, occupiedTunnelCount: null },
+          ])
+        }
+      />
+    )
+
+    expect(await screen.findByText(/Occupied tunnels not recorded/)).toBeInTheDocument()
+    expect(screen.queryByText(/null/)).not.toBeInTheDocument()
+  })
 })
