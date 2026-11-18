@@ -55,7 +55,7 @@ describe('dashboard accessibility - US-29', () => {
     render(<DashboardPanel loadData={loadData} />)
 
     const table = await screen.findByRole('table', {
-      name: 'Occupied vs. Empty Nesting Holes by Year',
+      name: 'Occupied Fabricated Cavities by Year',
     })
     const rows = within(table).getAllByRole('row')
 

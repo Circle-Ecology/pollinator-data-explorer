@@ -95,7 +95,7 @@ describe('Occupants tab - US-30', () => {
     render(<DashboardPanel loadData={loadData} />)
 
     const table = await screen.findByRole('table', {
-      name: 'Occupants by Year and Type',
+      name: 'Occupants by Year and Occupant Type',
     })
     const unknownColumn = headersOf(table).indexOf('Unknown')
     const unknownIn = (year) =>

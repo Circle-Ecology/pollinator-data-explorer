@@ -124,11 +124,11 @@ const sealedRateChart = (chart) => ({
 export const dashboardConfig = [
   {
     id: 'occupancy',
-    label: 'Occupancy',
+    label: 'Occupied Fabricated Cavities',
     charts: [
       {
         id: 'occupancy-by-year',
-        title: 'Occupied vs. Empty Nesting Holes by Year',
+        title: 'Occupied Fabricated Cavities by Year',
         snippet:
           'Each bar is one monitoring year. The dark part shows nesting ' +
           'holes that held an occupant at some point that season; the light ' +
@@ -144,7 +144,7 @@ export const dashboardConfig = [
       },
       {
         id: 'occupancy-by-site',
-        title: 'Occupied vs. Empty Nesting Holes by Site',
+        title: 'Occupied Fabricated Cavities by Site',
         snippet:
           'Each bar is one monitoring site in the selected year. Compare how ' +
           'much of each bar is dark to see where nesting holes were used ' +
@@ -161,11 +161,11 @@ export const dashboardConfig = [
   },
   {
     id: 'occupants',
-    label: 'Occupants',
+    label: 'Occupants by Site and Occupant Type',
     charts: [
       {
         id: 'occupants-by-year-type',
-        title: 'Occupants by Year and Type',
+        title: 'Occupants by Year and Occupant Type',
         snippet:
           'Each bar is one monitoring year, split by who moved in: bees, ' +
           'wasps, other creatures such as spiders and ants, and occupants ' +
@@ -197,7 +197,7 @@ export const dashboardConfig = [
       },
       {
         id: 'occupants-by-site-type',
-        title: 'Occupants by Site and Type',
+        title: 'Occupants by Site and Occupant Type',
         snippet:
           'Each bar is one monitoring site in the selected year, split by ' +
           'occupant type. Switch to Percentage to compare the mix of bees, ' +
@@ -212,7 +212,7 @@ export const dashboardConfig = [
       },
       {
         id: 'other-by-site-type',
-        title: 'Other Occupants by Site and Type',
+        title: 'Other Occupants by Site and Other Type',
         snippet:
           'Each bar is one monitoring site in the selected year, showing ' +
           'only occupants that were not bees or wasps: spiders, ants, pill ' +
@@ -230,11 +230,11 @@ export const dashboardConfig = [
   },
   {
     id: 'season',
-    label: 'Season',
+    label: 'Occupancy by Observation Period',
     charts: [
       {
         id: 'occupants-by-period-type',
-        title: 'Occupants by Observation Period and Type',
+        title: 'Occupants by Observation Period and Occupant Type',
         snippet:
           'Each bar is one two-week observation period in the selected ' +
           'year, split by occupant type. A nesting hole counts in every ' +
@@ -251,7 +251,7 @@ export const dashboardConfig = [
       },
       {
         id: 'other-by-period-type',
-        title: 'Other Occupants by Observation Period and Type',
+        title: 'Other Occupants by Observation Period and Other Type',
         snippet:
           'Each bar is one two-week period in the selected year, showing ' +
           'only occupants that were not bees or wasps. Empty bars are ' +
@@ -270,7 +270,7 @@ export const dashboardConfig = [
   },
   {
     id: 'nest-sites',
-    label: 'Nest Sites',
+    label: 'Nests by Structural Factors',
     note:
       'Sealed nest rate is the share of available nesting holes at each ' +
       'level that held a sealed bee or wasp nest that year, so levels with ' +
@@ -278,7 +278,7 @@ export const dashboardConfig = [
     charts: [
       sealedRateChart({
         id: 'sealed-rate-by-cwd',
-        title: 'Sealed Nest Rate by Log or Snag',
+        title: 'Sealed Nest Rate by Coarse Woody Debris Type and Occupant Type',
         snippet:
           'Each pair of bars compares how often bees and wasps sealed a ' +
           'nest in logs (lying down) versus snags (standing) in the selected ' +
@@ -289,7 +289,7 @@ export const dashboardConfig = [
       }),
       sealedRateChart({
         id: 'sealed-rate-by-substrate',
-        title: 'Sealed Nest Rate by Wood Type',
+        title: 'Sealed Nest Rate by Substrate Type and Occupant Type',
         snippet:
           'Each pair of bars compares bee and wasp sealed nest rates in ' +
           'cottonwood versus pine in the selected year.',
@@ -302,7 +302,7 @@ export const dashboardConfig = [
       }),
       sealedRateChart({
         id: 'sealed-rate-by-direction',
-        title: 'Sealed Nest Rate by Direction',
+        title: 'Sealed Nest Rate by Log/Snag Direction and Occupant Type',
         snippet:
           'Each pair of bars is one direction a log or snag faces, comparing ' +
           'bee and wasp sealed nest rates. Logs are listed first, then snags, ' +
@@ -316,7 +316,7 @@ export const dashboardConfig = [
       }),
       sealedRateChart({
         id: 'sealed-rate-by-install-year',
-        title: 'Sealed Nest Rate by Installation Year',
+        title: 'Sealed Nest Rate by Log/Snag Installation Year and Occupant Type',
         snippet:
           'Each pair of bars is a group of logs or snags installed in the ' +
           'same year, showing whether older or newer structures were used ' +
@@ -329,7 +329,7 @@ export const dashboardConfig = [
       }),
       sealedRateChart({
         id: 'sealed-rate-by-diameter',
-        title: 'Sealed Nest Rate by Hole Diameter',
+        title: 'Sealed Nest Rate by Fabricated Cavity Diameter and Occupant Type',
         snippet:
           'Each pair of bars is one nesting-hole width, in inches. Bees and ' +
           'wasps often prefer different widths, so compare where each one ' +
@@ -339,7 +339,7 @@ export const dashboardConfig = [
       }),
       {
         id: 'richness-by-diameter-site',
-        title: 'Genus Richness by Hole Diameter and Site',
+        title: 'Fabricated Cavity Richness by Diameter, Site, and Occupant Type',
         snippet:
           'Each panel is one nesting-hole width; each bar is a site, labelled ' +
           "by Circle Ecology's site number, counting the different bee and " +
