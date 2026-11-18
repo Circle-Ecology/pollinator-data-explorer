@@ -16,15 +16,9 @@ function formatLocation(city, state) {
 }
 
 function SiteDetailsPanel({ site }) {
-  // A site surveyed in the dataset's latest season is still monitored, so its
-  // range runs to "Current"; otherwise it ends at the last survey date.
-  const surveyEnd = site.surveyedInLatestSeason
-    ? 'Current'
-    : formatSurveyDate(site.lastSurveyDate)
-
   const surveyDates =
     site.firstSurveyDate && site.lastSurveyDate
-      ? `${formatSurveyDate(site.firstSurveyDate)} - ${surveyEnd}`
+      ? `${formatSurveyDate(site.firstSurveyDate)} - ${formatSurveyDate(site.lastSurveyDate)}`
       : 'Not recorded'
 
   return (

@@ -166,8 +166,10 @@ describe('SiteDetailsPanel - US-15', () => {
     expect(dialog).toHaveTextContent(
       'Occupancy rate: 38% (170 of 449)'
     )
-    expect(dialog).toHaveTextContent('Survey dates: May 7, 2023 - Current')
-    expect(dialog).not.toHaveTextContent('October 1, 2026')
+    expect(dialog).toHaveTextContent(
+      'Survey dates: May 7, 2023 - October 1, 2026'
+    )
+    expect(dialog).not.toHaveTextContent('Current')
     expect(dialog).not.toHaveTextContent('Site activity duration')
   })
 

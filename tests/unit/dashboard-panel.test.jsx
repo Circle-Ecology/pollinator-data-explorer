@@ -32,19 +32,19 @@ describe('DashboardPanel - US-29', () => {
     render(<DashboardPanel config={twoTabConfig} loadData={loadData} />)
 
     const tabs = await screen.findAllByRole('tab')
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Occupancy', 'Second Tab'])
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Occupied Fabricated Cavities', 'Second Tab'])
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
     expect(
-      screen.getByRole('heading', { name: 'Occupied vs. Empty Nesting Holes by Year' })
+      screen.getByRole('heading', { name: 'Occupied Fabricated Cavities by Year' })
     ).toBeInTheDocument()
   })
 
   it('lists the charts in the tab and swaps chart and snippet on select', async () => {
     render(<DashboardPanel loadData={loadData} />)
 
-    const nav = await screen.findByRole('navigation', { name: 'Charts: Occupancy' })
+    const nav = await screen.findByRole('navigation', { name: 'Charts: Occupied Fabricated Cavities' })
     const item = within(nav).getByRole('button', {
-      name: 'Occupied vs. Empty Nesting Holes by Site',
+      name: 'Occupied Fabricated Cavities by Site',
     })
 
     fireEvent.click(item)
@@ -52,7 +52,7 @@ describe('DashboardPanel - US-29', () => {
     expect(item).toHaveAttribute('aria-current', 'true')
     expect(
       screen.getByRole('heading', {
-        name: 'Occupied vs. Empty Nesting Holes by Site (2026)',
+        name: 'Occupied Fabricated Cavities by Site (2026)',
       })
     ).toBeInTheDocument()
     expect(screen.getByText(/Each bar is one monitoring site/)).toBeInTheDocument()
@@ -96,7 +96,7 @@ describe('DashboardPanel - US-29', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Occupied vs. Empty Nesting Holes by Site (2025)',
+        name: 'Occupied Fabricated Cavities by Site (2025)',
       })
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Percentage' })).toHaveAttribute(
@@ -129,25 +129,25 @@ describe('DashboardPanel - US-29', () => {
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
   })
 
-  it('switches to the Occupants tab and its charts', async () => {
+  it('switches to the occupants tab and its charts', async () => {
     render(<DashboardPanel loadData={loadData} />)
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'Occupants' }))
+    fireEvent.click(await screen.findByRole('tab', { name: 'Occupants by Site and Occupant Type' }))
 
-    expect(screen.getByRole('tab', { name: 'Occupants' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Occupants by Site and Occupant Type' })).toHaveAttribute(
       'aria-selected',
       'true'
     )
     expect(
-      screen.getByRole('heading', { name: 'Occupants by Year and Type' })
+      screen.getByRole('heading', { name: 'Occupants by Year and Occupant Type' })
     ).toBeInTheDocument()
 
-    const nav = screen.getByRole('navigation', { name: 'Charts: Occupants' })
+    const nav = screen.getByRole('navigation', { name: 'Charts: Occupants by Site and Occupant Type' })
     expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Occupants by Year and Type',
+      'Occupants by Year and Occupant Type',
       'Occupants by Site',
-      'Occupants by Site and Type',
-      'Other Occupants by Site and Type',
+      'Occupants by Site and Occupant Type',
+      'Other Occupants by Site and Other Type',
     ])
   })
 
