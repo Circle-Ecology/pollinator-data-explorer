@@ -406,14 +406,14 @@ function buildGenusProfiles(cavityYears) {
 // ---- Observation periods (US-31): the deck's fixed two-week calendar. ----
 
 const DAY_MS = 86400000
-const PERIOD_DAYS = 14
+export const OBSERVATION_PERIOD_DAYS = 14
 const seasonStart = year => Date.UTC(year, 2, 11)
 const isoDate = ms => new Date(ms).toISOString().slice(0, 10)
 
 // Index of the 14-day period (0 = starting 11 March) a survey date falls in, or null before the season.
-function periodIndex(surveyDate) {
+export function periodIndex(surveyDate) {
   const days = Math.floor((Date.parse(surveyDate) - seasonStart(Number(surveyDate.slice(0, 4)))) / DAY_MS)
-  return days < 0 ? null : Math.floor(days / PERIOD_DAYS)
+  return days < 0 ? null : Math.floor(days / OBSERVATION_PERIOD_DAYS)
 }
 
 // Per period, how many cavities were occupied by each category: a cavity counts once per
@@ -466,8 +466,8 @@ function tallyPeriodCounts(yearTally) {
 function periodRows(year, lastSurveyPeriod, keys, byPeriod) {
   return Array.from({ length: lastSurveyPeriod + 2 }, (_, period) => ({
     period,
-    start: isoDate(seasonStart(year) + period * PERIOD_DAYS * DAY_MS),
-    end: isoDate(seasonStart(year) + (period * PERIOD_DAYS + PERIOD_DAYS - 1) * DAY_MS),
+    start: isoDate(seasonStart(year) + period * OBSERVATION_PERIOD_DAYS * DAY_MS),
+    end: isoDate(seasonStart(year) + (period * OBSERVATION_PERIOD_DAYS + OBSERVATION_PERIOD_DAYS - 1) * DAY_MS),
     ...(byPeriod.get(period) ?? { ...zeroCounts(keys), total: 0 }),
   }))
 }
