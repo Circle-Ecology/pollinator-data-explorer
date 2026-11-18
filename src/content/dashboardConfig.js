@@ -2,21 +2,33 @@
 // Circle Ecology staff can reorder tabs, reword titles, snippets and caveats,
 // or recolor series here without touching any component.
 //
+// Each tab: { id, label, note?, charts }. `note` is one optional sentence
+// shown above the tab's charts.
+//
 // Each chart:
 //   id            - must match a chart id in /data/dashboard.json
 //   title         - shown above the chart and in the side list
 //   snippet       - 1-3 sentences, at most 300 characters, explaining how to
 //                   read the chart. No specific figures: the data refreshes.
-//   caveat        - optional data note shown below the snippet
-//   component     - chart type, a key of CHART_COMPONENTS in ChartView
+//   caveat        - optional data note shown below the snippet: plain text
+//                   (every year) or { text, years } (only those years)
+//   component     - chart type, a key of CHART_TYPES in ChartView:
+//                   'stackedBar', 'groupedRate' (side-by-side sealed nest
+//                   rates) or 'facetedStackedBar' (one panel per facet)
 //   supportsYears - true: one year at a time with a year toggle;
 //                   false: every year side by side on the x-axis
 //   measures      - which of 'count' and 'percent' the measure toggle offers
+//                   ('rate' for sealed nest rate charts, which have no toggle)
 //   categoryKey   - row field used for the x-axis labels ('year' when
 //                   supportsYears is false)
 //   categoryFormat - optional: 'periodRange' labels each bar by its start
 //                   and end dates ("Jul 1–Jul 14") instead of categoryKey
 //   categoryLabel - column heading for the x-axis in the data table
+//   categoryOrder - optional list fixing the order of the x-axis labels
+//                   (labels not listed follow, in data order)
+//   facetKey, facetLabel, facetUnit - facetedStackedBar only: the row field
+//                   that splits the chart into side-by-side panels, its
+//                   data-table heading, and a unit shown after each value
 //   series        - stacked series, bottom to top: { key, label, color,
 //                   trackedFrom? }. trackedFrom is the first year the
 //                   series was recorded; earlier years leave it out of the
@@ -84,6 +96,30 @@ const SEASON_2025_CAVEAT =
   'In 2025, "Other" occupants (such as spiders and ants) were tallied on a ' +
   'separate sheet, using the most seen at one visit. Periods without a ' +
   'tally visit show as zero, so treat 2025 Other numbers as a rough guide.'
+
+// Bee and Wasp side by side, for sealed nest rates and genus richness.
+const NEST_TYPE_SERIES = [
+  { key: 'Bee', label: 'Bee', color: brandColors.bee },
+  { key: 'Wasp', label: 'Wasp', color: brandColors.wasp },
+]
+
+// Notes that explain a missing level only apply to the year it was missing.
+const SNAGS_FROM_2025 = 'Snags were first installed in 2025'
+const in2023 = (text) => ({ text, years: [2023] })
+
+// Logs before Snags, each in compass order.
+const DIRECTION_ORDER = ['Log', 'Snag'].flatMap((type) =>
+  ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].map((dir) => `${dir} ${type}`)
+)
+
+// Shared settings for the five sealed nest rate charts.
+const sealedRateChart = (chart) => ({
+  component: 'groupedRate',
+  supportsYears: true,
+  measures: ['rate'],
+  series: NEST_TYPE_SERIES,
+  ...chart,
+})
 
 export const dashboardConfig = [
   {
@@ -229,6 +265,94 @@ export const dashboardConfig = [
         categoryFormat: 'periodRange',
         categoryLabel: 'Period',
         series: OTHER_TYPE_SERIES,
+      },
+    ],
+  },
+  {
+    id: 'nest-sites',
+    label: 'Nest Sites',
+    note:
+      'Sealed nest rate is the share of available nesting holes at each ' +
+      'level that held a sealed bee or wasp nest that year, so levels with ' +
+      "more holes don't look better just for having more.",
+    charts: [
+      sealedRateChart({
+        id: 'sealed-rate-by-cwd',
+        title: 'Sealed Nest Rate by Log or Snag',
+        snippet:
+          'Each pair of bars compares how often bees and wasps sealed a ' +
+          'nest in logs (lying down) versus snags (standing) in the selected ' +
+          'year. A taller bar means that structure was used more for its size.',
+        caveat: in2023(`${SNAGS_FROM_2025}, so this year shows logs only.`),
+        categoryKey: 'group',
+        categoryLabel: 'Structure',
+      }),
+      sealedRateChart({
+        id: 'sealed-rate-by-substrate',
+        title: 'Sealed Nest Rate by Wood Type',
+        snippet:
+          'Each pair of bars compares bee and wasp sealed nest rates in ' +
+          'cottonwood versus pine in the selected year.',
+        caveat: in2023(
+          'All nesting holes monitored in 2023 were in pine, so this year ' +
+            'shows pine only.'
+        ),
+        categoryKey: 'group',
+        categoryLabel: 'Wood type',
+      }),
+      sealedRateChart({
+        id: 'sealed-rate-by-direction',
+        title: 'Sealed Nest Rate by Direction',
+        snippet:
+          'Each pair of bars is one direction a log or snag faces, comparing ' +
+          'bee and wasp sealed nest rates. Logs are listed first, then snags, ' +
+          'each going around the compass from north.',
+        caveat: in2023(
+          `${SNAGS_FROM_2025}, so this year shows log directions only.`
+        ),
+        categoryKey: 'group',
+        categoryLabel: 'Direction',
+        categoryOrder: DIRECTION_ORDER,
+      }),
+      sealedRateChart({
+        id: 'sealed-rate-by-install-year',
+        title: 'Sealed Nest Rate by Installation Year',
+        snippet:
+          'Each pair of bars is a group of logs or snags installed in the ' +
+          'same year, showing whether older or newer structures were used ' +
+          'more. The same structures are tracked in 2025 and 2026.',
+        caveat: in2023(
+          'Only logs installed in 2023 existed this year, so it has one group.'
+        ),
+        categoryKey: 'group',
+        categoryLabel: 'Installed',
+      }),
+      sealedRateChart({
+        id: 'sealed-rate-by-diameter',
+        title: 'Sealed Nest Rate by Hole Diameter',
+        snippet:
+          'Each pair of bars is one nesting-hole width, in inches. Bees and ' +
+          'wasps often prefer different widths, so compare where each one ' +
+          'is tallest.',
+        categoryKey: 'group',
+        categoryLabel: 'Diameter (inches)',
+      }),
+      {
+        id: 'richness-by-diameter-site',
+        title: 'Genus Richness by Hole Diameter and Site',
+        snippet:
+          'Each panel is one nesting-hole width; each bar is a site, labelled ' +
+          "by Circle Ecology's site number, counting the different bee and " +
+          'wasp genera found there. The data table lists full site names.',
+        component: 'facetedStackedBar',
+        supportsYears: true,
+        measures: ['count'],
+        categoryKey: 'propertyName',
+        categoryLabel: 'Site',
+        facetKey: 'diameter',
+        facetLabel: 'Diameter',
+        facetUnit: ' in',
+        series: NEST_TYPE_SERIES,
       },
     ],
   },
