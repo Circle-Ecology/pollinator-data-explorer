@@ -61,8 +61,14 @@ function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
     <Popup>
       <strong>{site.propertyName}</strong>
       <br />
-      {site.occupiedTunnelCount} occupied tunnel
-      {site.occupiedTunnelCount === 1 ? '' : 's'}
+      {site.occupiedTunnelCount == null ? (
+        'Occupied tunnels not recorded'
+      ) : (
+        <>
+          {site.occupiedTunnelCount} occupied tunnel
+          {site.occupiedTunnelCount === 1 ? '' : 's'}
+        </>
+      )}
     </Popup>
   )
 

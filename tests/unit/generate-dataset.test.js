@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { generatePublicDataset } from '../../src/pipeline/generatePublicDataset.js'
 import { makePublicDataset } from '../fixtures/publicDataset.js'
+import { SITE_STAT_FIELDS } from '../../src/pipeline/siteStats.js'
 
-const SITE_KEYS = ['siteId', 'propertyName', 'city', 'state', 'latitude', 'longitude', 'elevationMeters']
+// Public site fields, then the US-37 precomputed figures.
+const SITE_KEYS = ['siteId', 'propertyName', 'city', 'state', 'latitude', 'longitude', 'elevationMeters',
+  ...SITE_STAT_FIELDS]
 const SURVEY_KEYS = ['siteId', 'tunnelId', 'surveyDate', 'observationStatus', 'occupantType', 'nesterFamily',
   'generalId', 'commonName', 'plugDepth', 'plugComposition', 'plugColor', 'plugConfidence',
   'wholeOrHole', 'emergenceYear', 'manufacturedEmpty', 'recordStatus']
@@ -16,6 +19,59 @@ function assertPublicKeys(value) {
     assertPublicKeys(child)
   }
 }
+
+describe('US-37 site figures in sites.json', () => {
+  it('adds each site\'s figures, counting only published (approved) surveys', () => {
+    const input = makePublicDataset()
+    input.surveys.push({ ...input.surveys[0], surveyDate: '2026-08-01', recordStatus: 'pending' })
+    const [site] = generatePublicDataset(input).sites
+
+    // The pending 2026 survey is not public, so it changes no figure.
+    expect(site).toMatchObject({
+      firstSurveyDate: '2025-01-01',
+      lastSurveyDate: '2025-01-01',
+      surveyedInLatestSeason: true,
+      surveyDateCount: 1,
+      tunnelCount: 1,
+      occupiedTunnelCount: 1,
+    })
+  })
+
+  it('gives a public site with no approved surveys null dates and zero counts', () => {
+    const input = makePublicDataset()
+    input.sites.push({ ...input.sites[0], siteId: 'S2', propertyName: 'Unsurveyed Meadow' })
+    input.tunnels.push({ tunnelId: 'T2', siteId: 'S2' })
+    input.surveys.push({ ...input.surveys[0], tunnelId: 'T2', recordStatus: 'pending' })
+
+    const site = generatePublicDataset(input).sites.find((s) => s.siteId === 'S2')
+
+    expect(site).toMatchObject({
+      firstSurveyDate: null,
+      lastSurveyDate: null,
+      surveyedInLatestSeason: false,
+      surveyDateCount: 0,
+      tunnelCount: 0,
+      occupiedTunnelCount: 0,
+    })
+  })
+
+  it('counts an occupied tunnel once, using only Complete, Active and Reopened', () => {
+    const input = makePublicDataset()
+    const survey = (tunnelId, surveyDate, observationStatus) =>
+      ({ ...input.surveys[0], tunnelId, surveyDate, observationStatus })
+    input.tunnels.push({ tunnelId: 'T2', siteId: 'S1' }, { tunnelId: 'T3', siteId: 'S1' })
+    input.surveys.push(
+      survey('T1', '2025-02-01', 'Active'), // T1 again: still one tunnel
+      survey('T2', '2025-01-01', 'Empty'),
+      survey('T3', '2025-01-01', 'Retired hole'),
+    )
+
+    const [site] = generatePublicDataset(input).sites
+
+    expect(site.occupiedTunnelCount).toBe(1)
+    expect(site.tunnelCount).toBe(3)
+  })
+})
 
 describe('US-24 public projection', () => {
   it('projects exactly the documented public keys and preserves the internal status contract', () => {

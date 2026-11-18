@@ -118,3 +118,38 @@ describe('US-28 dashboard.json', () => {
     expect(new TextEncoder().encode(dashboardText).length).toBeLessThan(500 * 1024)
   })
 })
+
+describe('US-37 sites.json', () => {
+  it('carries each site\'s figures, no staff-only fields, and stays under 50 KB', async () => {
+    const outputDirectory = await temporaryDirectory()
+    await writePublicDataset(makeRepresentativeDataset(), { outputDirectory, now })
+    const sitesText = await readFile(join(outputDirectory, 'sites.json'), 'utf8')
+    const sites = JSON.parse(sitesText)
+
+    // Every figure agrees with an independent count over the written
+    // observations.json, which is what the browser used to calculate.
+    const observations = JSON.parse(
+      await readFile(join(outputDirectory, 'observations.json'), 'utf8')
+    )
+    const latestYear = observations.map((s) => s.surveyDate.slice(0, 4)).sort().at(-1)
+    expect(sites).toHaveLength(6)
+    for (const site of sites) {
+      const own = observations.filter((s) => s.siteId === site.siteId)
+      const dates = [...new Set(own.map((s) => s.surveyDate))].sort()
+      expect(site).toMatchObject({
+        firstSurveyDate: dates[0],
+        lastSurveyDate: dates.at(-1),
+        surveyedInLatestSeason: dates.at(-1).slice(0, 4) === latestYear,
+        surveyDateCount: dates.length,
+        tunnelCount: new Set(own.map((s) => s.tunnelId)).size,
+        occupiedTunnelCount: new Set(own
+          .filter((s) => ['Complete', 'Active', 'Reopened'].includes(s.observationStatus))
+          .map((s) => s.tunnelId)).size,
+      })
+    }
+    for (const field of ['observerId', 'observerEmail', 'observerFirstName', 'observerLastName', 'notes']) {
+      expect(sitesText).not.toContain(field)
+    }
+    expect(new TextEncoder().encode(sitesText).length).toBeLessThan(50 * 1024)
+  })
+})
