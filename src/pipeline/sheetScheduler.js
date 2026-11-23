@@ -1,11 +1,8 @@
 import { fetchSheetExport } from './fetchSheetExport.js'
 import { parseExportCsv } from '../us08/parseExportCsv.js'
+import { DEFAULT_MAX_INVALID_RATIO, assertPublishableImport, invalidRatioOf } from './assertPublishableImport.js'
 
 const DEFAULT_INTERVAL_MINUTES = 15
-// Refuse handoff above this fraction invalid - a header rename or corrupted
-// column can fail nearly every row without totalRows ever reaching 0 (#45
-// review). The real sheet's routine, expected noise (~17%) is well under this.
-const DEFAULT_MAX_INVALID_RATIO = 0.9
 // Below the refusal threshold but still worth a human looking, logged (not thrown).
 const NOTABLE_INVALID_RATIO = 0.2
 
@@ -35,18 +32,10 @@ export function startSheetScheduler({
 
       if (result.status === 'success') {
         const parsed = parseExport(result.rawCsv, `sheet-${result.fetchedAt}`)
-        const invalidRatio = parsed?.totalRows > 0 ? parsed.invalidRows / parsed.totalRows : 1
+        const invalidRatio = invalidRatioOf(parsed)
         if (onParsedResult) {
-          // Refuse only on a shape-level problem or a parse that's mostly unusable,
-          // not merely imperfect; row-level errors on an otherwise-good batch are
-          // excluded downstream - see #45. maxInvalidRatio (not just validRows === 0)
-          // also catches an all-invalid-but-nonzero fetch - a renamed header or a
-          // corrupted column failing nearly every row - which would otherwise
-          // publish empty sites.json/observations.json over a live dataset.
-          if (!parsed || !Array.isArray(parsed.errors) || !Number.isSafeInteger(parsed.validRows) ||
-            parsed.validRows === 0 || invalidRatio > maxInvalidRatio) {
-            throw new Error('Cannot hand off an empty or mostly invalid normalized import')
-          }
+          // US-25: same gate as the publish script (see assertPublishableImport).
+          assertPublishableImport(parsed, { maxInvalidRatio })
           await onParsedResult(parsed)
         }
         previousRawCsv = result.rawCsv

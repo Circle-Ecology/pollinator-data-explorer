@@ -7,6 +7,7 @@
 import process from 'node:process'
 import { fetchSheetExport } from '../src/pipeline/fetchSheetExport.js'
 import { parseExportCsv } from '../src/us08/parseExportCsv.js'
+import { assertPublishableImport } from '../src/pipeline/assertPublishableImport.js'
 import { writePublicDataset } from '../src/pipeline/writePublicDataset.js'
 
 if (!process.env.SHEET_CSV_EXPORT_URL) {
@@ -25,6 +26,15 @@ if (fetched.status === 'failed') {
 const parsed = parseExportCsv(fetched.rawCsv, `manual-${fetched.fetchedAt}`)
 console.log(`Parsed ${parsed.totalRows} rows (${parsed.validRows} valid, ` +
   `${parsed.invalidRows} invalid, ${parsed.errors.length} diagnostics).`)
+
+// US-25: refuse an empty or mostly invalid parse before touching the output
+// directory, so the last published dataset stays in place.
+try {
+  assertPublishableImport(parsed)
+} catch (error) {
+  console.error(`Not publishing: ${error.message}. Previous dataset left unchanged.`)
+  process.exit(1)
+}
 
 const metadata = await writePublicDataset(parsed, outputDirectory ? { outputDirectory } : {})
 console.log(`Published ${metadata.siteCount} sites, ${metadata.tunnelCount} tunnels to ` +
