@@ -18,12 +18,24 @@ describe('2025 Other tally tracker', () => {
     ])
   })
 
-  it("uses each site's highest single-visit count: the deck's 8, 42, 11, 15, 29 and 22 (127)", () => {
+  it("sums each type's own highest count per site: report_v04's 11, 43, 14, 26, 32 and 27 (153)", () => {
     const blocks = new Map(['1', '3', '4', '5', '6', '7'].map(block => [block, `site-${block}`]))
     const sites = summarizeOtherTally(OTHER_TALLY_VISITS, blocks).get('2025')
-    expect(['1', '3', '4', '5', '6', '7'].map(block => sites.get(`site-${block}`).peak.total)).toEqual([8, 42, 11, 15, 29, 22])
-    // Site 3 peaked at 42 on 4 September: 3 Other + 39 spiders.
-    expect(sites.get('site-3').peak).toMatchObject({ Spider: 39, Other: 3, 'Ant(s)': 0, total: 42 })
+    expect(['1', '3', '4', '5', '6', '7'].map(block => sites.get(`site-${block}`).peak.total)).toEqual([11, 43, 14, 26, 32, 27])
+    expect(['1', '3', '4', '5', '6', '7'].reduce((sum, block) => sum + sites.get(`site-${block}`).peak.total, 0)).toBe(153)
+    // Site 3: 39 spiders (4 Sept), 1 ant (14 Apr) and 3 Other (4 Sept).
+    expect(sites.get('site-3').peak).toMatchObject({ Spider: 39, Other: 3, 'Ant(s)': 1, total: 43 })
+  })
+
+  it("sums both peaks when a site's most spiders and most ants fall on different visits", () => {
+    const visits = [
+      { year: 2025, block: '1', date: '2025-06-01', other: 0, spiders: 5, ants: 0 },
+      { year: 2025, block: '1', date: '2025-07-01', other: 1, spiders: 1, ants: 4 },
+      { year: 2025, block: '1', date: '2025-08-01', other: 0, spiders: 2, ants: 2 },
+    ]
+    const site = summarizeOtherTally(visits, new Map([['1', 'S1']])).get('2025').get('S1')
+    expect(site.peak).toEqual({ Spider: 5, 'Ant(s)': 4, 'Pill Bug': 0, Other: 1, total: 10 })
+    expect(site.visits).toHaveLength(3)
   })
 
   it('ignores visits to a block that has no site', () => {

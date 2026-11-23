@@ -160,7 +160,7 @@ describe('US-28 countPlugDepths', () => {
     const result = countPlugDepths([
       cavity([['Active', '2025-06-01', 'flush', 'Other']]),
       cavity([['Active', '2025-06-01', null]]),
-      cavity([['Active', '2025-06-01', '\uFFFD inch']]),
+      cavity([['Active', '2025-06-01', '3 inches']]),
     ])
     expect(result).toMatchObject({ total: 0, unrecognized: 1 })
   })

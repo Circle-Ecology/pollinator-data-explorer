@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SCORE_MAX, SCORE_THRESHOLD, SCORECARD_CONDITION_LABELS, scoreSite,
+  SCORE_CATEGORY_MINIMUMS, SCORE_MAX, SCORE_THRESHOLD, SCORECARD_CONDITION_LABELS, scoreSite,
 } from '../../src/pipeline/generateDashboardDataset.js'
 
 // A condition is { numerator, denominator }; an absent one counts as 0 of 100.
@@ -20,6 +20,16 @@ describe('US-35 scoreSite', () => {
     expect(SCORE_THRESHOLD).toBe(0.3)
     expect(SCORE_MAX).toBe(24)
     expect(SCORECARD_CONDITION_LABELS.multiGenus).toBe('Multi-genus cavity use')
+  })
+
+  it('names the report_v04 category thresholds as constants staff can change', () => {
+    expect(SCORE_CATEGORY_MINIMUMS).toEqual({ medium: 6, high: 11, veryHigh: 16 })
+  })
+
+  it.each([
+    [0, 'Low'], [5, 'Low'], [6, 'Medium'], [10, 'Medium'], [11, 'High'], [15, 'High'], [16, 'Very High'], [24, 'Very High'],
+  ])('puts a score of %i in the %s category (report_v04)', (score, category) => {
+    expect(scoreSite(summary({ presentGenera: genera(score) }))).toMatchObject({ score, category })
   })
 
   it('scores Site 1 in 2026 as 15/24 "High": 11 genera plus four bonuses', () => {
@@ -84,9 +94,4 @@ describe('US-35 scoreSite', () => {
     const conditions = { ...summary().conditions, parasitism: { numerator: 0, denominator: 0 } }
     expect(scoreSite(summary({ presentGenera: genera(2), conditions }))).toMatchObject({ score: 2, flagged: false })
   })
-
-  it.each([[0, 'Low'], [5, 'Low'], [7, 'Low'], [8, 'High'], [11, 'High'], [15, 'High'], [16, 'Very High'], [24, 'Very High']])(
-    'rates %i points as %s', (points, category) => {
-      expect(scoreSite(summary({ presentGenera: genera(points) })).category).toBe(category)
-    })
 })
