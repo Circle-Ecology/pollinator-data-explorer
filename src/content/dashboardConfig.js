@@ -16,7 +16,10 @@
 //                   'stackedBar', 'groupedRate' (side-by-side sealed nest
 //                   rates), 'facetedStackedBar' (one panel per facet),
 //                   'groupedCount' (side-by-side counts per category),
-//                   'siteRate' (one rate per site), or the Site Scorecard
+//                   'siteRate' (one rate per site), 'horizontalBar'
+//                   (ranked horizontal bars, stacked by series),
+//                   'groupedHorizontalBar' (horizontal bars grouped and
+//                   colored by facetSeries), or the Site Scorecard
 //                   tables 'scorecardAllSites' and 'scorecardSiteOverYears'
 //   supportsYears - true: one year at a time with a year toggle;
 //                   false: every year side by side on the x-axis
@@ -48,6 +51,8 @@
 //                   the deck's genus order, the condition rows ({ key,
 //                   label }) and the first year Emergence shows a rate
 //                   (earlier years say "Recorded")
+//   facetSeries   - 'groupedHorizontalBar' only: the groups ({ key, label,
+//                   color }), in order; each bar takes its group's color
 //   facetKey, facetLabel, facetUnit - facetedStackedBar only: the row field
 //                   that splits the chart into side-by-side panels, its
 //                   data-table heading, and a unit shown after each value
@@ -324,6 +329,64 @@ export const dashboardConfig = [
         categoryFormat: 'periodRange',
         categoryLabel: 'Period',
         series: OTHER_TYPE_SERIES,
+      },
+    ],
+  },
+  {
+    id: 'genus',
+    label: 'Occupants by Genus (General ID)',
+    charts: [
+      {
+        id: 'occupants-by-type-genus',
+        title: 'Occupants by Occupant Type and General ID',
+        snippet:
+          'Each bar is one genus (General ID), grouped by occupant type and ' +
+          'colored to match. In percentage view each bar is its share of ' +
+          'that occupant type, so the bars in each group add up to 100%.',
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'groupedHorizontalBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        facetKey: 'occupantType',
+        facetLabel: 'Occupant type',
+        facetSeries: OCCUPANT_TYPE_SERIES,
+        categoryLabel: 'General ID',
+        series: [{ key: 'occupants', label: 'Occupants', color: brandColors.occupied }],
+      },
+      {
+        id: 'occupants-by-genus',
+        title: 'Occupants by General ID',
+        snippet:
+          'Each bar is one genus (General ID), ranked from most to fewest ' +
+          'occupants, with its color split by occupant type. In percentage ' +
+          "view each bar is that genus's share of all occupants that year.",
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'horizontalBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        categoryKey: 'generalId',
+        categoryLabel: 'General ID',
+        percentBase: 'chart',
+        series: OCCUPANT_TYPE_SERIES,
+      },
+      {
+        id: 'multi-genus-cavities-by-site',
+        title: 'Percentage of Occupied Fabricated Cavities with More Than One Genus, by Site',
+        snippet:
+          "Each bar is the share of a site's occupied nesting holes that " +
+          'held more than one genus during the year. A hole counts once, ' +
+          'however many genera or nests it held.',
+        component: 'siteRate',
+        supportsYears: true,
+        measures: ['rate'],
+        categoryLabel: 'Site',
+        axisLabel: '% of occupied cavities',
+        rateFields: { numerator: 'multiGenus', denominator: 'occupied' },
+        tableLabels: {
+          denominator: 'Occupied cavities',
+          numerator: 'Cavities with more than one genus',
+        },
+        series: [{ key: 'multiGenus', label: 'More than one genus', color: brandColors.occupied }],
       },
     ],
   },

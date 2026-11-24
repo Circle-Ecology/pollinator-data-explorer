@@ -43,25 +43,36 @@ export function buildRateRows(chart, chartData, { year }) {
 // it. Each dashboard.json row has the rate and the counts behind it, named by
 // `chart.rateFields` ({ numerator, denominator }); `label` is the short site
 // number shown under the bar, `category` the full site name for the table.
-export function buildSiteRateRows(chart, chartData, { year }) {
+// US-32: a row without a `rate` gets one (whole-number percent), and a row
+// without a `siteNumber` takes it from `siteNumbers` (getSiteNumbers), so
+// bars can be labelled and ordered by Circle Ecology's site numbers.
+export function buildSiteRateRows(chart, chartData, { year, siteNumbers = new Map() }) {
   const sourceRows = chartData?.[String(year)] ?? []
   const [series] = chart.series
   const { numerator, denominator } = chart.rateFields
 
-  return sourceRows.map((row) => {
+  const entries = sourceRows.map((row, index) => {
     const name = String(row.propertyName ?? row.siteId ?? 'Not recorded')
+    const siteNumber = row.siteNumber ?? siteNumbers.get(row.siteId) ?? null
+    const count = Number(row[numerator]) || 0
+    const available = Number(row[denominator]) || 0
+    const rate = row.rate ?? (available > 0 ? Math.round((count / available) * 100) : 0)
     return {
-      category: name,
-      label: row.siteNumber != null ? `Site ${row.siteNumber}` : name,
-      available: Number(row[denominator]) || 0,
-      values: {
-        [series.key]: {
-          sealed: Number(row[numerator]) || 0,
-          rate: Number(row.rate) || 0,
-        },
+      index,
+      // Site number order, as in the deck; unnumbered sites follow, in data order.
+      rank: siteNumber == null ? Infinity : Number(siteNumber),
+      row: {
+        category: name,
+        label: siteNumber != null ? `Site ${siteNumber}` : name,
+        available,
+        values: { [series.key]: { sealed: count, rate: Number(rate) || 0 } },
       },
     }
   })
+
+  return entries
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.row)
 }
 
 // Tooltip text for one bar, e.g. "15% (155 of 1,048)". `item` is the Recharts

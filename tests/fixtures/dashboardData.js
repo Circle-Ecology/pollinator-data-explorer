@@ -230,6 +230,42 @@ export const dashboardData = {
         ],
       }],
     },
+    // Genus charts, from report_v04 (2026; 2023 for occupants-by-genus), trimmed
+    // to a few genera. Rows are deliberately not in display order.
+    'occupants-by-type-genus': {
+      2026: [
+        { occupantType: 'Bee', generalId: 'Megachile (multiple)', occupants: 180, typeTotal: 498 },
+        { occupantType: 'Bee', generalId: 'Megachile (Eutricharaea)', occupants: 309, typeTotal: 498 },
+        { occupantType: 'Bee', generalId: 'Unknown', occupants: 9, typeTotal: 498 },
+        { occupantType: 'Wasp', generalId: 'Isodontia', occupants: 136, typeTotal: 173 },
+        { occupantType: 'Wasp', generalId: 'Eumeninae', occupants: 28, typeTotal: 173 },
+        { occupantType: 'Wasp', generalId: 'Unknown', occupants: 9, typeTotal: 173 },
+        { occupantType: 'Unknown', generalId: 'Unknown', occupants: 29, typeTotal: 29 },
+        { occupantType: 'Other', generalId: 'Other', occupants: 77, typeTotal: 77 },
+      ],
+    },
+    'occupants-by-genus': {
+      2023: [
+        { generalId: 'Other', Bee: 0, Wasp: 0, Unknown: 0, Other: 220, total: 220 },
+        { generalId: 'Megachile (Eutricharaea)', Bee: 19, Wasp: 0, Unknown: 0, Other: 0, total: 19 },
+        { generalId: 'Isodontia', Bee: 0, Wasp: 13, Unknown: 0, Other: 0, total: 13 },
+        { generalId: 'Unknown', Bee: 10, Wasp: 1, Unknown: 0, Other: 0, total: 11 },
+      ],
+      2026: [
+        { generalId: 'Megachile (Eutricharaea)', Bee: 309, Wasp: 0, Unknown: 0, Other: 0, total: 309 },
+        { generalId: 'Eumeninae', Bee: 0, Wasp: 28, Unknown: 0, Other: 0, total: 28 },
+        { generalId: 'Megachile (multiple)', Bee: 180, Wasp: 0, Unknown: 0, Other: 0, total: 180 },
+        { generalId: 'Isodontia', Bee: 0, Wasp: 136, Unknown: 0, Other: 0, total: 136 },
+        { generalId: 'Other', Bee: 0, Wasp: 0, Unknown: 0, Other: 77, total: 77 },
+        { generalId: 'Unknown', Bee: 9, Wasp: 9, Unknown: 29, Other: 0, total: 47 },
+      ],
+    },
+    'multi-genus-cavities-by-site': {
+      2026: [
+        { siteId: 'Site 3', propertyName: 'Site 3', multiGenus: 5, occupied: 92 },
+        { siteId: 'Site 1', propertyName: 'Site 1', multiGenus: 32, occupied: 192 },
+      ],
+    },
     // Site scorecards, from report_v04 (2026 Sites 1, 3 and 5; 2025 Site 1).
     // The faceted charts also read the site numbers from here.
     'scorecard-genera': { all: SCORECARD_GENERA },

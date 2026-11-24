@@ -6,6 +6,7 @@ import {
 } from '../utils/buildChartRows'
 import { getCaveatText } from '../utils/chartCaveat'
 import { buildFacetedRows, getSiteNumbers } from '../utils/facetedChartRows'
+import { buildGenusRows, buildTypeGenusRows } from '../utils/genusChartRows'
 import {
   buildGroupedCountRows,
   buildGroupedCountSummary,
@@ -17,6 +18,7 @@ import ChartSnippet from './ChartSnippet'
 import FacetedStackedBarChart from './FacetedStackedBarChart'
 import GroupedBarChart from './GroupedBarChart'
 import GroupedCountTable from './GroupedCountTable'
+import HorizontalBarChart from './HorizontalBarChart'
 import MeasureToggle from './MeasureToggle'
 import RateDataTable from './RateDataTable'
 import SiteScorecardTable, { SiteScorecardOverYears } from './SiteScorecardTable'
@@ -52,7 +54,10 @@ const CHART_TYPES = {
     Chart: GroupedBarChart,
     Table: RateDataTable,
     buildRows: (chart, data, year) =>
-      buildSiteRateRows(chart, data.charts[chart.id], { year }),
+      buildSiteRateRows(chart, data.charts[chart.id], {
+        year,
+        siteNumbers: getSiteNumbers(data),
+      }),
   },
   facetedStackedBar: {
     Chart: FacetedStackedBarChart,
@@ -62,6 +67,18 @@ const CHART_TYPES = {
         year,
         siteNumbers: getSiteNumbers(data),
       }),
+  },
+  horizontalBar: {
+    Chart: HorizontalBarChart,
+    Table: ChartDataTable,
+    buildRows: (chart, data, year) =>
+      buildGenusRows(chart, data.charts[chart.id], { years: data.years, year }),
+  },
+  groupedHorizontalBar: {
+    Chart: HorizontalBarChart,
+    Table: ChartDataTable,
+    buildRows: (chart, data, year) =>
+      buildTypeGenusRows(chart, data.charts[chart.id], { year }),
   },
   scorecardAllSites: {
     Chart: SiteScorecardTable,
