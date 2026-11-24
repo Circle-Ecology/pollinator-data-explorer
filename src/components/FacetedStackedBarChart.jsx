@@ -1,6 +1,7 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { brandColors, brandFonts } from '../content/brandColors'
 import { getFacets, getSharedAxis } from '../utils/facetedChartRows'
+import { tooltipOrderTopFirst } from '../utils/stackedBarOptions'
 
 // US-33: one small stacked bar chart per facet (e.g. per cavity diameter),
 // side by side with a single shared y-axis so heights compare across panels.
@@ -56,6 +57,7 @@ function FacetedStackedBarChart({ chart, rows }) {
                     width={Y_AXIS_WIDTH}
                   />
                   <Tooltip
+                    itemSorter={tooltipOrderTopFirst(chart.series)}
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.name ?? ''}
                     cursor={{ fill: 'rgba(34, 47, 71, 0.06)' }}
                     contentStyle={{

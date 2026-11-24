@@ -31,8 +31,9 @@ describe('SiteDetailsPanel - US-15', () => {
     expect(dialog).toHaveAttribute('aria-modal', 'false')
     expect(dialog).toHaveTextContent('Test Farm')
     expect(dialog).toHaveTextContent('Longmont, CO')
-    expect(dialog).toHaveTextContent('40.1672')
-    expect(dialog).toHaveTextContent('-105.1019')
+    // US-39: coordinates are not shown (Georgia's 11/18 feedback).
+    expect(dialog).not.toHaveTextContent('40.1672')
+    expect(dialog).not.toHaveTextContent('-105.1019')
     expect(dialog).toHaveTextContent('1520 meters')
   })
 
@@ -79,7 +80,7 @@ describe('SiteDetailsPanel - US-15', () => {
     expect(dialog).not.toHaveTextContent('Confidential staff note')
   })
 
-  it('shows the tunnel count without exposing individual tunnel data', () => {
+  it('shows the holes count without exposing individual tunnel data (US-39)', () => {
     render(
       <SiteDetailsPanel
         site={{
@@ -94,7 +95,8 @@ describe('SiteDetailsPanel - US-15', () => {
 
     const dialog = screen.getByRole('dialog')
 
-    expect(dialog).toHaveTextContent('Tunnel count: 10')
+    expect(dialog).toHaveTextContent('Holes count: 10')
+    expect(dialog).not.toHaveTextContent('Tunnel count')
     expect(dialog).not.toHaveTextContent('Bee A')
     expect(dialog).not.toHaveTextContent('Tunnel ID')
     expect(dialog).not.toHaveTextContent('T1')
@@ -125,7 +127,7 @@ describe('SiteDetailsPanel - US-15', () => {
     expect(dialog).not.toHaveTextContent('Test Farm')
   })
 
-  it('preserves zero as a valid coordinate and elevation', () => {
+  it('does not show coordinates, and keeps zero as a valid elevation (US-39)', () => {
     render(
       <SiteDetailsPanel
         site={{
@@ -139,8 +141,8 @@ describe('SiteDetailsPanel - US-15', () => {
 
     const dialog = screen.getByRole('dialog')
 
-    expect(dialog).toHaveTextContent('Latitude: 0')
-    expect(dialog).toHaveTextContent('Longitude: 0')
+    expect(dialog).not.toHaveTextContent('Latitude')
+    expect(dialog).not.toHaveTextContent('Longitude')
     expect(dialog).toHaveTextContent('Elevation: 0 meters')
   })
 
@@ -162,7 +164,7 @@ describe('SiteDetailsPanel - US-15', () => {
     const dialog = screen.getByRole('dialog')
 
     expect(dialog).toHaveTextContent('Survey visits: 32')
-    expect(dialog).toHaveTextContent('Tunnel count: 449')
+    expect(dialog).toHaveTextContent('Holes count: 449')
     expect(dialog).toHaveTextContent(
       'Occupancy rate: 38% (170 of 449)'
     )

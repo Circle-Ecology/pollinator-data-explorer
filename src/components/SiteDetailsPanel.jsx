@@ -39,16 +39,6 @@ function SiteDetailsPanel({ site }) {
 
       <div className="site-details-stats">
         <SiteStatRow
-          label="Latitude"
-          value={formatValue(site.latitude)}
-        />
-
-        <SiteStatRow
-          label="Longitude"
-          value={formatValue(site.longitude)}
-        />
-
-        <SiteStatRow
           label="Elevation"
           value={
             site.elevationMeters == null
@@ -63,7 +53,7 @@ function SiteDetailsPanel({ site }) {
         />
 
         <SiteStatRow
-          label="Tunnel count"
+          label="Holes count"
           value={formatValue(site.tunnelCount)}
         />
 
