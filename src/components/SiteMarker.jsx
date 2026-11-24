@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Circle, CircleMarker, Popup } from 'react-leaflet'
 import { occupiedHolesPercent } from '../utils/formatOccupancyRate'
 import { computeMarkerRadiusMeters, computeMarkerSizePx } from '../utils/markerSize'
@@ -52,8 +53,20 @@ function unmarkAccessible(event) {
 // US-39: sized by the share of the site's holes that were occupied, since
 // sites have different numbers of holes. A site without the figures gets the
 // smallest marker.
-function SiteMarker({ site, allPercents, trueToScale, onSelectSite }) {
+// US-41: `isFocused` marks the site the map is zoomed in on. Zooming in past
+// ZOOM_SWITCH_THRESHOLD swaps the dot for a true-to-scale circle, a new layer
+// whose popup starts closed, so the focused site's popup is reopened on it,
+// one tick later: opened any sooner, react-leaflet's layer swap closes it again.
+function SiteMarker({ site, allPercents, trueToScale, isFocused = false, onSelectSite }) {
   const percent = occupiedHolesPercent(site) ?? 0
+  const layerRef = useRef(null)
+
+  useEffect(() => {
+    if (!isFocused) return undefined
+    // After react-leaflet has finished swapping layers and binding the popup.
+    const timer = setTimeout(() => layerRef.current?.openPopup(), 0)
+    return () => clearTimeout(timer)
+  }, [isFocused, trueToScale])
 
   const eventHandlers = {
     add: (event) => markAccessible(event, site, onSelectSite),
@@ -76,6 +89,7 @@ function SiteMarker({ site, allPercents, trueToScale, onSelectSite }) {
   if (trueToScale) {
     return (
       <Circle
+        ref={layerRef}
         center={[site.latitude, site.longitude]}
         radius={computeMarkerRadiusMeters(percent, allPercents)}
         pathOptions={PATH_OPTIONS}
@@ -88,6 +102,7 @@ function SiteMarker({ site, allPercents, trueToScale, onSelectSite }) {
 
   return (
     <CircleMarker
+      ref={layerRef}
       center={[site.latitude, site.longitude]}
       radius={computeMarkerSizePx(percent, allPercents)}
       pathOptions={PATH_OPTIONS}

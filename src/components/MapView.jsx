@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import './MapView.css'
@@ -50,8 +50,76 @@ function ViewportFitter({ viewport }) {
   return null
 }
 
+// Zoom used when a site is selected: close enough to see the site's own
+// markers, with some of the surrounding open space for context.
+export const SITE_FOCUS_ZOOM = 16
+
+const prefersReducedMotion = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+// US-41: zoom in on the selected site, and back out to the default view (every
+// site in frame) when it is cleared. `focusKey` changes on every selection, so
+// selecting the same site again after panning away zooms back in.
+//
+// Reports a popup closed by its × (or by clicking the map) through
+// onPopupDismissed. Leaflet keeps one popup open, so two other closes are
+// ignored: clicking another marker (its popup opens right after the old one
+// closes, cancelling the pending dismiss), and zooming past
+// ZOOM_SWITCH_THRESHOLD, where the focused marker's new layer opens its popup
+// first and the old layer's popup closes after it (not the open popup).
+function SiteFocus({ site, focusKey, viewport, onPopupDismissed }) {
+  const map = useMap()
+  const wasFocused = useRef(false)
+  const pendingDismiss = useRef(null)
+  const openPopup = useRef(null)
+
+  useMapEvents({
+    popupopen: (event) => {
+      openPopup.current = event?.popup
+      clearTimeout(pendingDismiss.current)
+    },
+    popupclose: (event) => {
+      if (event?.popup !== openPopup.current) return
+      clearTimeout(pendingDismiss.current)
+      pendingDismiss.current = setTimeout(() => onPopupDismissed?.(), 0)
+    },
+  })
+
+  useEffect(() => () => clearTimeout(pendingDismiss.current), [])
+
+  useEffect(() => {
+    const animate = !prefersReducedMotion()
+
+    if (site) {
+      wasFocused.current = true
+      map.flyTo([site.latitude, site.longitude], SITE_FOCUS_ZOOM, { animate, duration: 0.8 })
+      return
+    }
+
+    if (!wasFocused.current) return
+    wasFocused.current = false
+    map.closePopup()
+    if (viewport.bounds) {
+      map.flyToBounds(viewport.bounds, { ...viewport.boundsOptions, animate, duration: 0.8 })
+    } else if (viewport.center) {
+      map.flyTo(viewport.center, viewport.zoom, { animate, duration: 0.8 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run per selection, not per viewport object.
+  }, [map, site, focusKey])
+
+  return null
+}
+
 // US-15: onSelectSite is optional, preserving existing MapView usage.
-function MapView({ loadSites = getPublicSites, onSelectSite }) {
+// US-41: focusedSite/focusKey zoom the map to a selected site; clearing
+// focusedSite zooms back out. onPopupDismissed reports the popup's ×.
+function MapView({
+  loadSites = getPublicSites,
+  onSelectSite,
+  focusedSite = null,
+  focusKey = 0,
+  onPopupDismissed,
+}) {
   const [state, setState] = useState({ status: 'loading' })
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
 
@@ -106,6 +174,12 @@ function MapView({ loadSites = getPublicSites, onSelectSite }) {
         >
           <ZoomWatcher onZoomChange={setZoom} />
           <ViewportFitter viewport={viewport} />
+          <SiteFocus
+            site={focusedSite}
+            focusKey={focusKey}
+            viewport={viewport}
+            onPopupDismissed={onPopupDismissed}
+          />
           <TileLayer url={TILE_URL} />
 
           {sites.map((site) => (
@@ -114,6 +188,7 @@ function MapView({ loadSites = getPublicSites, onSelectSite }) {
               site={site}
               allPercents={allPercents}
               trueToScale={trueToScale}
+              isFocused={focusedSite?.siteId === site.siteId}
               onSelectSite={onSelectSite}
             />
           ))}

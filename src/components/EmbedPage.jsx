@@ -16,6 +16,8 @@ import ObservationExplorer from './ObservationExplorer'
 function EmbedPage() {
   const [selectedSite, setSelectedSite] = useState(null)
   const [markerSelectionCount, setMarkerSelectionCount] = useState(0)
+  // US-41: the site the map is zoomed in on, or null for the default view.
+  const [focusedSite, setFocusedSite] = useState(null)
 
   const selectedMarkerRef = useRef(null)
   const selectedSiteRef = useRef(null)
@@ -26,12 +28,19 @@ function EmbedPage() {
     selectedSiteRef.current = site
 
     setSelectedSite(site)
+    setFocusedSite(site)
     setMarkerSelectionCount((count) => count + 1)
   }
+
+  // US-41: closing the popup with its × zooms the map back out.
+  const handlePopupDismissed = useCallback(() => setFocusedSite(null), [])
 
   // Stable identity: ObservationExplorer re-subscribes its Escape listener
   // whenever this changes.
   const handleCloseDetails = useCallback(() => {
+    // US-41: closing the details panel also zooms the map back out.
+    setFocusedSite(null)
+
     const previousMarker = selectedMarkerRef.current
 
     if (
@@ -67,7 +76,12 @@ function EmbedPage() {
       data-testid="explorer-map"
       ref={mapContainerRef}
     >
-      <MapView onSelectSite={handleSelectSite} />
+      <MapView
+        onSelectSite={handleSelectSite}
+        focusedSite={focusedSite}
+        focusKey={markerSelectionCount}
+        onPopupDismissed={handlePopupDismissed}
+      />
 
       <ObservationExplorer
         site={selectedSite}
