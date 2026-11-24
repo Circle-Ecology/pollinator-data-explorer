@@ -43,13 +43,93 @@
   color: var(--dash-text);
 }
 
-/* Category tabs */
+/* Category tabs. When they don't fit, the strip scrolls sideways and a fade
+   plus an arrow button marks each side with more tabs (DashboardTabs). */
+.dashboard-tabs-scroller {
+  position: relative;
+  border-bottom: 1px solid var(--dash-border);
+}
+
 .dashboard-tabs {
+  /* offsetLeft of each tab is measured from here when scrolling it into view */
+  position: relative;
   display: flex;
   gap: 4px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--dash-border);
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dashboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-tabs-scroller::before,
+.dashboard-tabs-scroller::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 64px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.dashboard-tabs-scroller::before {
+  left: 0;
+  background: linear-gradient(to right, var(--dash-surface) 40%, transparent);
+}
+
+.dashboard-tabs-scroller::after {
+  right: 0;
+  background: linear-gradient(to left, var(--dash-surface) 40%, transparent);
+}
+
+.dashboard-tabs-scroller.has-more-left::before,
+.dashboard-tabs-scroller.has-more-right::after {
+  opacity: 1;
+}
+
+.dashboard-tabs-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 0 3px;
+  border: 1px solid var(--dash-border);
+  border-radius: 50%;
+  background: var(--dash-surface);
+  box-shadow: 0 1px 3px rgba(34, 47, 71, 0.18);
+  color: var(--dash-text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.dashboard-tabs-arrow:hover {
+  background: var(--dash-surface-raised);
+}
+
+.dashboard-tabs-arrow-left {
+  left: 4px;
+}
+
+.dashboard-tabs-arrow-right {
+  right: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-tabs-scroller::before,
+  .dashboard-tabs-scroller::after {
+    transition: none;
+  }
 }
 
 .dashboard-tab {
