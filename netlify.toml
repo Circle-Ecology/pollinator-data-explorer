@@ -12,3 +12,11 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# US-26: the public dataset files. A short max-age (SHEET_FETCH_INTERVAL_MINUTES
+# * 60, i.e. 15 minutes) means visitors see a new deploy's data within one fetch
+# interval; must-revalidate stops browsers serving a stale copy after that.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=900, must-revalidate"
