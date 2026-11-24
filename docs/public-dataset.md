@@ -156,6 +156,34 @@ only log and exit; the Netlify build then fails and the previous deploy stays li
 `status: 'published'` is still a metadata label, not evidence that Netlify or a
 browser has received these files.
 
+## Deployment (US-26)
+
+The dataset is deployed with the React app on Netlify; there is no separate server.
+
+- **Build:** `netlify.toml` runs `npm run pipeline:publish -- public/data && npm run build`.
+  The pipeline fetches the sheet (`SHEET_CSV_EXPORT_URL`, set in Netlify's environment
+  variables) and writes the files to `public/data`, which Vite copies into `dist/data`.
+  If the fetch or validation fails, the build fails and Netlify keeps serving the last
+  successful deploy, never a partial one.
+- **Refresh:** `.github/workflows/scheduled-deploy.yml` calls the Netlify build hook
+  (repository secret `NETLIFY_BUILD_HOOK_URL`) once a day, and anyone can run it by hand
+  from the Actions tab. The hook triggers the build, and the build runs the publish,
+  so the hook is called *before* publishing, not after (calling it after a publish
+  would start another build in a loop). If the hook call fails, only that
+  workflow run fails; the live site is unchanged.
+- **Public paths** (HTTPS):
+  - `PUBLIC_APP_URL/data/sites.json`
+  - `PUBLIC_APP_URL/data/observations.json`
+  - `PUBLIC_APP_URL/data/dataset-status.json`
+  - `PUBLIC_APP_URL/data/dashboard.json`
+- **Caching:** `/data/*` is served with `Cache-Control: public, max-age=900,
+  must-revalidate`, one `SHEET_FETCH_INTERVAL_MINUTES` (15) window. If that interval
+  changes, update the header in `netlify.toml` too; `tests/integration/netlify-build.test.js`
+  checks they match.
+
+To check a live deploy or deploy preview:
+`DEPLOYED_URL=https://<site>.netlify.app npx vitest run tests/integration/deployed-data-files.test.js`
+
 ## Optional scheduler handoff
 
 `startSheetScheduler({ onParsedResult, maxInvalidRatio = 0.9 })` optionally awaits
@@ -247,7 +275,7 @@ $env:TMP = $auditTemp
   ownership and the public relationship extension require team agreement.
 - Production regression fixtures are unavailable. The six-site/performance
   demonstration is synthetic, not evidence of current production authorization.
-- No US-26 deployment, US-27 retries, or frontend changes are
+- No US-27 retries or frontend changes are
   included. Existing lint/CI and Node deployment-version concerns remain separate.
 
 ## US-28 dashboard figures
