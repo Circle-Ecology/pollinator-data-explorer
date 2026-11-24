@@ -13,7 +13,11 @@ import { formatRateTooltip } from '../utils/rateChartRows'
 import { legendOrderBySeries } from '../utils/stackedBarOptions'
 
 // US-33: side-by-side bars per level (e.g. Bee and Wasp sealed nest rates
-// for Log and Snag), styled like StackedBarChart.
+// for Log and Snag), styled like StackedBarChart. US-34: a chart whose
+// measures are ['count'] draws counts instead (e.g. nests per status), and a
+// row's `label`, when present, is shown under its bars instead of its
+// category (e.g. "Site 1" rather than the full site name).
+// `chart.axisLabel` overrides the y-axis label.
 const AXIS_TICK = {
   fill: brandColors.black,
   fontSize: 12,
@@ -22,19 +26,29 @@ const AXIS_TICK = {
 
 // Long labels are angled once there are more groups than fit side by side.
 const ANGLE_LABELS_ABOVE = 4
+// Room under the bars for angled labels: at least 90px, more for long labels
+// (e.g. "Chalkbrood Characteristics") so they don't run into the legend.
+const ANGLED_LABEL_MIN_PX = 90
+const ANGLED_LABEL_PX_PER_CHAR = 5
 
 function GroupedBarChart({ chart, rows }) {
   const angled = rows.length > ANGLE_LABELS_ABOVE
+  const isRate = chart.measures.includes('rate')
 
-  // Bars are drawn from the rate; the tooltip also shows sealed / available.
+  // Rate bars are drawn from the rate; the tooltip also shows sealed / available.
   const data = rows.map((row) => {
-    const entry = { category: row.category, available: row.available }
+    const entry = { category: row.label ?? row.category, available: row.available }
     for (const series of chart.series) {
-      entry[series.key] = row.values[series.key].rate
-      entry[`${series.key}Sealed`] = row.values[series.key].sealed
+      const values = row.values[series.key]
+      entry[series.key] = isRate ? values.rate : values.count
+      if (isRate) entry[`${series.key}Sealed`] = values.sealed
     }
     return entry
   })
+  const longestLabel = Math.max(...data.map((entry) => String(entry.category).length))
+  const labelHeight = angled
+    ? Math.max(ANGLED_LABEL_MIN_PX, longestLabel * ANGLED_LABEL_PX_PER_CHAR)
+    : 30
 
   return (
     <div
@@ -42,7 +56,7 @@ function GroupedBarChart({ chart, rows }) {
       role="img"
       aria-label={`${chart.title}. The data table below lists every value.`}
     >
-      <ResponsiveContainer width="100%" height={angled ? 400 : 320}>
+      <ResponsiveContainer width="100%" height={angled ? 310 + labelHeight : 320}>
         <BarChart
           data={data}
           accessibilityLayer={false}
@@ -58,24 +72,27 @@ function GroupedBarChart({ chart, rows }) {
             interval={0}
             angle={angled ? -45 : 0}
             textAnchor={angled ? 'end' : 'middle'}
-            height={angled ? 90 : 30}
+            height={labelHeight}
           />
           <YAxis
             tick={AXIS_TICK}
             axisLine={false}
             tickLine={false}
             domain={[0, 'auto']}
-            tickFormatter={(value) => `${value}%`}
+            tickFormatter={(value) => (isRate ? `${value}%` : value.toLocaleString())}
             width={64}
+            allowDecimals={false}
             label={{
-              value: strings.dashboardRateAxisLabel,
+              value: chart.axisLabel ?? strings.dashboardRateAxisLabel,
               angle: -90,
               position: 'insideLeft',
               style: { ...AXIS_TICK, textAnchor: 'middle' },
             }}
           />
           <Tooltip
-            formatter={(value, _name, item) => formatRateTooltip(value, item)}
+            formatter={(value, _name, item) =>
+              isRate ? formatRateTooltip(value, item) : value.toLocaleString()
+            }
             cursor={{ fill: 'rgba(34, 47, 71, 0.06)' }}
             contentStyle={{
               background: brandColors.white,

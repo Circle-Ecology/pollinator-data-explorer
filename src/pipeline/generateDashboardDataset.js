@@ -218,6 +218,7 @@ export const CHART_IDS = {
   richnessByDiameterSite: 'richness-by-diameter-site',
   nestStatusByType: 'nest-status-by-type',
   plugDepthByYear: 'plug-depth-by-year',
+  emergenceRateBySite: 'emergence-rate-by-site',
   occupantsByPeriodType: 'occupants-by-period-type',
   otherByPeriodType: 'other-by-period-type',
   scorecardGenera: 'scorecard-genera',
@@ -633,6 +634,22 @@ function buildScorecards(cavityYears, tally) {
   return { genera, allSites, siteOverYears }
 }
 
+// Emergence rate by site (US-34): the scorecard's Emergence row, so the two always agree. Emergence was
+// recorded directly in Fulcrum from 2026; earlier years' Emergence was inferred during historical
+// cleaning, so (as in the deck) those years are left out.
+export const EMERGENCE_RECORDED_FROM = 2026
+function emergenceRateBySite(allSites, siteById) {
+  const result = {}
+  for (const [year, entries] of Object.entries(allSites)) {
+    if (Number(year) < EMERGENCE_RECORDED_FROM) continue
+    result[year] = entries.map(({ siteId, siteNumber, conditions: { emergence } }) => ({
+      siteId, siteNumber, propertyName: siteById.get(siteId)?.propertyName ?? null,
+      emerged: emergence.numerator, sealed: emergence.denominator, rate: emergence.rate,
+    }))
+  }
+  return result
+}
+
 /**
  * Pure: precompute every dashboard figure from the PUBLIC dataset.
  * `publicDataset` is { sites, observations } from generatePublicDataset;
@@ -840,5 +857,6 @@ export function generateDashboardDataset({ sites, observations }, tunnels, gener
   charts[CHART_IDS.scorecardGenera] = { all: scorecards.genera }
   charts[CHART_IDS.scorecardAllSites] = scorecards.allSites
   charts[CHART_IDS.scorecardSiteOverYears] = scorecards.siteOverYears
+  charts[CHART_IDS.emergenceRateBySite] = emergenceRateBySite(scorecards.allSites, siteById)
   return { generatedAt, years: years.map(Number), charts }
 }

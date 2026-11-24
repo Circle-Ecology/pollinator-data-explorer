@@ -135,6 +135,8 @@ describe('US-28 generateDashboardDataset', () => {
           2023: [{ total: 0, unrecognized: 0, rows: [{ level: '1.1 inches', nests: 0 }, { level: '1 inch', nests: 0 }, { level: '1/2 inch', nests: 0 }, { level: '1/16 inch', nests: 0 }, { level: 'flush', nests: 0 }, { level: 'protruding', nests: 0 }] }],
           2025: [{ total: 0, unrecognized: 0, rows: [{ level: '1.1 inches', nests: 0 }, { level: '1 inch', nests: 0 }, { level: '1/2 inch', nests: 0 }, { level: '1/16 inch', nests: 0 }, { level: 'flush', nests: 0 }, { level: 'protruding', nests: 0 }] }],
         },
+        // Emergence is only shown from 2026, and this fixture stops at 2025.
+        [CHART_IDS.emergenceRateBySite]: {},
         [CHART_IDS.sealedRateByCwd]: {
           2023: [row('Log', 1, 0, 0)],
           2025: [row('Log', 1, 1, 0), row('Snag', 2, 0, 0)],
@@ -174,7 +176,7 @@ describe('US-28 generateDashboardDataset', () => {
   it('produces empty charts for an empty dataset', () => {
     const empty = generateDashboardDataset({ sites: [], observations: [] }, [], generatedAt)
     expect(empty.years).toEqual([])
-    expect(Object.keys(empty.charts)).toHaveLength(23)
+    expect(Object.keys(empty.charts)).toHaveLength(24)
   })
 })
 
@@ -499,6 +501,22 @@ describe('US-35 site scorecards', () => {
 
   it('scores Site 2 as 2 genera + 2 bonuses + the only-at-this-site bonus = 5, "Low"', () => {
     expect(entries.S2).toMatchObject({ score: 5, category: 'Low', flagged: false, flags: [] })
+  })
+
+  it('gives the emergence rate by site from 2026 only, matching the scorecard Emergence row', () => {
+    const { charts: withEmergence } = generateDashboardDataset({ sites: siteList, observations: [
+      ...data,
+      w('B', '2026-06-01', 'Complete', 'Wasp', 'Isodontia', 'Sealed'),
+      w('B', '2026-07-01', 'Reopened', 'Wasp', 'Isodontia', 'Emergence'),
+    ] }, tunnelList, generatedAt)
+    const emergence = withEmergence[CHART_IDS.emergenceRateBySite]
+    expect(Object.keys(emergence)).toEqual(['2026'])
+    // Site 1 in 2026: A and B sealed, B emerged.
+    expect(emergence[2026]).toEqual([
+      { siteId: 'S1', siteNumber: '1', propertyName: 'Meadow', emerged: 1, sealed: 2, rate: 50 },
+    ])
+    const scorecard = withEmergence[CHART_IDS.scorecardAllSites][2026][0].conditions.emergence
+    expect(emergence[2026][0]).toMatchObject({ emerged: scorecard.numerator, sealed: scorecard.denominator, rate: scorecard.rate })
   })
 
   it('offers a site over years only for sites with more than one year of data', () => {
