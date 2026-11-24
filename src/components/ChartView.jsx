@@ -11,6 +11,7 @@ import {
   buildGroupedCountSummary,
 } from '../utils/groupedCountRows'
 import { buildRateRows, buildSiteRateRows } from '../utils/rateChartRows'
+import { buildAllSitesColumns, buildSiteOverYearsSites } from '../utils/scorecardRows'
 import ChartDataTable from './ChartDataTable'
 import ChartSnippet from './ChartSnippet'
 import FacetedStackedBarChart from './FacetedStackedBarChart'
@@ -18,12 +19,14 @@ import GroupedBarChart from './GroupedBarChart'
 import GroupedCountTable from './GroupedCountTable'
 import MeasureToggle from './MeasureToggle'
 import RateDataTable from './RateDataTable'
+import SiteScorecardTable, { SiteScorecardOverYears } from './SiteScorecardTable'
 import StackedBarChart from './StackedBarChart'
 import YearToggle from './YearToggle'
 
 // Chart types a config entry can name in its `component` field: how its rows
 // are built from dashboard.json, which chart draws them, and which table
 // lists them. `buildSummary`, when present, adds rows only the table shows.
+// The scorecards are tables themselves, so they have no separate Table.
 const CHART_TYPES = {
   stackedBar: {
     Chart: StackedBarChart,
@@ -59,6 +62,14 @@ const CHART_TYPES = {
         year,
         siteNumbers: getSiteNumbers(data),
       }),
+  },
+  scorecardAllSites: {
+    Chart: SiteScorecardTable,
+    buildRows: (chart, data, year) => buildAllSitesColumns(chart, data, year),
+  },
+  scorecardSiteOverYears: {
+    Chart: SiteScorecardOverYears,
+    buildRows: (chart, data) => buildSiteOverYearsSites(chart, data),
   },
 }
 
@@ -98,9 +109,9 @@ function ChartView({ chart, data, year, measure, onChangeYear, onChangeMeasure }
 
       {rows.length > 0 ? (
         <>
-          <type.Chart chart={visibleChart} rows={rows} measure={measure} />
+          <type.Chart chart={visibleChart} rows={rows} measure={measure} data={data} year={year} />
           <ChartSnippet snippet={chart.snippet} caveat={caveat} />
-          <type.Table chart={visibleChart} rows={rows} summary={summary} />
+          {type.Table && <type.Table chart={visibleChart} rows={rows} summary={summary} />}
         </>
       ) : (
         <>
