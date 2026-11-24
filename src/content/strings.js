@@ -20,6 +20,8 @@ export const strings = {
   dashboardErrorTitle: 'Charts are temporarily unavailable',
   dashboardErrorMessage:
     "We couldn't load the charts right now. The map above still works. Please try again later.",
+  dashboardTabsMoreLeft: 'Show more tabs to the left',
+  dashboardTabsMoreRight: 'Show more tabs to the right',
   dashboardChartListLabel: 'Charts',
   dashboardYearLabel: 'Year',
   dashboardMeasureLabel: 'Show as',
