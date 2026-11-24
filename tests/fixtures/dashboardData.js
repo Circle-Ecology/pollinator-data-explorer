@@ -1,3 +1,68 @@
+// Scorecard genera in the pipeline's order (alphabetical within each group).
+const SCORECARD_GENERA = [
+  ...['Anthidium', 'Ashmeadiella', 'Dianthidium', 'Heriades', 'Hoplitis', 'Hylaeus',
+    'Megachile (Chelostomoides)', 'Megachile (Eutricharaea)', 'Megachile (multiple)',
+    'Megachile (Sayapis)', 'Osmia (mud)', 'Osmia (vegetation)'].map((genus) => ({ genus, group: 'Bee' })),
+  ...['Eumeninae', 'Isodontia', 'Passaloecus or Psenulus', 'Solierella', 'Spilomena', 'Trypoxylon']
+    .map((genus) => ({ genus, group: 'Wasp' })),
+  { genus: 'Unknown', group: 'Unknown' },
+]
+
+// One site-year scorecard as the pipeline writes it. `rates` are the condition
+// percentages; `states` the conditions that are a bonus or a flag.
+function scorecard({ siteId, siteNumber, presentGenera, uniqueGenera = [], rates, states, score, category }) {
+  const conditions = {}
+  for (const [id, rate] of Object.entries(rates)) {
+    conditions[id] = id === 'emergence'
+      ? { rate, recorded: states.emergence === 'bonus' }
+      : { rate, state: states[id] ?? 'none' }
+  }
+  const flags = Object.keys(states).filter((id) => states[id] === 'flag')
+  return {
+    siteId, siteNumber, presentGenera, uniqueGenera, conditions,
+    score, max: 24, category, flagged: flags.length > 0, flags,
+  }
+}
+
+const SCORECARD_SITE_1_2026 = scorecard({
+  siteId: 'Site 1', siteNumber: '1',
+  presentGenera: ['Ashmeadiella', 'Eumeninae', 'Hoplitis', 'Hylaeus', 'Isodontia', 'Megachile (Eutricharaea)',
+    'Megachile (multiple)', 'Solierella', 'Spilomena', 'Trypoxylon', 'Unknown'],
+  rates: { parasitism: 4, chalkbrood: 11, multiGenus: 17, other: 4, megachile: 26, osmiaMud: 0, emergence: 31 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', emergence: 'bonus' },
+  score: 15, category: 'High',
+})
+
+const SCORECARD_SITE_3_2026 = scorecard({
+  siteId: 'Site 3', siteNumber: '3',
+  presentGenera: ['Dianthidium', 'Eumeninae', 'Isodontia', 'Megachile (Eutricharaea)', 'Megachile (multiple)',
+    'Megachile (Sayapis)', 'Solierella', 'Spilomena', 'Trypoxylon', 'Unknown'],
+  rates: { parasitism: 2, chalkbrood: 1, multiGenus: 5, other: 23, megachile: 8, osmiaMud: 0, emergence: 17 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', emergence: 'bonus' },
+  score: 14, category: 'High',
+})
+
+// Flagged (Megachile (Eutricharaea) 48%) but keeps its score: Very High.
+const SCORECARD_SITE_5_2026 = scorecard({
+  siteId: 'Sherwood OS', siteNumber: '5',
+  presentGenera: ['Ashmeadiella', 'Eumeninae', 'Heriades', 'Isodontia', 'Megachile (Chelostomoides)',
+    'Megachile (Eutricharaea)', 'Megachile (multiple)', 'Passaloecus or Psenulus', 'Solierella', 'Spilomena',
+    'Unknown'],
+  uniqueGenera: ['Megachile (Chelostomoides)'],
+  rates: { parasitism: 6, chalkbrood: 8, multiGenus: 11, other: 2, megachile: 48, osmiaMud: 0, emergence: 19 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', megachile: 'flag', emergence: 'bonus' },
+  score: 16, category: 'Very High',
+})
+
+// Emergence before 2026 was estimated, so the scorecard shows it without a rate.
+const SCORECARD_SITE_1_2025 = scorecard({
+  siteId: 'Site 1', siteNumber: '1',
+  presentGenera: ['Eumeninae', 'Hylaeus', 'Isodontia', 'Megachile (Eutricharaea)', 'Osmia (mud)', 'Solierella'],
+  rates: { parasitism: 1, chalkbrood: 0, multiGenus: 2, other: 5, megachile: 82, osmiaMud: 1, emergence: 34 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', megachile: 'flag', emergence: 'bonus' },
+  score: 10, category: 'Medium',
+})
+
 // A small dashboard.json in the US-28 shape. Site totals agree across the
 // occupant charts, as they do in the real pipeline output. No 2024: the study skipped it.
 export const dashboardData = {
@@ -165,12 +230,51 @@ export const dashboardData = {
         ],
       }],
     },
-    // Only the fields the dashboard reads: Circle Ecology's site numbers.
-    'scorecard-all-sites': {
+    // Genus charts, from report_v04 (2026; 2023 for occupants-by-genus), trimmed
+    // to a few genera. Rows are deliberately not in display order.
+    'occupants-by-type-genus': {
       2026: [
-        { siteId: 'Site 1', siteNumber: '1' },
-        { siteId: 'Site 3', siteNumber: '3' },
+        { occupantType: 'Bee', generalId: 'Megachile (multiple)', occupants: 180, typeTotal: 498 },
+        { occupantType: 'Bee', generalId: 'Megachile (Eutricharaea)', occupants: 309, typeTotal: 498 },
+        { occupantType: 'Bee', generalId: 'Unknown', occupants: 9, typeTotal: 498 },
+        { occupantType: 'Wasp', generalId: 'Isodontia', occupants: 136, typeTotal: 173 },
+        { occupantType: 'Wasp', generalId: 'Eumeninae', occupants: 28, typeTotal: 173 },
+        { occupantType: 'Wasp', generalId: 'Unknown', occupants: 9, typeTotal: 173 },
+        { occupantType: 'Unknown', generalId: 'Unknown', occupants: 29, typeTotal: 29 },
+        { occupantType: 'Other', generalId: 'Other', occupants: 77, typeTotal: 77 },
       ],
+    },
+    'occupants-by-genus': {
+      2023: [
+        { generalId: 'Other', Bee: 0, Wasp: 0, Unknown: 0, Other: 220, total: 220 },
+        { generalId: 'Megachile (Eutricharaea)', Bee: 19, Wasp: 0, Unknown: 0, Other: 0, total: 19 },
+        { generalId: 'Isodontia', Bee: 0, Wasp: 13, Unknown: 0, Other: 0, total: 13 },
+        { generalId: 'Unknown', Bee: 10, Wasp: 1, Unknown: 0, Other: 0, total: 11 },
+      ],
+      2026: [
+        { generalId: 'Megachile (Eutricharaea)', Bee: 309, Wasp: 0, Unknown: 0, Other: 0, total: 309 },
+        { generalId: 'Eumeninae', Bee: 0, Wasp: 28, Unknown: 0, Other: 0, total: 28 },
+        { generalId: 'Megachile (multiple)', Bee: 180, Wasp: 0, Unknown: 0, Other: 0, total: 180 },
+        { generalId: 'Isodontia', Bee: 0, Wasp: 136, Unknown: 0, Other: 0, total: 136 },
+        { generalId: 'Other', Bee: 0, Wasp: 0, Unknown: 0, Other: 77, total: 77 },
+        { generalId: 'Unknown', Bee: 9, Wasp: 9, Unknown: 29, Other: 0, total: 47 },
+      ],
+    },
+    'multi-genus-cavities-by-site': {
+      2026: [
+        { siteId: 'Site 3', propertyName: 'Site 3', multiGenus: 5, occupied: 92 },
+        { siteId: 'Site 1', propertyName: 'Site 1', multiGenus: 32, occupied: 192 },
+      ],
+    },
+    // Site scorecards, from report_v04 (2026 Sites 1, 3 and 5; 2025 Site 1).
+    // The faceted charts also read the site numbers from here.
+    'scorecard-genera': { all: SCORECARD_GENERA },
+    'scorecard-all-sites': {
+      2026: [SCORECARD_SITE_1_2026, SCORECARD_SITE_3_2026, SCORECARD_SITE_5_2026],
+    },
+    'scorecard-site-over-years': {
+      'Site 1': { 2025: SCORECARD_SITE_1_2025, 2026: SCORECARD_SITE_1_2026 },
+      'Sherwood OS': { 2026: SCORECARD_SITE_5_2026 },
     },
     'occupants-by-site-type': {
       2023: [

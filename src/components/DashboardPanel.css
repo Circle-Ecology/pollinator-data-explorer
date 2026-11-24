@@ -350,6 +350,179 @@
   color: var(--dash-text);
 }
 
+/* US-35: Site Scorecard. Colors from brandColors (scorecardPresent, scorecardBonus,
+   scorecardFlag) and Light Gray, as in the deck. */
+.scorecard-site-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.scorecard-site-select label {
+  color: var(--dash-text-muted);
+}
+
+.scorecard-site-select select {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--dash-border);
+  border-radius: 4px;
+  background: var(--dash-surface);
+  color: var(--dash-text);
+  font: inherit;
+}
+
+.scorecard-site-select select:focus-visible,
+.scorecard-scroll:focus-visible {
+  outline: 3px solid var(--dash-focus);
+  outline-offset: 2px;
+}
+
+/* position: relative keeps the visually hidden cell text inside the scroll
+   area; otherwise it would widen the whole page on narrow screens. */
+.scorecard-scroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.scorecard-table {
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-size: 13px;
+}
+
+.scorecard-caption,
+.scorecard-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.scorecard-table thead th {
+  min-width: 88px;
+  padding: 4px;
+  color: var(--dash-text);
+  font-weight: 600;
+  vertical-align: bottom;
+}
+
+.scorecard-subtitle {
+  display: block;
+  color: var(--dash-text-muted);
+  font-weight: 400;
+}
+
+/* Row labels stay put while the site or year columns scroll sideways */
+.scorecard-label {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding: 4px 8px 4px 0;
+  background: var(--dash-surface);
+  color: var(--dash-text);
+  font-weight: 400;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.scorecard-group-heading {
+  padding: 12px 0 2px;
+  border-bottom: 1px solid var(--dash-border);
+  text-align: left;
+}
+
+.scorecard-group-heading .scorecard-label {
+  display: inline-block;
+  color: var(--dash-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scorecard-cell {
+  height: 26px;
+  padding: 2px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.scorecard-present,
+.scorecard-unique {
+  background: #7fbff5; /* scorecardPresent */
+  color: var(--dash-text);
+}
+
+.scorecard-unique {
+  outline: 3px solid var(--dash-text);
+  outline-offset: -3px;
+}
+
+.scorecard-bonus {
+  background: #3d1ca2; /* scorecardBonus */
+  color: #ffffff;
+}
+
+.scorecard-flag {
+  background: #f1bf51; /* scorecardFlag */
+  color: var(--dash-text);
+  font-weight: 600;
+}
+
+.scorecard-absent {
+  background: #e0e0dc; /* Light Gray */
+  color: var(--dash-text);
+}
+
+.scorecard-marker {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.scorecard-table tfoot th,
+.scorecard-total {
+  padding-top: 8px;
+  border-top: 2px solid var(--dash-text);
+}
+
+.scorecard-total {
+  color: var(--dash-text);
+  font-weight: 600;
+  text-align: center;
+}
+
+.scorecard-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--dash-text-muted);
+}
+
+.scorecard-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scorecard-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 18px;
+  font-size: 11px;
+}
+
 /* Narrow screens: the side list becomes a select above the chart */
 @media (max-width: 640px) {
   .dashboard-title {
@@ -376,5 +549,19 @@
 
   .chart-data-table {
     overflow-x: auto;
+  }
+
+  .scorecard-table .scorecard-label {
+    max-width: 112px;
+    font-size: 12px;
+    white-space: normal;
+  }
+
+  .scorecard-group-heading .scorecard-label {
+    max-width: none;
+  }
+
+  .scorecard-table thead th {
+    min-width: 72px;
   }
 }

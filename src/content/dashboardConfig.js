@@ -15,8 +15,12 @@
 //   component     - chart type, a key of CHART_TYPES in ChartView:
 //                   'stackedBar', 'groupedRate' (side-by-side sealed nest
 //                   rates), 'facetedStackedBar' (one panel per facet),
-//                   'groupedCount' (side-by-side counts per category) or
-//                   'siteRate' (one rate per site)
+//                   'groupedCount' (side-by-side counts per category),
+//                   'siteRate' (one rate per site), 'horizontalBar'
+//                   (ranked horizontal bars, stacked by series),
+//                   'groupedHorizontalBar' (horizontal bars grouped and
+//                   colored by facetSeries), or the Site Scorecard
+//                   tables 'scorecardAllSites' and 'scorecardSiteOverYears'
 //   supportsYears - true: one year at a time with a year toggle;
 //                   false: every year side by side on the x-axis
 //   measures      - which of 'count' and 'percent' the measure toggle offers
@@ -42,6 +46,13 @@
 //   rateFields, tableLabels - 'siteRate' only: the row fields behind the
 //                   rate ({ numerator, denominator }) and their table
 //                   column headings
+//   generaChartId, genusOrder, conditions, emergenceRateFrom - scorecard
+//                   views only: the dashboard.json chart listing every genus,
+//                   the deck's genus order, the condition rows ({ key,
+//                   label }) and the first year Emergence shows a rate
+//                   (earlier years say "Recorded")
+//   facetSeries   - 'groupedHorizontalBar' only: the groups ({ key, label,
+//                   color }), in order; each bar takes its group's color
 //   facetKey, facetLabel, facetUnit - facetedStackedBar only: the row field
 //                   that splits the chart into side-by-side panels, its
 //                   data-table heading, and a unit shown after each value
@@ -53,6 +64,37 @@
 import { brandColors } from './brandColors'
 
 export const SNIPPET_MAX_LENGTH = 300
+
+// US-35: shared by both Site Scorecard views.
+const SCORECARD_FIELDS = {
+  measures: ['count'],
+  series: [],
+  generaChartId: 'scorecard-genera',
+  // The deck's order: bees by family, then wasps, then Unknown.
+  genusOrder: [
+    'Hylaeus', 'Anthidium', 'Dianthidium', 'Ashmeadiella', 'Heriades', 'Hoplitis',
+    'Megachile (Chelostomoides)', 'Megachile (Eutricharaea)', 'Megachile (multiple)',
+    'Megachile (Sayapis)', 'Osmia (mud)', 'Osmia (vegetation)',
+    'Eumeninae', 'Isodontia', 'Passaloecus or Psenulus', 'Solierella', 'Spilomena', 'Trypoxylon',
+    'Unknown',
+  ],
+  // ">30%" marks the conditions that can only flag a site, never earn a bonus.
+  conditions: [
+    { key: 'parasitism', label: 'Parasitism' },
+    { key: 'chalkbrood', label: 'Chalkbrood Characteristics >30%' },
+    { key: 'multiGenus', label: 'Multi-genus Cavity Use' },
+    { key: 'other', label: 'Other Occupants' },
+    { key: 'megachile', label: 'Megachile (Eutricharaea) >30%' },
+    { key: 'osmiaMud', label: 'Osmia (mud) >30%' },
+    { key: 'emergence', label: 'Emergence' },
+  ],
+  emergenceRateFrom: 2026,
+  caveat:
+    'The category cutoffs (Low up to 5, Medium 6 to 10, High 11 to 15, ' +
+    'Very High 16 and up) are provisional until Circle Ecology confirms them. ' +
+    'Emergence was estimated before 2026, so earlier years show "Recorded" ' +
+    'instead of a rate.',
+}
 
 // Chart colors from theme_pollinator_v01.R, as in Circle Ecology's deck.
 const OCCUPANCY_SERIES = [
@@ -291,6 +333,64 @@ export const dashboardConfig = [
     ],
   },
   {
+    id: 'genus',
+    label: 'Occupants by Genus (General ID)',
+    charts: [
+      {
+        id: 'occupants-by-type-genus',
+        title: 'Occupants by Occupant Type and General ID',
+        snippet:
+          'Each bar is one genus (General ID), grouped by occupant type and ' +
+          'colored to match. In percentage view each bar is its share of ' +
+          'that occupant type, so the bars in each group add up to 100%.',
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'groupedHorizontalBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        facetKey: 'occupantType',
+        facetLabel: 'Occupant type',
+        facetSeries: OCCUPANT_TYPE_SERIES,
+        categoryLabel: 'General ID',
+        series: [{ key: 'occupants', label: 'Occupants', color: brandColors.occupied }],
+      },
+      {
+        id: 'occupants-by-genus',
+        title: 'Occupants by General ID',
+        snippet:
+          'Each bar is one genus (General ID), ranked from most to fewest ' +
+          'occupants, with its color split by occupant type. In percentage ' +
+          "view each bar is that genus's share of all occupants that year.",
+        caveat: OCCUPANTS_2025_CAVEAT,
+        component: 'horizontalBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        categoryKey: 'generalId',
+        categoryLabel: 'General ID',
+        percentBase: 'chart',
+        series: OCCUPANT_TYPE_SERIES,
+      },
+      {
+        id: 'multi-genus-cavities-by-site',
+        title: 'Percentage of Occupied Fabricated Cavities with More Than One Genus, by Site',
+        snippet:
+          "Each bar is the share of a site's occupied nesting holes that " +
+          'held more than one genus during the year. A hole counts once, ' +
+          'however many genera or nests it held.',
+        component: 'siteRate',
+        supportsYears: true,
+        measures: ['rate'],
+        categoryLabel: 'Site',
+        axisLabel: '% of occupied cavities',
+        rateFields: { numerator: 'multiGenus', denominator: 'occupied' },
+        tableLabels: {
+          denominator: 'Occupied cavities',
+          numerator: 'Cavities with more than one genus',
+        },
+        series: [{ key: 'multiGenus', label: 'More than one genus', color: brandColors.occupied }],
+      },
+    ],
+  },
+  {
     id: 'nest-sites',
     label: 'Nests by Structural Factors',
     note:
@@ -452,6 +552,39 @@ export const dashboardConfig = [
         categoryTrackedFrom: PLUG_DEPTHS_FROM_2025,
         percentBase: 'chart',
         series: [{ key: 'nests', label: 'Nested cavities', color: brandColors.occupied }],
+      },
+    ],
+  },
+  {
+    id: 'site-scorecard',
+    label: 'Site Scorecard',
+    note:
+      'Each site earns a point for every genus found there and for each ' +
+      'healthy condition, out of 24; a flag marks a condition to look into ' +
+      'and does not lower the score.',
+    charts: [
+      {
+        id: 'scorecard-all-sites',
+        title: 'Site Scorecard: All Sites',
+        snippet:
+          'Each column is one site. A check is a genus found there that year, ' +
+          'a star a genus found at no other site. Below are condition rates: ' +
+          '+1 marks a bonus point, a flag a rate over 30%. Compare sites ' +
+          'within a year, not across years.',
+        component: 'scorecardAllSites',
+        supportsYears: true,
+        ...SCORECARD_FIELDS,
+      },
+      {
+        id: 'scorecard-site-over-years',
+        title: 'Site Scorecard: One Site Across Years',
+        snippet:
+          'Each column is one year for the chosen site, scored on that ' +
+          "year's data alone. Use it to see which genera and conditions " +
+          'changed at a site over time.',
+        component: 'scorecardSiteOverYears',
+        supportsYears: false,
+        ...SCORECARD_FIELDS,
       },
     ],
   },
