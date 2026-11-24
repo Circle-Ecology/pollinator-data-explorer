@@ -125,12 +125,28 @@ restored. The one non-atomic moment is the two renames themselves, so a reader c
 briefly see no directory; the Netlify build writes to `public/data` before `vite build`,
 so nothing is serving from it during the swap.
 
-`assertPublishableImport` (`src/pipeline/assertPublishableImport.js`) is the shared
-gate (empty parse, zero valid rows, or invalid ratio over 0.9). The scheduler handoff
-and `npm run pipeline:publish` both use it; the publish script exits non-zero before
-touching the output directory, so a failed fetch or validation keeps the last dataset
-(and, on Netlify, the previous deploy stays live). `status: 'published'` is still a
-metadata label, not evidence that Netlify or a browser has received these files.
+`publishDatasetIfValid(candidate, currentStatus, { outputDirectory, now, logger })`
+(`src/pipeline/publishDatasetIfValid.js`) is the single entry point. It runs
+`assertPublishableImport` (empty parse, zero valid rows, or invalid ratio over 0.9),
+then `writePublicDataset`, and returns `{ published, status }`; it never throws. This
+deliberately follows #45 rather than the literal "any validation error blocks" wording
+of the US-25 ticket: bad rows are excluded and counted in `excludedRowCount`, since the
+real sheet routinely contains them.
+
+On any refusal or write failure the data files are untouched and `dataset-status.json`
+becomes `publish_failed` (or `fetch_failed`, via `recordFetchFailure`) while
+`generatedAt` and the counts still describe the last good publish. It also carries
+`consecutiveFailureCount`, which resets on the next successful publish. That status
+file is written as `dataset-status.json.tmp` then renamed. Each failure logs
+`{ occurredAt, reason, firstError?, consecutiveFailureCount }` (`firstError` is the
+first US-07 `{ rowNumber, column, code, message }`); the third consecutive failure logs
+once more with `alert: true`. Sending a notification is out of scope.
+
+`npm run pipeline:publish` uses `publishDatasetIfValid` and exits non-zero on failure.
+A fresh checkout with no prior publish has no status file to annotate, so failures
+only log and exit; the Netlify build then fails and the previous deploy stays live.
+`status: 'published'` is still a metadata label, not evidence that Netlify or a
+browser has received these files.
 
 ## Optional scheduler handoff
 
@@ -155,7 +171,8 @@ onParsedResult: parsed => writePublicDataset(parsed, { outputDirectory: staging 
 
 The production launcher (`scripts/fetch-sheet.js`, `npm run pipeline:fetch`) does
 not enable this callback. Before doing so, the team must connect authoritative
-approval/visibility enrichment and full US-07 validation. If authorization resides outside the CSV, its version must participate in
+approval/visibility enrichment, full US-07 validation, and route `onParsedResult`
+through `publishDatasetIfValid` (US-25) so failures are recorded and counted. If authorization resides outside the CSV, its version must participate in
 regeneration decisions; unchanged CSV alone is insufficient.
 
 `scripts/publish-sheet.js` (`npm run pipeline:publish`) is the manual/staging
