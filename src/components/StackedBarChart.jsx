@@ -71,7 +71,9 @@ function StackedBarChart({ chart, rows, measure }) {
               tick={AXIS_TICK}
               axisLine={false}
               tickLine={false}
-              {...getValueAxisProps(isPercent)}
+              // Shares of the whole chart (percentBase: 'chart') are small, so
+              // their axis fits the data instead of running to 100%.
+              {...getValueAxisProps(isPercent && chart.percentBase !== 'chart')}
               tickFormatter={formatValue}
               width={56}
             />

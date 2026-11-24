@@ -38,6 +38,32 @@ export function buildRateRows(chart, chartData, { year }) {
   return sortByCategoryOrder(rows, chart.categoryOrder)
 }
 
+// US-34: rows for a one-rate-per-site chart (e.g. Emergence Rate by Site), in
+// the same shape as buildRateRows so GroupedBarChart and RateDataTable draw
+// it. Each dashboard.json row has the rate and the counts behind it, named by
+// `chart.rateFields` ({ numerator, denominator }); `label` is the short site
+// number shown under the bar, `category` the full site name for the table.
+export function buildSiteRateRows(chart, chartData, { year }) {
+  const sourceRows = chartData?.[String(year)] ?? []
+  const [series] = chart.series
+  const { numerator, denominator } = chart.rateFields
+
+  return sourceRows.map((row) => {
+    const name = String(row.propertyName ?? row.siteId ?? 'Not recorded')
+    return {
+      category: name,
+      label: row.siteNumber != null ? `Site ${row.siteNumber}` : name,
+      available: Number(row[denominator]) || 0,
+      values: {
+        [series.key]: {
+          sealed: Number(row[numerator]) || 0,
+          rate: Number(row.rate) || 0,
+        },
+      },
+    }
+  })
+}
+
 // Tooltip text for one bar, e.g. "15% (155 of 1,048)". `item` is the Recharts
 // tooltip entry: its dataKey is the series key (e.g. "Bee") and its payload
 // holds the bar's sealed count and available holes (see GroupedBarChart).

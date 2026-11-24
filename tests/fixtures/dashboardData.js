@@ -130,6 +130,41 @@ export const dashboardData = {
         { diameter: '0.375', siteId: 'Site 3', propertyName: 'Site 3', Bee: 2, Wasp: 2 },
       ],
     },
+    // Nest statuses per occupant type (report_v04's 2023 and 2026 figures).
+    'nest-status-by-type': {
+      2023: [
+        { occupantType: 'Bee', Active: 3, Complete: 22, Emerged: 3, Parasitized: 3, Chalkbrood: 0, sealed: 22, parasitizedRate: 13.6 },
+        { occupantType: 'Wasp', Active: 5, Complete: 12, Emerged: 2, Parasitized: 0, Chalkbrood: 0, sealed: 12, parasitizedRate: 0 },
+      ],
+      2026: [
+        { occupantType: 'Bee', Active: 185, Complete: 271, Emerged: 94, Parasitized: 26, Chalkbrood: 43, sealed: 406, parasitizedRate: 6.4 },
+        { occupantType: 'Wasp', Active: 94, Complete: 137, Emerged: 37, Parasitized: 3, Chalkbrood: 0, sealed: 158, parasitizedRate: 1.9 },
+      ],
+    },
+    // Emergence is only shown from 2026.
+    'emergence-rate-by-site': {
+      2026: [
+        { siteId: 'Site 1', siteNumber: '1', propertyName: 'Boulder Creek Estates OS (Site 1)', emerged: 44, sealed: 142, rate: 31 },
+        { siteId: 'Site 3', siteNumber: '3', propertyName: 'Boulder Creek Estates OS (Site 3)', emerged: 11, sealed: 64, rate: 17 },
+      ],
+    },
+    // 2023 recorded only 1/2 inch and protruding; the pipeline still lists all six at zero.
+    'plug-depth-by-year': {
+      2023: [{
+        total: 38, unrecognized: 0,
+        rows: [
+          { level: '1.1 inches', nests: 0 }, { level: '1 inch', nests: 0 }, { level: '1/2 inch', nests: 28 },
+          { level: '1/16 inch', nests: 0 }, { level: 'flush', nests: 0 }, { level: 'protruding', nests: 10 },
+        ],
+      }],
+      2025: [{
+        total: 765, unrecognized: 0,
+        rows: [
+          { level: '1.1 inches', nests: 85 }, { level: '1 inch', nests: 327 }, { level: '1/2 inch', nests: 0 },
+          { level: '1/16 inch', nests: 0 }, { level: 'flush', nests: 260 }, { level: 'protruding', nests: 93 },
+        ],
+      }],
+    },
     // Only the fields the dashboard reads: Circle Ecology's site numbers.
     'scorecard-all-sites': {
       2026: [

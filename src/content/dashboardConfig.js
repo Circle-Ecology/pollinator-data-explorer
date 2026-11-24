@@ -14,7 +14,9 @@
 //                   (every year) or { text, years } (only those years)
 //   component     - chart type, a key of CHART_TYPES in ChartView:
 //                   'stackedBar', 'groupedRate' (side-by-side sealed nest
-//                   rates) or 'facetedStackedBar' (one panel per facet)
+//                   rates), 'facetedStackedBar' (one panel per facet),
+//                   'groupedCount' (side-by-side counts per category) or
+//                   'siteRate' (one rate per site)
 //   supportsYears - true: one year at a time with a year toggle;
 //                   false: every year side by side on the x-axis
 //   measures      - which of 'count' and 'percent' the measure toggle offers
@@ -26,6 +28,20 @@
 //   categoryLabel - column heading for the x-axis in the data table
 //   categoryOrder - optional list fixing the order of the x-axis labels
 //                   (labels not listed follow, in data order)
+//   categoryTrackedFrom - optional { label: year }: a label recorded only
+//                   from that year on is left out of earlier years
+//   rowsField     - optional: dashboard.json nests the year's rows under this
+//                   field (e.g. plug depth's { total, rows })
+//   percentBase   - optional: 'chart' makes percentages a share of every
+//                   bar combined, not of each bar
+//   axisLabel     - optional y-axis label ('groupedCount', 'siteRate')
+//   seriesKey, categories, summaryRows - 'groupedCount' only: the field that
+//                   says which series a dashboard.json row is, the fields
+//                   drawn as groups of bars ({ key, label }), and extra table
+//                   rows ({ key, label, unit? })
+//   rateFields, tableLabels - 'siteRate' only: the row fields behind the
+//                   rate ({ numerator, denominator }) and their table
+//                   column headings
 //   facetKey, facetLabel, facetUnit - facetedStackedBar only: the row field
 //                   that splits the chart into side-by-side panels, its
 //                   data-table heading, and a unit shown after each value
@@ -102,6 +118,12 @@ const NEST_TYPE_SERIES = [
   { key: 'Bee', label: 'Bee', color: brandColors.bee },
   { key: 'Wasp', label: 'Wasp', color: brandColors.wasp },
 ]
+
+// 2023 recorded only the 1/2 inch and protruding plug depths; the other four
+// were added in 2025.
+const PLUG_DEPTHS_FROM_2025 = Object.fromEntries(
+  ['1.1 inches', '1 inch', '1/16 inch', 'flush'].map((depth) => [depth, 2025])
+)
 
 // Notes that explain a missing level only apply to the year it was missing.
 const SNAGS_FROM_2025 = 'Snags were first installed in 2025'
@@ -353,6 +375,83 @@ export const dashboardConfig = [
         facetLabel: 'Diameter',
         facetUnit: ' in',
         series: NEST_TYPE_SERIES,
+      },
+    ],
+  },
+  {
+    id: 'nest-condition',
+    label: 'Nests by Observation Status and Plug Depth',
+    charts: [
+      {
+        id: 'nest-status-by-type',
+        title: 'Nests by Observation Status',
+        snippet:
+          'Each pair of bars counts the bee and wasp nests that reached a ' +
+          'status during the selected year. A nest can reach more than one ' +
+          '(Active, then Complete, then Emerged), so the bars overlap rather ' +
+          'than adding up to the number of nests.',
+        caveat:
+          'Parasitism % in the data table is parasitized nests as a share ' +
+          'of nests that were sealed at any point that year.',
+        component: 'groupedCount',
+        supportsYears: true,
+        measures: ['count'],
+        seriesKey: 'occupantType',
+        categories: [
+          { key: 'Active', label: 'Active' },
+          { key: 'Complete', label: 'Complete' },
+          { key: 'Emerged', label: 'Emerged' },
+          { key: 'Parasitized', label: 'Parasitized' },
+          { key: 'Chalkbrood', label: 'Chalkbrood Characteristics' },
+        ],
+        categoryLabel: 'Nest status',
+        axisLabel: 'Nests',
+        summaryRows: [
+          { key: 'sealed', label: 'Sealed nests' },
+          { key: 'parasitizedRate', label: 'Parasitism (% of sealed nests)', unit: '%' },
+        ],
+        series: NEST_TYPE_SERIES,
+      },
+      {
+        id: 'emergence-rate-by-site',
+        title: 'Emergence Rate by Site',
+        snippet:
+          'Each bar is the share of a site\'s sealed nests (bee, wasp and ' +
+          'unknown) that later showed signs of emergence that year. It is ' +
+          'the same figure as the Emergence row on the Site Scorecard.',
+        caveat:
+          'Emergence has been recorded directly in the field since 2026. ' +
+          'Earlier years were estimated during data cleanup, so they are ' +
+          'not shown.',
+        component: 'siteRate',
+        supportsYears: true,
+        measures: ['rate'],
+        categoryLabel: 'Site',
+        axisLabel: 'Emergence rate (%)',
+        rateFields: { numerator: 'emerged', denominator: 'sealed' },
+        tableLabels: { denominator: 'Sealed nests', numerator: 'Emerged nests' },
+        series: [{ key: 'emergence', label: 'Emergence', color: brandColors.bee }],
+      },
+      {
+        id: 'plug-depth-by-year',
+        title: 'Nested Fabricated Cavities by End-of-Season Plug Depth',
+        snippet:
+          'Each bar is one plug depth, from deepest to shallowest. Every ' +
+          'nesting hole that held a bee, wasp or unknown nest that year ' +
+          'counts once, at the last depth recorded while it was occupied.',
+        caveat: in2023(
+          'Only two depths (1/2 inch and protruding) were recorded in 2023; ' +
+            'the other four were added in 2025.'
+        ),
+        component: 'stackedBar',
+        supportsYears: true,
+        measures: ['count', 'percent'],
+        rowsField: 'rows',
+        categoryKey: 'level',
+        categoryLabel: 'Plug depth',
+        categoryTrackedFrom: PLUG_DEPTHS_FROM_2025,
+        percentBase: 'chart',
+        series: [{ key: 'nests', label: 'Nested cavities', color: brandColors.occupied }],
       },
     ],
   },

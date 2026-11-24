@@ -2,6 +2,8 @@ import { strings } from '../content/strings'
 
 // US-33: accessible alternative to a sealed nest rate chart. Each cell shows
 // the numerator and denominator behind the rate, e.g. "430 of 1,338 (32%)".
+// `chart.tableLabels` ({ denominator, numerator }) renames those columns for
+// a rate that is not a sealed nest rate (e.g. emerged of sealed nests).
 function RateDataTable({ chart, rows }) {
   return (
     <details className="chart-data-table">
@@ -12,10 +14,13 @@ function RateDataTable({ chart, rows }) {
         <thead>
           <tr>
             <th scope="col">{chart.categoryLabel}</th>
-            <th scope="col">{strings.dashboardAvailableCavities}</th>
+            <th scope="col">
+              {chart.tableLabels?.denominator ?? strings.dashboardAvailableCavities}
+            </th>
             {chart.series.map((series) => (
               <th key={series.key} scope="col">
-                {series.label} {strings.dashboardSealedNests}
+                {chart.tableLabels?.numerator ??
+                  `${series.label} ${strings.dashboardSealedNests}`}
               </th>
             ))}
           </tr>
