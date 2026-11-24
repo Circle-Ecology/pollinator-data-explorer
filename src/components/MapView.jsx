@@ -10,6 +10,7 @@ import MapEmptyState from './MapEmptyState'
 import MapErrorState from './MapErrorState'
 import MapAttribution from './MapAttribution'
 import MapLegend from './MapLegend'
+import { occupiedHolesPercent } from '../utils/formatOccupancyRate'
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 
@@ -146,7 +147,8 @@ function MapView({
     zoom: DEFAULT_ZOOM,
   }
 
-  const allCounts = sites.map((site) => site.occupiedTunnelCount)
+  // US-39: markers and the legend use each site's occupied share of its holes.
+  const allPercents = sites.map(occupiedHolesPercent).filter((percent) => percent !== null)
   const trueToScale = zoom >= ZOOM_SWITCH_THRESHOLD
 
   return (
@@ -184,7 +186,7 @@ function MapView({
             <SiteMarker
               key={site.siteId}
               site={site}
-              allCounts={allCounts}
+              allPercents={allPercents}
               trueToScale={trueToScale}
               isFocused={focusedSite?.siteId === site.siteId}
               onSelectSite={onSelectSite}
@@ -192,7 +194,7 @@ function MapView({
           ))}
         </MapContainer>
 
-        <MapLegend counts={allCounts} trueToScale={trueToScale} />
+        <MapLegend percents={allPercents} trueToScale={trueToScale} />
       </div>
 
       <MapAttribution />

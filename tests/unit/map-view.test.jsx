@@ -65,12 +65,12 @@ vi.mock('react-leaflet', () => ({
 }))
 
 const sites = [
-  { siteId: 'S1', propertyName: 'Boulder Creek Estates OS', latitude: 40.1672, longitude: -105.1019, occupiedTunnelCount: 5 },
-  { siteId: 'S2', propertyName: 'St. Vrain Greenway', latitude: 40.17, longitude: -105.1, occupiedTunnelCount: 2 },
-  { siteId: 'S3', propertyName: 'Rogers Grove OS', latitude: 40.165, longitude: -105.105, occupiedTunnelCount: 0 },
-  { siteId: 'S4', propertyName: 'Sherwood OS', latitude: 40.2, longitude: -105.09, occupiedTunnelCount: 8 },
-  { siteId: 'S5', propertyName: 'Sandstone Ranch', latitude: 40.15, longitude: -105.12, occupiedTunnelCount: 1 },
-  { siteId: 'S6', propertyName: 'Bee Hotel 2', latitude: 40.1681, longitude: -105.1011, occupiedTunnelCount: 3 },
+  { siteId: 'S1', propertyName: 'Boulder Creek Estates OS', latitude: 40.1672, longitude: -105.1019, occupiedTunnelCount: 5, tunnelCount: 50 },
+  { siteId: 'S2', propertyName: 'St. Vrain Greenway', latitude: 40.17, longitude: -105.1, occupiedTunnelCount: 2, tunnelCount: 4 },
+  { siteId: 'S3', propertyName: 'Rogers Grove OS', latitude: 40.165, longitude: -105.105, occupiedTunnelCount: 0, tunnelCount: 10 },
+  { siteId: 'S4', propertyName: 'Sherwood OS', latitude: 40.2, longitude: -105.09, occupiedTunnelCount: 8, tunnelCount: 80 },
+  { siteId: 'S5', propertyName: 'Sandstone Ranch', latitude: 40.15, longitude: -105.12, occupiedTunnelCount: 1, tunnelCount: 10 },
+  { siteId: 'S6', propertyName: 'Bee Hotel 2', latitude: 40.1681, longitude: -105.1011, occupiedTunnelCount: 3, tunnelCount: 6 },
 ]
 
 describe('MapView', () => {
@@ -101,7 +101,7 @@ describe('MapView', () => {
     })
   })
 
-  it('renders a larger marker for a site with a higher occupiedTunnelCount', async () => {
+  it('sizes markers by the share of holes occupied, not the total (US-39)', async () => {
     render(<MapView loadSites={() => Promise.resolve(sites)} />)
 
     await waitFor(() => expect(screen.getAllByTestId('site-marker')).toHaveLength(6))
@@ -111,8 +111,9 @@ describe('MapView', () => {
     )
     const sizeOf = (site) => sizeByPosition[JSON.stringify([site.latitude, site.longitude])]
 
-    expect(sizeOf(sites[3])).toBeGreaterThan(sizeOf(sites[1])) // Sherwood (8) > St. Vrain (2)
-    expect(sizeOf(sites[2])).toBeLessThan(sizeOf(sites[0])) // Rogers Grove (0) < Boulder Creek (5)
+    // St. Vrain: 2 of 4 holes (50%) beats Sherwood: 8 of 80 (10%), though Sherwood has more.
+    expect(sizeOf(sites[1])).toBeGreaterThan(sizeOf(sites[3]))
+    expect(sizeOf(sites[2])).toBeLessThan(sizeOf(sites[0])) // Rogers Grove (0%) < Boulder Creek (10%)
   })
 
   it('renders no marker and no 0,0 placement for a site with null coordinates', async () => {
@@ -157,7 +158,7 @@ describe('MapView', () => {
     expect(fakeMap.setView).toHaveBeenCalledWith([40.1672, -105.1019], 12)
   })
 
-  it('says occupied tunnels are not recorded when the figure is missing (US-37)', async () => {
+  it('says occupied holes are not recorded when the figure is missing (US-37, US-39)', async () => {
     render(
       <MapView
         loadSites={() =>
@@ -168,7 +169,26 @@ describe('MapView', () => {
       />
     )
 
-    expect(await screen.findByText(/Occupied tunnels not recorded/)).toBeInTheDocument()
+    expect(await screen.findByText(/Occupied holes not recorded/)).toBeInTheDocument()
     expect(screen.queryByText(/null/)).not.toBeInTheDocument()
+  })
+
+  it("shows each site's share of its holes that were occupied, not the total (US-39)", async () => {
+    render(
+      <MapView
+        loadSites={() =>
+          Promise.resolve([
+            { siteId: 'S1', propertyName: 'Big Site (Site 1)', latitude: 40.1, longitude: -105.1, tunnelCount: 477, occupiedTunnelCount: 249 },
+            { siteId: 'S2', propertyName: 'Small Site (Site 2)', latitude: 40.2, longitude: -105.2, tunnelCount: 90, occupiedTunnelCount: 18 },
+          ])
+        }
+      />
+    )
+
+    expect(await screen.findByText('52% of holes occupied (249 of 477)')).toBeInTheDocument()
+    expect(screen.getByText('20% of holes occupied (18 of 90)')).toBeInTheDocument()
+    expect(screen.getByText('Occupied holes')).toBeInTheDocument()
+    expect(screen.getByText('20%')).toBeInTheDocument()
+    expect(screen.getByText('52%')).toBeInTheDocument()
   })
 })

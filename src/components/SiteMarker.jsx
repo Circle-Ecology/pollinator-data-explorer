@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Circle, CircleMarker, Popup } from 'react-leaflet'
+import { occupiedHolesPercent } from '../utils/formatOccupancyRate'
 import { computeMarkerRadiusMeters, computeMarkerSizePx } from '../utils/markerSize'
 
 // Circle Ecology Dark Green.
@@ -49,11 +50,15 @@ function unmarkAccessible(event) {
   }
 }
 
+// US-39: sized by the share of the site's holes that were occupied, since
+// sites have different numbers of holes. A site without the figures gets the
+// smallest marker.
 // US-41: `isFocused` marks the site the map is zoomed in on. Zooming in past
 // ZOOM_SWITCH_THRESHOLD swaps the dot for a true-to-scale circle, a new layer
 // whose popup starts closed, so the focused site's popup is reopened on it,
 // one tick later: opened any sooner, react-leaflet's layer swap closes it again.
-function SiteMarker({ site, allCounts, trueToScale, isFocused = false, onSelectSite }) {
+function SiteMarker({ site, allPercents, trueToScale, isFocused = false, onSelectSite }) {
+  const percent = occupiedHolesPercent(site) ?? 0
   const layerRef = useRef(null)
 
   useEffect(() => {
@@ -75,14 +80,9 @@ function SiteMarker({ site, allCounts, trueToScale, isFocused = false, onSelectS
     <Popup>
       <strong>{site.propertyName}</strong>
       <br />
-      {site.occupiedTunnelCount == null ? (
-        'Occupied tunnels not recorded'
-      ) : (
-        <>
-          {site.occupiedTunnelCount} occupied tunnel
-          {site.occupiedTunnelCount === 1 ? '' : 's'}
-        </>
-      )}
+      {occupiedHolesPercent(site) === null
+        ? 'Occupied holes not recorded'
+        : `${occupiedHolesPercent(site)}% of holes occupied (${site.occupiedTunnelCount} of ${site.tunnelCount})`}
     </Popup>
   )
 
@@ -91,7 +91,7 @@ function SiteMarker({ site, allCounts, trueToScale, isFocused = false, onSelectS
       <Circle
         ref={layerRef}
         center={[site.latitude, site.longitude]}
-        radius={computeMarkerRadiusMeters(site.occupiedTunnelCount, allCounts)}
+        radius={computeMarkerRadiusMeters(percent, allPercents)}
         pathOptions={PATH_OPTIONS}
         eventHandlers={eventHandlers}
       >
@@ -104,7 +104,7 @@ function SiteMarker({ site, allCounts, trueToScale, isFocused = false, onSelectS
     <CircleMarker
       ref={layerRef}
       center={[site.latitude, site.longitude]}
-      radius={computeMarkerSizePx(site.occupiedTunnelCount, allCounts)}
+      radius={computeMarkerSizePx(percent, allPercents)}
       pathOptions={PATH_OPTIONS}
       eventHandlers={eventHandlers}
     >

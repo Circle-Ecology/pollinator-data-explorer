@@ -35,8 +35,9 @@ describe('ObservationExplorer - US-15', () => {
 
     expect(dialog).toBeInTheDocument()
     expect(dialog).toHaveTextContent('Denver, CO')
-    expect(dialog).toHaveTextContent('39.7392')
-    expect(dialog).toHaveTextContent('-104.9903')
+    // US-39: the details panel no longer shows coordinates.
+    expect(dialog).not.toHaveTextContent('39.7392')
+    expect(dialog).not.toHaveTextContent('-104.9903')
     expect(dialog).toHaveTextContent('1609 meters')
   })
 
