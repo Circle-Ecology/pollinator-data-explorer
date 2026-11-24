@@ -1,3 +1,68 @@
+// Scorecard genera in the pipeline's order (alphabetical within each group).
+const SCORECARD_GENERA = [
+  ...['Anthidium', 'Ashmeadiella', 'Dianthidium', 'Heriades', 'Hoplitis', 'Hylaeus',
+    'Megachile (Chelostomoides)', 'Megachile (Eutricharaea)', 'Megachile (multiple)',
+    'Megachile (Sayapis)', 'Osmia (mud)', 'Osmia (vegetation)'].map((genus) => ({ genus, group: 'Bee' })),
+  ...['Eumeninae', 'Isodontia', 'Passaloecus or Psenulus', 'Solierella', 'Spilomena', 'Trypoxylon']
+    .map((genus) => ({ genus, group: 'Wasp' })),
+  { genus: 'Unknown', group: 'Unknown' },
+]
+
+// One site-year scorecard as the pipeline writes it. `rates` are the condition
+// percentages; `states` the conditions that are a bonus or a flag.
+function scorecard({ siteId, siteNumber, presentGenera, uniqueGenera = [], rates, states, score, category }) {
+  const conditions = {}
+  for (const [id, rate] of Object.entries(rates)) {
+    conditions[id] = id === 'emergence'
+      ? { rate, recorded: states.emergence === 'bonus' }
+      : { rate, state: states[id] ?? 'none' }
+  }
+  const flags = Object.keys(states).filter((id) => states[id] === 'flag')
+  return {
+    siteId, siteNumber, presentGenera, uniqueGenera, conditions,
+    score, max: 24, category, flagged: flags.length > 0, flags,
+  }
+}
+
+const SCORECARD_SITE_1_2026 = scorecard({
+  siteId: 'Site 1', siteNumber: '1',
+  presentGenera: ['Ashmeadiella', 'Eumeninae', 'Hoplitis', 'Hylaeus', 'Isodontia', 'Megachile (Eutricharaea)',
+    'Megachile (multiple)', 'Solierella', 'Spilomena', 'Trypoxylon', 'Unknown'],
+  rates: { parasitism: 4, chalkbrood: 11, multiGenus: 17, other: 4, megachile: 26, osmiaMud: 0, emergence: 31 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', emergence: 'bonus' },
+  score: 15, category: 'High',
+})
+
+const SCORECARD_SITE_3_2026 = scorecard({
+  siteId: 'Site 3', siteNumber: '3',
+  presentGenera: ['Dianthidium', 'Eumeninae', 'Isodontia', 'Megachile (Eutricharaea)', 'Megachile (multiple)',
+    'Megachile (Sayapis)', 'Solierella', 'Spilomena', 'Trypoxylon', 'Unknown'],
+  rates: { parasitism: 2, chalkbrood: 1, multiGenus: 5, other: 23, megachile: 8, osmiaMud: 0, emergence: 17 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', emergence: 'bonus' },
+  score: 14, category: 'High',
+})
+
+// Flagged (Megachile (Eutricharaea) 48%) but keeps its score: Very High.
+const SCORECARD_SITE_5_2026 = scorecard({
+  siteId: 'Sherwood OS', siteNumber: '5',
+  presentGenera: ['Ashmeadiella', 'Eumeninae', 'Heriades', 'Isodontia', 'Megachile (Chelostomoides)',
+    'Megachile (Eutricharaea)', 'Megachile (multiple)', 'Passaloecus or Psenulus', 'Solierella', 'Spilomena',
+    'Unknown'],
+  uniqueGenera: ['Megachile (Chelostomoides)'],
+  rates: { parasitism: 6, chalkbrood: 8, multiGenus: 11, other: 2, megachile: 48, osmiaMud: 0, emergence: 19 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', megachile: 'flag', emergence: 'bonus' },
+  score: 16, category: 'Very High',
+})
+
+// Emergence before 2026 was estimated, so the scorecard shows it without a rate.
+const SCORECARD_SITE_1_2025 = scorecard({
+  siteId: 'Site 1', siteNumber: '1',
+  presentGenera: ['Eumeninae', 'Hylaeus', 'Isodontia', 'Megachile (Eutricharaea)', 'Osmia (mud)', 'Solierella'],
+  rates: { parasitism: 1, chalkbrood: 0, multiGenus: 2, other: 5, megachile: 82, osmiaMud: 1, emergence: 34 },
+  states: { parasitism: 'bonus', multiGenus: 'bonus', other: 'bonus', megachile: 'flag', emergence: 'bonus' },
+  score: 10, category: 'Medium',
+})
+
 // A small dashboard.json in the US-28 shape. Site totals agree across the
 // occupant charts, as they do in the real pipeline output. No 2024: the study skipped it.
 export const dashboardData = {
@@ -165,12 +230,15 @@ export const dashboardData = {
         ],
       }],
     },
-    // Only the fields the dashboard reads: Circle Ecology's site numbers.
+    // Site scorecards, from report_v04 (2026 Sites 1, 3 and 5; 2025 Site 1).
+    // The faceted charts also read the site numbers from here.
+    'scorecard-genera': { all: SCORECARD_GENERA },
     'scorecard-all-sites': {
-      2026: [
-        { siteId: 'Site 1', siteNumber: '1' },
-        { siteId: 'Site 3', siteNumber: '3' },
-      ],
+      2026: [SCORECARD_SITE_1_2026, SCORECARD_SITE_3_2026, SCORECARD_SITE_5_2026],
+    },
+    'scorecard-site-over-years': {
+      'Site 1': { 2025: SCORECARD_SITE_1_2025, 2026: SCORECARD_SITE_1_2026 },
+      'Sherwood OS': { 2026: SCORECARD_SITE_5_2026 },
     },
     'occupants-by-site-type': {
       2023: [

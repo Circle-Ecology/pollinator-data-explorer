@@ -29,7 +29,7 @@ export const brandColors = {
   // Site scorecard colors, chosen to stay distinguishable with color blindness
   scorecardPresent: '#7FBFF5', // a genus is present at the site (+1 point)
   scorecardBonus: '#3D1CA2', // a bonus condition is met (+1 point)
-  scorecardFlag: '#F1BF51', // a flag condition is triggered (score = 0)
+  scorecardFlag: '#F1BF51', // a flag condition is over 30% (the score is kept)
 }
 
 // Fonts from the same theme: Alice for titles, Poppins for everything else.
