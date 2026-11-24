@@ -122,11 +122,39 @@ An empty authorized result is valid and writes empty arrays/zero public counts.
 Generated `/data/*.json` files are ignored by Git; only synthetic source fixtures
 should be committed.
 
-The writer writes candidate files directly, with metadata last. **It is not safe
-for replacement of a live dataset.** A filesystem failure may leave partial
-candidate output. US-25 owns atomic replacement, rollback and last-good handling;
-US-26 owns serving/build/deployment. `status: 'published'` is the required candidate
-metadata label, not evidence that Netlify or a browser has received these files.
+## Last-good preservation (US-25)
+
+`writePublicDataset` stages all four files in a hidden sibling directory
+(`.<name>.staging-*`) and swaps it in with a rename only after every file is
+written. If anything fails (bad clock, filesystem error, an output path that is not a
+directory) the previous dataset is left untouched, the staging directory is removed,
+and the error stays generic. If the final rename fails the previous directory is
+restored. The one non-atomic moment is the two renames themselves, so a reader could
+briefly see no directory; the Netlify build writes to `public/data` before `vite build`,
+so nothing is serving from it during the swap.
+
+`publishDatasetIfValid(candidate, currentStatus, { outputDirectory, now, logger })`
+(`src/pipeline/publishDatasetIfValid.js`) is the single entry point. It runs
+`assertPublishableImport` (empty parse, zero valid rows, or invalid ratio over 0.9),
+then `writePublicDataset`, and returns `{ published, status }`; it never throws. This
+deliberately follows #45 rather than the literal "any validation error blocks" wording
+of the US-25 ticket: bad rows are excluded and counted in `excludedRowCount`, since the
+real sheet routinely contains them.
+
+On any refusal or write failure the data files are untouched and `dataset-status.json`
+becomes `publish_failed` (or `fetch_failed`, via `recordFetchFailure`) while
+`generatedAt` and the counts still describe the last good publish. It also carries
+`consecutiveFailureCount`, which resets on the next successful publish. That status
+file is written as `dataset-status.json.tmp` then renamed. Each failure logs
+`{ occurredAt, reason, firstError?, consecutiveFailureCount }` (`firstError` is the
+first US-07 `{ rowNumber, column, code, message }`); the third consecutive failure logs
+once more with `alert: true`. Sending a notification is out of scope.
+
+`npm run pipeline:publish` uses `publishDatasetIfValid` and exits non-zero on failure.
+A fresh checkout with no prior publish has no status file to annotate, so failures
+only log and exit; the Netlify build then fails and the previous deploy stays live.
+`status: 'published'` is still a metadata label, not evidence that Netlify or a
+browser has received these files.
 
 ## Optional scheduler handoff
 
@@ -151,8 +179,8 @@ onParsedResult: parsed => writePublicDataset(parsed, { outputDirectory: staging 
 
 The production launcher (`scripts/fetch-sheet.js`, `npm run pipeline:fetch`) does
 not enable this callback. Before doing so, the team must connect authoritative
-approval/visibility enrichment, full US-07 validation, and US-25 publication
-safety. If authorization resides outside the CSV, its version must participate in
+approval/visibility enrichment, full US-07 validation, and route `onParsedResult`
+through `publishDatasetIfValid` (US-25) so failures are recorded and counted. If authorization resides outside the CSV, its version must participate in
 regeneration decisions; unchanged CSV alone is insufficient.
 
 `scripts/publish-sheet.js` (`npm run pipeline:publish`) is the manual/staging
@@ -219,7 +247,7 @@ $env:TMP = $auditTemp
   ownership and the public relationship extension require team agreement.
 - Production regression fixtures are unavailable. The six-site/performance
   demonstration is synthetic, not evidence of current production authorization.
-- No US-25 preservation, US-26 deployment, US-27 retries, or frontend changes are
+- No US-26 deployment, US-27 retries, or frontend changes are
   included. Existing lint/CI and Node deployment-version concerns remain separate.
 
 ## US-28 dashboard figures
