@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Circle, CircleMarker, Popup } from 'react-leaflet'
 import { computeMarkerRadiusMeters, computeMarkerSizePx } from '../utils/markerSize'
 
@@ -48,7 +49,20 @@ function unmarkAccessible(event) {
   }
 }
 
-function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
+// US-41: `isFocused` marks the site the map is zoomed in on. Zooming in past
+// ZOOM_SWITCH_THRESHOLD swaps the dot for a true-to-scale circle, a new layer
+// whose popup starts closed, so the focused site's popup is reopened on it,
+// one tick later: opened any sooner, react-leaflet's layer swap closes it again.
+function SiteMarker({ site, allCounts, trueToScale, isFocused = false, onSelectSite }) {
+  const layerRef = useRef(null)
+
+  useEffect(() => {
+    if (!isFocused) return undefined
+    // After react-leaflet has finished swapping layers and binding the popup.
+    const timer = setTimeout(() => layerRef.current?.openPopup(), 0)
+    return () => clearTimeout(timer)
+  }, [isFocused, trueToScale])
+
   const eventHandlers = {
     add: (event) => markAccessible(event, site, onSelectSite),
     remove: unmarkAccessible,
@@ -75,6 +89,7 @@ function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
   if (trueToScale) {
     return (
       <Circle
+        ref={layerRef}
         center={[site.latitude, site.longitude]}
         radius={computeMarkerRadiusMeters(site.occupiedTunnelCount, allCounts)}
         pathOptions={PATH_OPTIONS}
@@ -87,6 +102,7 @@ function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
 
   return (
     <CircleMarker
+      ref={layerRef}
       center={[site.latitude, site.longitude]}
       radius={computeMarkerSizePx(site.occupiedTunnelCount, allCounts)}
       pathOptions={PATH_OPTIONS}
