@@ -103,7 +103,7 @@ const OCCUPANCY_SERIES = [
 ]
 
 const OCCUPANCY_2025_CAVEAT =
-  'In 2025, nesting holes whose only occupant was an "Other" creature (such ' +
+  'In 2025, nesting holes whose only occupant was an "Other" occupant (such ' +
   'as a spider or ant) were tracked on a separate sheet and are not counted ' +
   'here, so 2025 totals run slightly low.'
 
@@ -232,7 +232,7 @@ export const dashboardConfig = [
         title: 'Occupants by Year and Occupant Type',
         snippet:
           'Each bar is one monitoring year, split by who moved in: bees, ' +
-          'wasps, other creatures such as spiders and ants, and occupants ' +
+          'wasps, other occupants such as spiders and ants, and occupants ' +
           'that could not be identified. A nesting hole can count more than ' +
           'once if a new occupant moved in later in the season.',
         caveat: OCCUPANTS_2025_CAVEAT,
@@ -249,8 +249,9 @@ export const dashboardConfig = [
         snippet:
           'Each bar is the total number of occupants recorded at one ' +
           'monitoring site in the selected year. Sites with more nesting ' +
-          'holes tend to have more occupants, so see the Occupancy tab to ' +
-          'compare how much of each site was used.',
+          'holes tend to have more occupants; to compare how much of each ' +
+          'site was used, see Occupied Fabricated Cavities by Site on the ' +
+          'Occupied Fabricated Cavities tab.',
         caveat: OCCUPANTS_2025_CAVEAT,
         component: 'stackedBar',
         supportsYears: true,

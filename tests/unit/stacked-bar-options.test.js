@@ -3,6 +3,7 @@ import {
   getValueAxisProps,
   legendOrderBySeries,
   PERCENT_TICKS,
+  tooltipOrderTopFirst,
 } from '../../src/utils/stackedBarOptions'
 
 describe('StackedBarChart options - US-30', () => {
@@ -31,5 +32,17 @@ describe('StackedBarChart options - US-30', () => {
     const sorted = [...legendItems].sort((a, b) => sorter(a) - sorter(b))
 
     expect(sorted.map((item) => item.dataKey)).toEqual(['Bee', 'Wasp', 'Unknown', 'Other'])
+  })
+
+  // US-39: Georgia's 11/18 feedback. The tooltip reads like the bar: the top
+  // segment first, the bottom one last (2023: Other 220, Wasp 18, Bee 30).
+  it('lists tooltip items top of the stack first', () => {
+    const series = [{ key: 'Bee' }, { key: 'Wasp' }, { key: 'Unknown' }, { key: 'Other' }]
+    const tooltipItems = ['Bee', 'Wasp', 'Other'].map((dataKey) => ({ dataKey }))
+    const sorter = tooltipOrderTopFirst(series)
+
+    const sorted = [...tooltipItems].sort((a, b) => sorter(a) - sorter(b))
+
+    expect(sorted.map((item) => item.dataKey)).toEqual(['Other', 'Wasp', 'Bee'])
   })
 })

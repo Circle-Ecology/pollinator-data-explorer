@@ -13,6 +13,7 @@ import {
   getChartMinWidth,
   getValueAxisProps,
   legendOrderBySeries,
+  tooltipOrderTopFirst,
 } from '../utils/stackedBarOptions'
 
 // Matches theme_pollinator_v01.R: Poppins in near-black, no gridlines or
@@ -24,12 +25,20 @@ const AXIS_TICK = {
 }
 
 // Long site names are angled once there are more bars than fit side by side.
+// Angled labels get room by their length, so a long one such as "Sandstone
+// Ranch Nature Area (Site 4)" does not run into the legend (US-39).
 const ANGLE_LABELS_ABOVE = 4
+const ANGLED_LABEL_MIN_PX = 150
+const ANGLED_LABEL_PX_PER_CHAR = 5
 
 function StackedBarChart({ chart, rows, measure }) {
   const isPercent = measure === 'percent'
   const angled = rows.length > ANGLE_LABELS_ABOVE
   const minWidth = getChartMinWidth(rows.length)
+  const longestLabel = Math.max(0, ...rows.map((row) => String(row.category).length))
+  const labelHeight = angled
+    ? Math.max(ANGLED_LABEL_MIN_PX, longestLabel * ANGLED_LABEL_PX_PER_CHAR)
+    : 30
 
   const data = rows.map((row) => ({
     category: row.category,
@@ -50,7 +59,7 @@ function StackedBarChart({ chart, rows, measure }) {
       tabIndex={minWidth ? 0 : undefined}
     >
       <div className="stacked-bar-chart-inner" style={{ minWidth }}>
-        <ResponsiveContainer width="100%" height={angled ? 420 : 320}>
+        <ResponsiveContainer width="100%" height={angled ? 270 + labelHeight : 320}>
           <BarChart
             data={data}
             accessibilityLayer={false}
@@ -65,7 +74,7 @@ function StackedBarChart({ chart, rows, measure }) {
               interval={0}
               angle={angled ? -45 : 0}
               textAnchor={angled ? 'end' : 'middle'}
-              height={angled ? 150 : 30}
+              height={labelHeight}
             />
             <YAxis
               tick={AXIS_TICK}
@@ -78,6 +87,7 @@ function StackedBarChart({ chart, rows, measure }) {
               width={56}
             />
             <Tooltip
+              itemSorter={tooltipOrderTopFirst(chart.series)}
               // null = series not recorded in that bar's year (see buildChartRows).
               formatter={(value) =>
                 value === null || value === undefined

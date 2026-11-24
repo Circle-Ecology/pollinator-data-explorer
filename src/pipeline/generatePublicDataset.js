@@ -1,6 +1,7 @@
 import { CONFLICT_CODES } from '../us08/parseExportRows.js'
 import { SITE_FIELDS } from './publicFields.js'
 import { addSiteStats } from './siteStats.js'
+import { siteDisplayName, siteNumbersBySiteId } from './siteDisplayName.js'
 
 // These allowlists mirror docs/data-contract.md. Never spread source records here.
 // SITE_FIELDS lives in publicFields.js, shared with siteStats.js.
@@ -150,7 +151,10 @@ export function generatePublicDataset(parsedResult) {
     if (!existing) surveysByKey.set(key, output)
   }
 
+  // US-39: public names carry the site number, e.g. "Sherwood OS (Site 5)".
+  const siteNumbers = siteNumbersBySiteId(Array.from(tunnelsById.values()))
   const sites = Array.from(sitesById.values()).filter(site => site.isPublic === true).map(publicSite)
+    .map(site => ({ ...site, propertyName: siteDisplayName(site.propertyName, siteNumbers.get(site.siteId)) }))
   const observations = Array.from(surveysByKey.values())
   sites.sort((a, b) => compare(a.siteId, b.siteId))
   observations.sort((a, b) => compare(a.tunnelId, b.tunnelId) || compare(a.surveyDate, b.surveyDate))

@@ -52,4 +52,17 @@ describe('dashboardConfig - US-29', () => {
       }
     }
   })
+
+  // US-39: Georgia's 11/18 wording feedback.
+  it('never calls occupants "creatures" in a snippet or data note', () => {
+    for (const chart of charts) {
+      const caveat = typeof chart.caveat === 'string' ? chart.caveat : chart.caveat?.text ?? ''
+      expect(`${chart.snippet} ${caveat}`).not.toMatch(/creature/i)
+    }
+  })
+
+  it('points Occupants by Site to the exact chart for comparing site use', () => {
+    const chart = charts.find((item) => item.id === 'occupants-by-site')
+    expect(chart.snippet).toContain('Occupied Fabricated Cavities by Site on the Occupied Fabricated Cavities tab')
+  })
 })

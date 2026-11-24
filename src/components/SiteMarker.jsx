@@ -1,4 +1,5 @@
 import { Circle, CircleMarker, Popup } from 'react-leaflet'
+import { occupiedHolesPercent } from '../utils/formatOccupancyRate'
 import { computeMarkerRadiusMeters, computeMarkerSizePx } from '../utils/markerSize'
 
 // Circle Ecology Dark Green.
@@ -48,7 +49,12 @@ function unmarkAccessible(event) {
   }
 }
 
-function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
+// US-39: sized by the share of the site's holes that were occupied, since
+// sites have different numbers of holes. A site without the figures gets the
+// smallest marker.
+function SiteMarker({ site, allPercents, trueToScale, onSelectSite }) {
+  const percent = occupiedHolesPercent(site) ?? 0
+
   const eventHandlers = {
     add: (event) => markAccessible(event, site, onSelectSite),
     remove: unmarkAccessible,
@@ -61,14 +67,9 @@ function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
     <Popup>
       <strong>{site.propertyName}</strong>
       <br />
-      {site.occupiedTunnelCount == null ? (
-        'Occupied tunnels not recorded'
-      ) : (
-        <>
-          {site.occupiedTunnelCount} occupied tunnel
-          {site.occupiedTunnelCount === 1 ? '' : 's'}
-        </>
-      )}
+      {occupiedHolesPercent(site) === null
+        ? 'Occupied holes not recorded'
+        : `${occupiedHolesPercent(site)}% of holes occupied (${site.occupiedTunnelCount} of ${site.tunnelCount})`}
     </Popup>
   )
 
@@ -76,7 +77,7 @@ function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
     return (
       <Circle
         center={[site.latitude, site.longitude]}
-        radius={computeMarkerRadiusMeters(site.occupiedTunnelCount, allCounts)}
+        radius={computeMarkerRadiusMeters(percent, allPercents)}
         pathOptions={PATH_OPTIONS}
         eventHandlers={eventHandlers}
       >
@@ -88,7 +89,7 @@ function SiteMarker({ site, allCounts, trueToScale, onSelectSite }) {
   return (
     <CircleMarker
       center={[site.latitude, site.longitude]}
-      radius={computeMarkerSizePx(site.occupiedTunnelCount, allCounts)}
+      radius={computeMarkerSizePx(percent, allPercents)}
       pathOptions={PATH_OPTIONS}
       eventHandlers={eventHandlers}
     >

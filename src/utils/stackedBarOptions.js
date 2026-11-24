@@ -17,6 +17,13 @@ export function legendOrderBySeries(series) {
   return (item) => series.findIndex((entry) => entry.key === item.dataKey)
 }
 
+// US-39: the hover tooltip reads like the bar, top segment first and bottom
+// last (Recharts lists them bottom first). Use as Tooltip's itemSorter.
+export function tooltipOrderTopFirst(series) {
+  const order = legendOrderBySeries(series)
+  return (item) => -order(item)
+}
+
 // Charts with many bars (e.g. 16 two-week periods) get a minimum width so
 // the bars and angled labels stay readable; on narrow screens the chart then
 // scrolls sideways inside its own box instead of squeezing or widening the
