@@ -181,17 +181,21 @@ export function countNestStatuses(cavityObservations, occupantType) {
 // every cavity that held a Bee, Wasp or Unknown occupant in the year counts once, at the last Plug
 // Depth recorded on one of its occupied observations of those types ("end of season"). Cavities
 // with no depth are left out, and so are depths that are not one of the six levels (the garbled
-// export values; `unrecognized` counts them). Against the deck: 2023 matches exactly (28 and 10),
-// 2025 is within 1 per level (764 vs 765), and 2026 matches except 1/2 inch, which is 7 short:
-// those are the 7 cavities whose depth is garbled in the export (probably "1/2 inch").
+// export values; `unrecognized` counts them). The sheet's "1/2 inch" is sometimes exported with the
+// "1/2" turned into replacement characters (U+FFFD); report_v04 has those as "1/2 inch", so they are
+// read as that (see normalizePlugDepth). Against report_v04's data: 2023 matches exactly (28 and 10),
+// 2026 matches (694, 1/2 inch 96), and 2025 is 1 short of 765 (flush 259 vs 260) on the live sheet.
 export const PLUG_DEPTH_TYPES = ['Bee', 'Wasp', 'Unknown']
+const GARBLED_HALF_INCH = /^\uFFFD+ inch$/
+const normalizePlugDepth = depth => (GARBLED_HALF_INCH.test(depth) ? '1/2 inch' : depth)
 export function countPlugDepths(cavityObservations) {
   const counts = new Map()
   let unrecognized = 0
   for (const observations of cavityObservations) {
-    const depth = [...observations].sort(byDate).reverse().find(o =>
+    const recorded = [...observations].sort(byDate).reverse().find(o =>
       isOccupiedStatus(o.observationStatus) && PLUG_DEPTH_TYPES.includes(o.occupantType) && o.plugDepth != null)?.plugDepth
-    if (depth === undefined) continue
+    if (recorded === undefined) continue
+    const depth = normalizePlugDepth(recorded)
     if (PLUG_DEPTH_LEVELS.includes(depth)) counts.set(depth, (counts.get(depth) ?? 0) + 1)
     else unrecognized += 1
   }
@@ -476,8 +480,16 @@ function periodRows(year, lastSurveyPeriod, keys, byPeriod) {
 
 export const SCORE_THRESHOLD = 0.30
 export const SCORE_MAX = 24
-// Inferred boundaries (to confirm with Circle Ecology): the deck shows 5 = Low, 11-15 = High, 16-17 = Very High.
-const SCORE_CATEGORIES = [{ min: 16, name: 'Very High' }, { min: 8, name: 'High' }, { min: 0, name: 'Low' }]
+// report_v04 uses four categories: Low (up to 5), Medium (6-10), High (11-15) and Very High (16 and up).
+// Each value is the lowest score in its category. Inferred from every score in the deck, so confirm with
+// Circle Ecology; staff can change them here.
+export const SCORE_CATEGORY_MINIMUMS = { medium: 6, high: 11, veryHigh: 16 }
+const SCORE_CATEGORIES = [
+  { min: SCORE_CATEGORY_MINIMUMS.veryHigh, name: 'Very High' },
+  { min: SCORE_CATEGORY_MINIMUMS.high, name: 'High' },
+  { min: SCORE_CATEGORY_MINIMUMS.medium, name: 'Medium' },
+  { min: 0, name: 'Low' },
+]
 // Condition ids. The scorecard calls the old "Competition" condition "Multi-genus cavity use"
 // (Circle Ecology, Nov 2026); the genus profile pages keep their own `competition` field.
 export const SCORECARD_CONDITION_LABELS = {
